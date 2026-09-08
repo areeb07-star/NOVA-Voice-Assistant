@@ -6,13 +6,14 @@ import smtplib
 import uuid
 import hashlib
 import secrets
+import google.genai as genai
 
 from datetime import datetime, timedelta, timezone
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 from dotenv import load_dotenv
-from google import genai
+
 from werkzeug.security import generate_password_hash, check_password_hash
 
 
@@ -1080,110 +1081,6 @@ def assistant():
                     "total_expenses": float(total_expenses)
                 }
             })
-
-
-        # ====================================================
-        # SUMMARIZE TEXT
-        # ====================================================
-
-        elif intent == "SUMMARIZE_TEXT":
-
-            text = str(
-                details.get("text", "")
-            ).strip()
-
-            if not text:
-
-                return jsonify({
-                    "success": False,
-                    "message": "Text is required for summarization"
-                }), 400
-
-            prompt = f"""
-Summarize the following text clearly and concisely.
-
-Requirements:
-- Keep the important facts and main ideas.
-- Do not add information that is not present.
-- Make the summary easy to understand.
-
-Text:
-
-{text}
-"""
-
-            response = gemini_client.models.generate_content(
-                model="gemini-3.7-flash",
-                contents=prompt
-            )
-
-            summary = (
-                response.text or ""
-            ).strip()
-
-            return jsonify({
-                "success": True,
-                "summary": summary
-            })
-
-
-        # ====================================================
-        # TRANSLATE
-        # ====================================================
-
-        elif intent == "TRANSLATE":
-
-            text = str(
-                details.get("text", "")
-            ).strip()
-
-            target_language = str(
-                details.get("target_language", "")
-            ).strip()
-
-            if not text:
-
-                return jsonify({
-                    "success": False,
-                    "message": "Text is required for translation"
-                }), 400
-
-            if not target_language:
-
-                return jsonify({
-                    "success": False,
-                    "message": "Target language is required"
-                }), 400
-
-            prompt = f"""
-Translate the following text into {target_language}.
-
-Requirements:
-- Preserve the original meaning.
-- Do not add extra information.
-- Return only the translated text.
-- Keep names, numbers and important details accurate.
-
-Text:
-
-{text}
-"""
-
-            response = gemini_client.models.generate_content(
-                model="gemini-3.7-flash",
-                contents=prompt
-            )
-
-            translation = (
-                response.text or ""
-            ).strip()
-
-            return jsonify({
-                "success": True,
-                "target_language": target_language,
-                "translation": translation
-            })
-
 
         # ====================================================
         # CREATE MEMORY
