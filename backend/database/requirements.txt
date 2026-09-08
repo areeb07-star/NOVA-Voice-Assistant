@@ -1,0 +1,6 @@
+Flask
+flask-cors
+psycopg[binary]
+python-dotenv
+google-genai
+gunicorn
