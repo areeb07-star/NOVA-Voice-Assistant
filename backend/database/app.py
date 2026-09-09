@@ -115,7 +115,37 @@ def create_session(user_id):
         conn.close()
 
     return token
+#=========================================================
+#get_user_from _token
+#==========================================================
+def get_user_from_token(token):
+    if not token:
+        return None
 
+    token_hash = hash_token(token)
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        SELECT user_id
+        FROM auth_sessions
+        WHERE token_hash = %s
+        AND expires_at > NOW()
+        """,
+        (token_hash,)
+    )
+
+    row = cur.fetchone()
+
+    cur.close()
+    conn.close()
+
+    if row:
+        return row[0]
+
+    return None
 
 # ============================================================
 # HOME / HEALTH CHECK
@@ -387,7 +417,22 @@ def logout():
 def assistant():
 
     data = request.get_json() or {}
+    auth_header = request.headers.get("Authorization", "")
 
+    if not auth_header.startswith("Bearer "):
+        return jsonify({
+            "success": False,
+            "message": "Authorization token is required"
+        }), 401
+
+    token = auth_header.split(" ", 1)[1]
+    authenticated_user_id = get_user_from_token(token)
+
+    if not authenticated_user_id:
+        return jsonify({
+            "success": False,
+            "message": "Invalid or expired authorization token"
+        }), 401
     intent = data.get("intent")
     details = data.get("data", {})
 
@@ -462,9 +507,7 @@ def assistant():
 
     try:
 
-        user_id = str(
-            details.get("user_id", "")
-        ).strip()
+        user_id = authenticated_user_id
 
 
         # ====================================================
