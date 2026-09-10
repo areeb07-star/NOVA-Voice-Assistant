@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notes — NOVA</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <style>
+    .notes-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-md);
+      margin-bottom: var(--space-xl);
+      flex-wrap: wrap;
+    }
+
+    .notes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: var(--space-lg);
+    }
+
+    .note-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: var(--space-lg);
+      transition: all var(--transition-base);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      cursor: pointer;
+    }
+
+    .note-card:hover {
+      border-color: var(--border-glass);
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .note-card.pinned {
+      border-color: rgba(34, 211, 238, 0.2);
+    }
+
+    .note-card.pinned::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--gradient-primary);
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    }
+
+    .note-pin {
+      position: absolute;
+      top: var(--space-md);
+      right: var(--space-md);
+      font-size: 1rem;
+      opacity: 0.4;
+      transition: all var(--transition-fast);
+      cursor: pointer;
+      z-index: 2;
+    }
+
+    .note-pin:hover,
+    .note-pin.pinned {
+      opacity: 1;
+      transform: scale(1.2);
+    }
+
+    .note-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: var(--space-sm);
+      padding-right: 24px;
+    }
+
+    .note-preview {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: var(--space-md);
+      flex: 1;
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .note-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: var(--space-md);
+    }
+
+    .note-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      padding-top: var(--space-sm);
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .note-actions {
+      display: flex;
+      gap: var(--space-xs);
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+    }
+
+    .note-card:hover .note-actions {
+      opacity: 1;
+    }
+
+    @media (max-width: 768px) {
+      .notes-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .notes-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .note-actions {
+        opacity: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="dashboard-layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">N</div>
+        <div class="sidebar-brand">NOVA</div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Main</div>
+        <a href="dashboard.html" class="nav-item"><span class="nav-icon">⌂</span><span class="nav-label">Dashboard</span></a>
+        <div class="nav-section-label">Organize</div>
+        <a href="reminders.html" class="nav-item"><span class="nav-icon">⏰</span><span class="nav-label">Reminders</span></a>
+        <a href="notes.html" class="nav-item active"><span class="nav-icon">📝</span><span class="nav-label">Notes</span></a>
+        <a href="shopping.html" class="nav-item"><span class="nav-icon">🛒</span><span class="nav-label">Shopping</span></a>
+        <a href="expenses.html" class="nav-item"><span class="nav-icon">💰</span><span class="nav-label">Expenses</span></a>
+        <a href="study_plans.html" class="nav-item"><span class="nav-icon">📚</span><span class="nav-label">Study Plans</span></a>
+        <a href="goals.html" class="nav-item"><span class="nav-icon">🎯</span><span class="nav-label">Goals</span></a>
+        <div class="nav-divider"></div>
+        <a href="profile.html" class="nav-item"><span class="nav-icon">⚙</span><span class="nav-label">Profile</span></a>
+        <a href="login.html" class="nav-item"><span class="nav-icon">↪</span><span class="nav-label">Logout</span></a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="avatar avatar-sm">AS</div>
+          <div class="sidebar-user-info">
+            <div class="sidebar-user-name" id="sidebarUserName">Arjun Sharma</div>
+            <div class="sidebar-user-role">Student</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="main-content" id="mainContent">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="hamburger" aria-label="Toggle menu">☰</button>
+          <div class="topbar-greeting">
+            <div class="greeting-title">Your Thoughts, Organized.</div>
+            <div class="greeting-subtitle">Capture ideas instantly.</div>
+          </div>
+        </div>
+        <div class="topbar-right">
+          <button class="topbar-icon-btn" data-notifications aria-label="Notifications">🔔<span class="notification-dot"></span></button>
+          <div class="topbar-avatar"><div class="avatar">AS</div></div>
+        </div>
+      </header>
+
+      <div class="page-content">
+        <div class="notes-toolbar">
+          <div class="search-bar" style="min-width: 280px;">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="noteSearch" placeholder="Search notes..." aria-label="Search notes">
+          </div>
+          <button class="btn btn-primary" id="newNoteBtn">+ New Note</button>
+        </div>
+
+        <div class="notes-grid" id="notesGrid">
+          <!-- Notes injected by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Note Modal -->
+  <div class="modal-overlay" id="noteModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="noteModalTitle">📝 New Note</h3>
+        <button class="modal-close" data-close-modal aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="noteTitle">Title <span class="required">*</span></label>
+          <input type="text" id="noteTitle" class="form-input" placeholder="Note title" required>
+          <div class="form-error" id="noteTitleError">Title is required.</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="noteContent">Content <span class="required">*</span></label>
+          <textarea id="noteContent" class="form-textarea" placeholder="Write your thoughts..." required></textarea>
+          <div class="form-error" id="noteContentError">Content is required.</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="noteTags">Tags (comma separated)</label>
+          <input type="text" id="noteTags" class="form-input" placeholder="e.g. Python, Study, Important">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" data-close-modal>Cancel</button>
+        <button class="btn btn-primary" id="saveNoteBtn">Save Note</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/main.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/notes.js"></script>
+</body>
+</html>
