@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shopping — NOVA</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <style>
+    .shopping-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-md);
+      margin-bottom: var(--space-xl);
+      flex-wrap: wrap;
+    }
+
+    .shopping-progress-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: var(--space-lg);
+      margin-bottom: var(--space-xl);
+      display: flex;
+      align-items: center;
+      gap: var(--space-lg);
+      flex-wrap: wrap;
+    }
+
+    .shopping-progress-text {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+    }
+
+    .shopping-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+
+    .shopping-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      padding: var(--space-md) var(--space-lg);
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      transition: all var(--transition-base);
+    }
+
+    .shopping-item:hover {
+      border-color: var(--border-glass);
+      transform: translateX(4px);
+    }
+
+    .shopping-item.purchased {
+      opacity: 0.55;
+    }
+
+    .shopping-item.purchased .shopping-name {
+      text-decoration: line-through;
+    }
+
+    .shopping-check {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      border: 2px solid var(--border-glass);
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      flex-shrink: 0;
+      font-size: 0.7rem;
+      color: transparent;
+      padding: 0;
+    }
+
+    .shopping-check:hover {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 10px rgba(34, 211, 238, 0.3);
+    }
+
+    .shopping-item.purchased .shopping-check {
+      background: var(--gradient-primary);
+      border-color: transparent;
+      color: #fff;
+    }
+
+    .shopping-content {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      min-width: 0;
+    }
+
+    .shopping-name {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      flex: 1;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .shopping-qty {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      font-weight: 600;
+    }
+
+    .shopping-actions {
+      display: flex;
+      gap: var(--space-xs);
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+    }
+
+    .shopping-item:hover .shopping-actions {
+      opacity: 1;
+    }
+
+    @media (max-width: 768px) {
+      .shopping-header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .shopping-actions {
+        opacity: 1;
+      }
+
+      .shopping-content {
+        flex-wrap: wrap;
+        gap: var(--space-sm);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="dashboard-layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">N</div>
+        <div class="sidebar-brand">NOVA</div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Main</div>
+        <a href="dashboard.html" class="nav-item"><span class="nav-icon">⌂</span><span class="nav-label">Dashboard</span></a>
+        <div class="nav-section-label">Organize</div>
+        <a href="reminders.html" class="nav-item"><span class="nav-icon">⏰</span><span class="nav-label">Reminders</span></a>
+        <a href="notes.html" class="nav-item"><span class="nav-icon">📝</span><span class="nav-label">Notes</span></a>
+        <a href="shopping.html" class="nav-item active"><span class="nav-icon">🛒</span><span class="nav-label">Shopping</span></a>
+        <a href="expenses.html" class="nav-item"><span class="nav-icon">💰</span><span class="nav-label">Expenses</span></a>
+        <a href="study_plans.html" class="nav-item"><span class="nav-icon">📚</span><span class="nav-label">Study Plans</span></a>
+        <a href="goals.html" class="nav-item"><span class="nav-icon">🎯</span><span class="nav-label">Goals</span></a>
+        <div class="nav-divider"></div>
+        <a href="profile.html" class="nav-item"><span class="nav-icon">⚙</span><span class="nav-label">Profile</span></a>
+        <a href="login.html" class="nav-item"><span class="nav-icon">↪</span><span class="nav-label">Logout</span></a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="avatar avatar-sm">AS</div>
+          <div class="sidebar-user-info">
+            <div class="sidebar-user-name" id="sidebarUserName">Arjun Sharma</div>
+            <div class="sidebar-user-role">Student</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="main-content" id="mainContent">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="hamburger" aria-label="Toggle menu">☰</button>
+          <div class="topbar-greeting">
+            <div class="greeting-title">Shopping List</div>
+            <div class="greeting-subtitle">Track what you need to buy.</div>
+          </div>
+        </div>
+        <div class="topbar-right">
+          <button class="topbar-icon-btn" data-notifications aria-label="Notifications">🔔<span class="notification-dot"></span></button>
+          <div class="topbar-avatar"><div class="avatar">AS</div></div>
+        </div>
+      </header>
+
+      <div class="page-content">
+        <div class="shopping-header">
+          <div class="search-bar" style="min-width: 260px;">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="shoppingSearch" placeholder="Search items..." aria-label="Search shopping items">
+          </div>
+          <button class="btn btn-primary" id="addShoppingBtn">+ Add Item</button>
+        </div>
+
+        <div class="shopping-progress-card">
+          <div class="shopping-progress-text" id="shoppingProgressText">0 of 0 items completed</div>
+          <div class="progress" style="flex: 1; min-width: 150px;">
+            <div class="progress-bar" id="shoppingProgressBar" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <div class="shopping-list" id="shoppingList">
+          <!-- Items injected by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Item Modal -->
+  <div class="modal-overlay" id="shoppingModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">🛒 Add Item</h3>
+        <button class="modal-close" data-close-modal aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="shoppingName">Item Name <span class="required">*</span></label>
+          <input type="text" id="shoppingName" class="form-input" placeholder="e.g. Milk">
+          <div class="form-error" id="shoppingNameError">Item name is required.</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="shoppingQty">Quantity</label>
+          <input type="number" id="shoppingQty" class="form-input" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="shoppingCategory">Category</label>
+          <select id="shoppingCategory" class="form-select">
+            <option value="Groceries">Groceries</option>
+            <option value="Stationery">Stationery</option>
+            <option value="Electronics">Electronics</option>
+            <option value="Other" selected>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-close-modal>Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveShoppingBtn">Add Item</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/main.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/shopping.js"></script>
+</body>
+</html>

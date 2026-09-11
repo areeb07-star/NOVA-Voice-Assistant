@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile — NOVA</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <style>
+    .profile-header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xl);
+      margin-bottom: var(--space-2xl);
+      flex-wrap: wrap;
+    }
+
+    .profile-info {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .profile-name {
+      font-family: var(--font-display);
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: var(--space-xs);
+    }
+
+    .profile-username {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: var(--space-sm);
+    }
+
+    .profile-email {
+      font-size: 0.85rem;
+      color: var(--text-dim);
+    }
+
+    .profile-settings {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: var(--space-lg);
+    }
+
+    .settings-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: var(--space-lg);
+    }
+
+    .settings-card-title {
+      font-family: var(--font-display);
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: var(--space-lg);
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .settings-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-md) 0;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .settings-row:last-child {
+      border-bottom: none;
+    }
+
+    .settings-label {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    .settings-desc {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      margin-top: 2px;
+    }
+
+    @media (max-width: 768px) {
+      .profile-header {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .profile-settings {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="dashboard-layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">N</div>
+        <div class="sidebar-brand">NOVA</div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Main</div>
+        <a href="dashboard.html" class="nav-item"><span class="nav-icon">⌂</span><span class="nav-label">Dashboard</span></a>
+        <div class="nav-section-label">Organize</div>
+        <a href="reminders.html" class="nav-item"><span class="nav-icon">⏰</span><span class="nav-label">Reminders</span></a>
+        <a href="notes.html" class="nav-item"><span class="nav-icon">📝</span><span class="nav-label">Notes</span></a>
+        <a href="shopping.html" class="nav-item"><span class="nav-icon">🛒</span><span class="nav-label">Shopping</span></a>
+        <a href="expenses.html" class="nav-item"><span class="nav-icon">💰</span><span class="nav-label">Expenses</span></a>
+        <a href="study_plans.html" class="nav-item"><span class="nav-icon">📚</span><span class="nav-label">Study Plans</span></a>
+        <a href="goals.html" class="nav-item"><span class="nav-icon">🎯</span><span class="nav-label">Goals</span></a>
+        <div class="nav-divider"></div>
+        <a href="profile.html" class="nav-item active"><span class="nav-icon">⚙</span><span class="nav-label">Profile</span></a>
+        <a href="login.html" class="nav-item"><span class="nav-icon">↪</span><span class="nav-label">Logout</span></a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="avatar avatar-sm">AS</div>
+          <div class="sidebar-user-info">
+            <div class="sidebar-user-name" id="sidebarUserName">Arjun Sharma</div>
+            <div class="sidebar-user-role">Student</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="main-content" id="mainContent">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="hamburger" aria-label="Toggle menu">☰</button>
+          <div class="topbar-greeting">
+            <div class="greeting-title">Profile & Settings</div>
+            <div class="greeting-subtitle">Manage your account and preferences.</div>
+          </div>
+        </div>
+        <div class="topbar-right">
+          <button class="topbar-icon-btn" data-notifications aria-label="Notifications">🔔<span class="notification-dot"></span></button>
+          <div class="topbar-avatar"><div class="avatar">AS</div></div>
+        </div>
+      </header>
+
+      <div class="page-content">
+        <!-- Profile Header -->
+        <div class="profile-header">
+          <div class="avatar avatar-xl avatar-ring">AS</div>
+          <div class="profile-info">
+            <div class="profile-name" id="profileName">Arjun Sharma</div>
+            <div class="profile-username" id="profileUsername">@arjun_dev</div>
+            <div class="profile-email" id="profileEmail">arjun@example.com</div>
+          </div>
+          <button class="btn btn-secondary" id="editProfileBtn">Edit Profile</button>
+        </div>
+
+        <!-- Settings -->
+        <div class="profile-settings">
+          <div class="settings-card">
+            <div class="settings-card-title">🔔 Notifications</div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Reminder alerts</div>
+                <div class="settings-desc">Get notified when reminders are due</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Daily summary</div>
+                <div class="settings-desc">Receive a daily overview of your tasks</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Goal milestones</div>
+                <div class="settings-desc">Celebrate when you hit milestones</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-card-title">⚙ Preferences</div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Voice responses</div>
+                <div class="settings-desc">NOVA speaks responses aloud</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Auto-save notes</div>
+                <div class="settings-desc">Automatically save notes as you type</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Compact mode</div>
+                <div class="settings-desc">Show more content in less space</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-card-title">🎨 Appearance</div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Theme</div>
+                <div class="settings-desc">Dark mode is currently active</div>
+              </div>
+              <span class="badge badge-cyan">Dark</span>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Accent color</div>
+                <div class="settings-desc">Cyan & violet gradient</div>
+              </div>
+              <div style="display:flex;gap:6px;">
+                <span style="width:16px;height:16px;border-radius:50%;background:var(--accent-cyan);"></span>
+                <span style="width:16px;height:16px;border-radius:50%;background:var(--accent-violet);"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-card-title">🔐 Account</div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Change password</div>
+                <div class="settings-desc">Update your account password</div>
+              </div>
+              <button class="btn btn-ghost btn-sm">Change</button>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Export data</div>
+                <div class="settings-desc">Download all your NOVA data</div>
+              </div>
+              <button class="btn btn-ghost btn-sm">Export</button>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label" style="color:var(--accent-red);">Logout</div>
+                <div class="settings-desc">Sign out of your NOVA account</div>
+              </div>
+              <button class="btn btn-danger btn-sm" id="logoutBtn2">Logout</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/main.js"></script>
+  <script>
+    // Load user info from localStorage
+    const name = getUserName();
+    const nameEl = document.getElementById('profileName');
+    const sideNameEl = document.getElementById('sidebarUserName');
+    if (nameEl) nameEl.textContent = name;
+    if (sideNameEl) sideNameEl.textContent = name;
+
+    // Logout
+    document.getElementById('logoutBtn2')?.addEventListener('click', () => {
+      localStorage.removeItem('nova-auth-token');
+      localStorage.removeItem('nova-user-name');
+      showToast('info', 'Logged out', 'See you soon!');
+      setTimeout(() => window.location.href = 'login.html', 600);
+    });
+
+    // Edit profile
+    document.getElementById('editProfileBtn')?.addEventListener('click', () => {
+      const newName = prompt('Enter your new full name:', getUserName());
+      if (newName && newName.trim()) {
+        setUserName(newName.trim());
+        document.getElementById('profileName').textContent = newName.trim();
+        document.getElementById('sidebarUserName').textContent = newName.trim();
+        showToast('success', 'Profile updated', 'Your name has been changed.');
+      }
+    });
+  </script>
+</body>
+</html>
