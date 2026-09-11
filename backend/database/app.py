@@ -1690,426 +1690,1052 @@ DOCUMENT:
             })
 
 
-        # ====================================================
+        # =========================================
         # GET NOTES
-        # ====================================================
+        # =========================================
 
         elif intent == "GET_NOTES":
 
-            if not user_id:
+         if not user_id:
+           return jsonify({
+            "success": False,
+            "message": "User ID is required"
+         }), 400
 
-                return jsonify({
-                    "success": False,
-                    "message": "User ID is required"
-                }), 400
+         # Smart retrieval parameters
+           limit = details.get("limit", 5)
+           offset = details.get("offset", 0)
+           search = details.get("search")
+           date_from = details.get("date_from")
+           date_to = details.get("date_to")
 
-            cur.execute(
-                """
-                SELECT id, text, created_at
-                FROM notes
-                WHERE user_id = %s
-                ORDER BY created_at DESC
-                """,
-                (user_id,)
-            )
+         # Validate limit
+         try:
+           limit = int(limit)
+         except (TypeError, ValueError):
+           limit = 5
 
-            rows = cur.fetchall()
+         if limit < 1:
+              limit = 5
 
-            notes = [
-                {
-                    "id": row[0],
-                    "text": row[1],
-                    "created_at": str(row[2])
-                }
-                for row in rows
-            ]
+         if limit > 100:
+           limit = 100
 
-            return jsonify({
-                "success": True,
-                "user_id": user_id,
-                "notes": notes
-            })
+         # Validate offset
+         try:
+           offset = int(offset)
+         except (TypeError, ValueError):
+            offset = 0
 
+         if offset < 0:
+            offset = 0
 
-        # ====================================================
+          # Clean search value
+         if search is not None:
+            search = str(search).strip()
+
+         if search == "":
+            search = None
+
+         cur.execute(
+          """
+          SELECT id, text, created_at
+          FROM notes
+          WHERE user_id = %s
+            AND (%s IS NULL OR text ILIKE '%%' || %s || '%%')
+            AND (%s IS NULL OR created_at >= %s)
+            AND (%s IS NULL OR created_at <= %s)
+          ORDER BY created_at DESC
+          LIMIT %s OFFSET %s
+          """,
+           (
+            user_id,
+            search, search,
+            date_from, date_from,
+            date_to, date_to,
+            limit, offset
+          )
+         )
+
+         rows = cur.fetchall()
+
+         notes = [
+           {
+              "id": row[0],
+              "text": row[1],
+              "created_at": str(row[2])
+            }
+            for row in rows
+         ]
+
+          # Create clean numbered vertical format
+         formatted_notes = []
+
+         for index, note in enumerate(notes, start=1):
+             formatted_notes.append(
+                f"{index}. {note['text']}"
+           )
+
+         return jsonify({
+            "success": True,
+            "user_id": user_id,
+            "count": len(notes),
+            "limit": limit,
+            "offset": offset,
+            "search": search,
+            "date_from": date_from,
+            "date_to": date_to,
+            "notes": notes,
+            "formatted_notes": formatted_notes
+          })
+        # ============================================================
         # GET REMINDERS
-        # ====================================================
+        # ============================================================
 
         elif intent == "GET_REMINDERS":
 
-            if not user_id:
+         if not user_id:
+           return jsonify({
+            "success": False,
+            "message": "User ID is required"
+         }), 400
 
-                return jsonify({
-                    "success": False,
-                    "message": "User ID is required"
-                }), 400
+         # Smart retrieval parameters
+         limit = details.get("limit", 5)
+         offset = details.get("offset", 0)
+         search = details.get("search")
+         date_from = details.get("date_from")
+         date_to = details.get("date_to")
 
-            cur.execute(
-                """
-                SELECT id, task, time, created_at
-                FROM reminders
-                WHERE user_id = %s
-                ORDER BY created_at DESC
-                """,
-                (user_id,)
+         # Validate limit
+         try:
+           limit = int(limit)
+         except (TypeError, ValueError):
+           limit = 5
+
+         if limit < 1:
+           limit = 5
+
+         if limit > 100:
+           limit = 100
+
+         # Validate offset
+         try:
+           offset = int(offset)
+         except (TypeError, ValueError):
+           offset = 0
+
+         if offset < 0:
+           offset = 0
+
+         # Clean search value
+         if search is not None:
+           search = str(search).strip()
+
+         if search == "":
+           search = None
+
+         cur.execute(
+          """
+         SELECT id, task, time, created_at
+         FROM reminders
+         WHERE user_id = %s
+           AND (%s IS NULL OR task ILIKE '%%' || %s || '%%')
+           AND (%s IS NULL OR created_at >= %s)
+           AND (%s IS NULL OR created_at <= %s)
+         ORDER BY created_at DESC
+         LIMIT %s OFFSET %s
+         """,
+           (
+            user_id,
+            search,
+            search,
+            date_from,
+            date_from,
+            date_to,
+            date_to,
+            limit,
+            offset
+          )
+         )
+
+         rows = cur.fetchall()
+
+         reminders = [
+          {
+            "id": row[0],
+            "task": row[1],
+            "time": str(row[2]),
+            "created_at": str(row[3])
+          }
+         for row in rows
+         ]
+
+         # Create clean numbered vertical format
+         formatted_reminders = []
+
+         for index, reminder in enumerate(reminders, start=1):
+            formatted_reminders.append(
+              f"{index}. {reminder['task']} "
+              f"(Time: {reminder['time']}, "
+              f"Created: {reminder['created_at']})"
             )
 
-            rows = cur.fetchall()
+         return jsonify({
+            "success": True,
+            "user_id": user_id,
+            "count": len(reminders),
+            "limit": limit,
+            "offset": offset,
+            "search": search,
+            "date_from": date_from,
+            "date_to": date_to,
+            "reminders": reminders,
+            "formatted_reminders": formatted_reminders
+        })
 
-            reminders = [
-                {
-                    "id": row[0],
-                    "task": row[1],
-                    "time": str(row[2]),
-                    "created_at": str(row[3])
-                }
-                for row in rows
-            ]
-
-            return jsonify({
-                "success": True,
-                "user_id": user_id,
-                "reminders": reminders
-            })
-
-
-        # ====================================================
+        # ============================================================
         # GET EXPENSES
-        # ====================================================
+        # ============================================================
 
         elif intent == "GET_EXPENSES":
 
-            if not user_id:
+         if not user_id:
+          return jsonify({
+            "success": False,
+            "message": "User ID is required"
+          }), 400
 
-                return jsonify({
-                    "success": False,
-                    "message": "User ID is required"
-                }), 400
+          # Smart retrieval parameters
+          limit = details.get("limit", 5)
+          offset = details.get("offset", 0)
+          search = details.get("search")
+          date_from = details.get("date_from")
+          date_to = details.get("date_to")
 
-            cur.execute(
-                """
-                SELECT id, amount, category, created_at
-                FROM expenses
-                WHERE user_id = %s
-                ORDER BY created_at DESC
-                """,
-                (user_id,)
-            )
+          # Validate limit
+         try:
+           limit = int(limit)
+         except (TypeError, ValueError):
+            limit = 5
 
-            rows = cur.fetchall()
+         if limit < 1:
+           limit = 5
 
-            expenses = [
-                {
-                    "id": row[0],
-                    "amount": float(row[1]),
-                    "category": row[2],
-                    "created_at": str(row[3])
-                }
-                for row in rows
-            ]
+         if limit > 100:
+            limit = 100
 
-            return jsonify({
-                "success": True,
-                "user_id": user_id,
-                "expenses": expenses
-            })
+         # Validate offset
+         try:
+           offset = int(offset)
+         except (TypeError, ValueError):
+           offset = 0
 
+         if offset < 0:
+            offset = 0
 
-        # ====================================================
+         # Clean search value
+         if search is not None:
+           search = str(search).strip()
+
+         if search == "":
+           search = None
+
+         cur.execute(
+         """
+         SELECT id, amount, category, created_at
+         FROM expenses
+         WHERE user_id = %s
+          AND (%s IS NULL OR category ILIKE '%' || %s || '%')
+          AND (%s IS NULL OR created_at >= %s::timestamptz)
+          AND (%s IS NULL OR created_at <= %s::timestamptz)
+         ORDER BY created_at DESC
+         LIMIT %s OFFSET %s
+         """,
+          (
+            user_id,
+            search, search,
+            date_from, date_from,
+            date_to, date_to,
+            limit, offset
+          )
+         )
+
+         rows = cur.fetchall()
+
+         expenses = [
+          {
+            "id": row[0],
+            "amount": float(row[1]),
+            "category": row[2],
+            "created_at": str(row[3])
+          }
+          for row in rows
+         ]
+
+         # Create clean numbered vertical format
+         formatted_expenses = []
+
+         for index, expense in enumerate(expenses, start=1):
+           formatted_expenses.append(
+            f"{index}. ₹{expense['amount']} - {expense['category']}"
+          )
+
+         return jsonify({
+          "success": True,
+          "user_id": user_id,
+          "count": len(expenses),
+          "limit": limit,
+          "offset": offset,
+          "search": search,
+          "date_from": date_from,
+          "date_to": date_to,
+          "expenses": expenses,
+          "formatted_expenses": formatted_expenses
+        })
+            
+        # ============================================================
         # GET SHOPPING LIST
-        # ====================================================
+        # ============================================================
 
         elif intent == "GET_SHOPPING_LIST":
 
-            if not user_id:
+         if not user_id:
+           return jsonify({
+            "success": False,
+            "message": "User ID is required"
+          }), 400
 
-                return jsonify({
-                    "success": False,
-                    "message": "User ID is required"
-                }), 400
+         # Smart retrieval parameters
+         limit = details.get("limit", 5)
+         offset = details.get("offset", 0)
+         search = details.get("search")
+         date_from = details.get("date_from")
+         date_to = details.get("date_to")
 
-            cur.execute(
-                """
-                SELECT id, item, created_at
-                FROM shopping_items
-                WHERE user_id = %s
-                ORDER BY created_at DESC
-                """,
-                (user_id,)
-            )
+         # Validate limit
+         try:
+          limit = int(limit)
+         except (TypeError, ValueError):
+          limit = 5
 
-            rows = cur.fetchall()
+         if limit < 1:
+           limit = 5
 
-            shopping_items = [
-                {
-                    "id": row[0],
-                    "item": row[1],
-                    "created_at": str(row[2])
-                }
-                for row in rows
-            ]
+         if limit > 100:
+           limit = 100
 
-            return jsonify({
-                "success": True,
-                "user_id": user_id,
-                "shopping_items": shopping_items
-            })
+         # Validate offset
+         try:
+           offset = int(offset)
+         except (TypeError, ValueError):
+            offset = 0
 
+         if offset < 0:
+            offset = 0
 
-        # ====================================================
+         # Clean search value
+         if search is not None:
+           search = str(search).strip()
+
+         if search == "":
+            search = None
+
+         cur.execute(
+         """
+         SELECT id, item, created_at
+         FROM shopping_items
+         WHERE user_id = %s
+          AND (%s IS NULL OR item ILIKE '%' || %s || '%')
+          AND (%s IS NULL OR created_at >= %s::timestamptz)
+          AND (%s IS NULL OR created_at <= %s::timestamptz)
+         ORDER BY created_at DESC
+         LIMIT %s OFFSET %s
+         """,
+          (
+            user_id,
+            search, search,
+            date_from, date_from,
+            date_to, date_to,
+            limit, offset
+          )
+         )
+
+         rows = cur.fetchall()
+
+         shopping_items = [
+          {
+            "id": row[0],
+            "item": row[1],
+            "created_at": str(row[2])
+          }
+          for row in rows
+         ]  
+
+          # Create clean numbered vertical format
+         formatted_shopping_items = []
+
+         for index, item in enumerate(shopping_items, start=1):
+           formatted_shopping_items.append(
+            f"{index}. {item['item']}"
+           )
+
+         return jsonify({
+          "success": True,
+          "user_id": user_id,
+          "count": len(shopping_items),
+          "limit": limit,
+          "offset": offset,
+          "search": search,
+          "date_from": date_from,
+          "date_to": date_to,
+          "shopping_items": shopping_items,
+          "formatted_shopping_items": formatted_shopping_items
+        })
+        
+        # ============================================================
         # GET STUDY PLANS
-        # ====================================================
+        # ============================================================
 
         elif intent == "GET_STUDY_PLANS":
 
-            if not user_id:
+         if not user_id:
+          return jsonify({
+            "success": False,
+            "message": "User ID is required"
+          }), 400
 
-                return jsonify({
-                    "success": False,
-                    "message": "User ID is required"
-                }), 400
+         # Smart retrieval parameters
+         limit = details.get("limit", 5)
+         offset = details.get("offset", 0)
+         search = details.get("search")
+         date_from = details.get("date_from")
+         date_to = details.get("date_to")
 
-            cur.execute(
-                """
-                SELECT id, subject, exam_date, created_at
-                FROM study_plans
-                WHERE user_id = %s
-                ORDER BY exam_date ASC
-                """,
-                (user_id,)
-            )
+         # Validate limit
+         try:
+          limit = int(limit)
+         except (TypeError, ValueError):
+           limit = 5
 
-            rows = cur.fetchall()
+         if limit < 1:
+           limit = 5
 
-            study_plans = [
-                {
-                    "id": row[0],
-                    "subject": row[1],
-                    "exam_date": str(row[2]),
-                    "created_at": str(row[3])
-                }
-                for row in rows
-            ]
+         if limit > 100:
+           limit = 100
 
-            return jsonify({
-                "success": True,
-                "user_id": user_id,
-                "study_plans": study_plans
-            })
+          # Validate offset
+         try:
+          offset = int(offset)
+         except (TypeError, ValueError):
+           offset = 0
 
+         if offset < 0:
+           offset = 0
 
-        # ====================================================
+         # Clean search value
+         if search is not None:
+           search = str(search).strip()
+
+         if search == "":
+           search = None
+
+         cur.execute(
+         """
+         SELECT id, subject, exam_date, created_at
+         FROM study_plans
+         WHERE user_id = %s
+          AND (%s IS NULL OR subject ILIKE '%' || %s || '%')
+          AND (%s IS NULL OR created_at >= %s::timestamptz)
+          AND (%s IS NULL OR created_at <= %s::timestamptz)
+         ORDER BY exam_date ASC
+         LIMIT %s OFFSET %s
+         """,
+         (
+            user_id,
+            search, search,
+            date_from, date_from,
+            date_to, date_to,
+            limit, offset
+          )
+         )
+
+         rows = cur.fetchall()
+
+         study_plans = [
+          {
+            "id": row[0],
+            "subject": row[1],
+            "exam_date": str(row[2]),
+            "created_at": str(row[3])
+          }
+          for row in rows
+         ]
+
+         # Create clean numbered vertical format
+         formatted_study_plans = []
+
+         for index, plan in enumerate(study_plans, start=1):
+           formatted_study_plans.append(
+            f"{index}. {plan['subject']} - Exam date: {plan['exam_date']}"
+          )
+
+         return jsonify({
+          "success": True,
+          "user_id": user_id,
+          "count": len(study_plans),
+          "limit": limit,
+          "offset": offset,
+          "search": search,
+          "date_from": date_from,
+          "date_to": date_to,
+          "study_plans": study_plans,
+          "formatted_study_plans": formatted_study_plans
+        })
+
+        # ============================================================
         # GET GOALS
-        # ====================================================
+        # ============================================================
 
         elif intent == "GET_GOALS":
 
-            if not user_id:
+          if not user_id:
+            return jsonify({
+            "success": False,
+            "message": "User ID is required"
+            }), 400
 
-                return jsonify({
-                    "success": False,
-                    "message": "User ID is required"
-                }), 400
+         # Smart retrieval parameters
+          limit = details.get("limit", 5)
+          offset = details.get("offset", 0)
+          search = details.get("search")
+          date_from = details.get("date_from")
+          date_to = details.get("date_to")
 
-            cur.execute(
-                """
-                SELECT id, goal, target_date, created_at
-                FROM goals
-                WHERE user_id = %s
-                ORDER BY target_date ASC
-                """,
-                (user_id,)
+         # Validate limit
+          try:
+           limit = int(limit)
+          except (TypeError, ValueError):
+            limit = 5
+
+          if limit < 1:
+            limit = 5
+
+          if limit > 100:
+            limit = 100
+
+         # Validate offset
+          try:
+           offset = int(offset)
+          except (TypeError, ValueError):
+           offset = 0
+
+          if offset < 0:
+            offset = 0
+
+         # Clean search value
+          if search is not None:
+               search = str(search).strip()
+
+          if search == "":
+            search = None
+
+          cur.execute(
+         """
+         SELECT id, goal, target_date, created_at
+         FROM goals
+         WHERE user_id = %s
+          AND (%s IS NULL OR goal ILIKE '%' || %s || '%')
+          AND (%s IS NULL OR created_at >= %s::timestamptz)
+          AND (%s IS NULL OR created_at <= %s::timestamptz)
+         ORDER BY target_date ASC
+         LIMIT %s OFFSET %s
+         """,
+          (
+            user_id,
+            search, search,
+            date_from, date_from,
+            date_to, date_to,
+            limit, offset
+          )
+         )
+
+          rows = cur.fetchall()
+
+          goals = [
+           {
+            "id": row[0],
+            "goal": row[1],
+            "target_date": str(row[2]),
+            "created_at": str(row[3])
+           }
+           for row in rows
+         ]
+
+         # Create clean numbered vertical format
+          formatted_goals = []
+
+          for index, goal in enumerate(goals, start=1):
+             formatted_goals.append(
+             f"{index}. {goal['goal']} - Target date: {goal['target_date']}"
             )
 
-            rows = cur.fetchall()
-
-            goals = [
-                {
-                    "id": row[0],
-                    "goal": row[1],
-                    "target_date": str(row[2]),
-                    "created_at": str(row[3])
-                }
-                for row in rows
-            ]
-
-            return jsonify({
-                "success": True,
-                "user_id": user_id,
-                "goals": goals
-            })
+          return jsonify({
+           "success": True,
+           "user_id": user_id,
+           "count": len(goals),
+           "limit": limit,
+           "offset": offset,
+           "search": search,
+           "date_from": date_from,
+           "date_to": date_to,
+           "goals": goals,
+           "formatted_goals": formatted_goals
+        })
 
 
-        # ====================================================
+        # ============================================================
         # GET MOODS
-        # ====================================================
+        # ============================================================
 
         elif intent == "GET_MOODS":
 
-            if not user_id:
-
-                return jsonify({
-                    "success": False,
-                    "message": "User ID is required"
-                }), 400
-
-            cur.execute(
-                """
-                SELECT id, mood, emoji, text, created_at
-                FROM moods
-                WHERE user_id = %s
-                ORDER BY created_at DESC
-                """,
-                (user_id,)
-            )
-
-            rows = cur.fetchall()
-
-            moods = [
-                {
-                    "id": row[0],
-                    "mood": row[1],
-                    "emoji": row[2],
-                    "text": row[3],
-                    "created_at": str(row[4])
-                }
-                for row in rows
-            ]
-
+          if not user_id:
             return jsonify({
-                "success": True,
-                "user_id": user_id,
-                "moods": moods
-            })
+            "success": False,
+            "message": "User ID is required"
+           }), 400
 
+         # Smart retrieval parameters
+          limit = details.get("limit", 5)
+          offset = details.get("offset", 0)
+          search = details.get("search")
+          date_from = details.get("date_from")
+          date_to = details.get("date_to")
 
-        # ====================================================
+         # Validate limit
+          try:
+            limit = int(limit)
+          except (TypeError, ValueError):
+           limit = 5
+
+          if limit < 1:
+            limit = 5
+
+          if limit > 100:
+            limit = 100
+
+         # Validate offset
+          try:
+           offset = int(offset)
+          except (TypeError, ValueError):
+           offset = 0
+
+          if offset < 0:
+            offset = 0
+
+         # Clean search value
+          if search is not None:
+             search = str(search).strip()
+
+          if search == "":
+            search = None
+
+          cur.execute(
+         """
+         SELECT id, mood, emoji, text, created_at
+         FROM moods
+         WHERE user_id = %s
+          AND (
+              %s IS NULL
+              OR mood ILIKE '%' || %s || '%'
+              OR text ILIKE '%' || %s || '%'
+          )
+          AND (%s IS NULL OR created_at >= %s::timestamptz)
+          AND (%s IS NULL OR created_at <= %s::timestamptz)
+         ORDER BY created_at DESC
+         LIMIT %s OFFSET %s
+         """,
+          (
+            user_id,
+            search, search, search,
+            date_from, date_from,
+            date_to, date_to,
+            limit, offset
+          )
+         )
+
+          rows = cur.fetchall()
+
+          moods = [
+          {
+            "id": row[0],
+            "mood": row[1],
+            "emoji": row[2],
+            "text": row[3],
+            "created_at": str(row[4])
+          }
+          for row in rows
+         ]
+
+         # Create clean numbered vertical format
+          formatted_moods = []
+
+          for index, mood in enumerate(moods, start=1):
+            mood_text = mood["text"] or ""
+
+            formatted_moods.append(
+            f"{index}. {mood['emoji']} {mood['mood']} - {mood_text}"
+          )
+
+          return jsonify({
+          "success": True,
+          "user_id": user_id,
+          "count": len(moods),
+          "limit": limit,
+          "offset": offset,
+          "search": search,
+          "date_from": date_from,
+          "date_to": date_to,
+          "moods": moods,
+          "formatted_moods": formatted_moods
+        })
+
+        # ============================================================
         # GET EMAILS
-        # ====================================================
+        # ============================================================
 
         elif intent == "GET_EMAILS":
 
-            if not user_id:
+         if not user_id:
+          return jsonify({
+            "success": False,
+            "message": "User ID is required"
+          }), 400
 
-                return jsonify({
-                    "success": False,
-                    "message": "User ID is required"
-                }), 400
+         # Smart retrieval parameters
+         limit = details.get("limit", 5)
+         offset = details.get("offset", 0)
+         search = details.get("search")
+         date_from = details.get("date_from")
+         date_to = details.get("date_to")
 
-            cur.execute(
-                """
-                SELECT id, recipient, subject, body, created_at
-                FROM emails
-                WHERE user_id = %s
-                ORDER BY created_at DESC
-                """,
-                (user_id,)
-            )
+         # Validate limit
+         try:
+           limit = int(limit)
+         except (TypeError, ValueError):
+           limit = 5
 
-            rows = cur.fetchall()
+         if limit < 1:
+           limit = 5
 
-            emails = [
-                {
-                    "id": row[0],
-                    "recipient": row[1],
-                    "subject": row[2],
-                    "body": row[3],
-                    "created_at": str(row[4])
-                }
-                for row in rows
-            ]
+         if limit > 100:
+           limit = 100
 
-            return jsonify({
-                "success": True,
-                "user_id": user_id,
-                "emails": emails
-            })
+         # Validate offset
+         try:
+           offset = int(offset)
+         except (TypeError, ValueError):
+           offset = 0
 
+         if offset < 0:
+            offset = 0
 
-        # ====================================================
+         # Clean search value
+         if search is not None:
+            search = str(search).strip()
+
+         if search == "":
+           search = None
+
+         cur.execute(
+         """
+         SELECT id, recipient, subject, body, created_at
+         FROM emails
+         WHERE user_id = %s
+          AND (
+              %s IS NULL
+              OR recipient ILIKE '%' || %s || '%'
+              OR subject ILIKE '%' || %s || '%'
+              OR body ILIKE '%' || %s || '%'
+          )
+          AND (%s IS NULL OR created_at::date >= %s::date)
+          AND (%s IS NULL OR created_at::date <= %s::date)
+         ORDER BY created_at DESC
+         LIMIT %s OFFSET %s
+         """,
+          (
+            user_id,
+            search, search, search, search,
+            date_from, date_from,
+            date_to, date_to,
+            limit, offset
+          )
+         )
+
+         rows = cur.fetchall()
+
+         emails = [
+         {
+            "id": row[0],
+            "recipient": row[1],
+            "subject": row[2],
+            "body": row[3],
+            "created_at": str(row[4])
+         }
+         for row in rows
+         ]
+
+         # Create clean numbered vertical format
+         formatted_emails = []
+
+         for index, email in enumerate(emails, start=1):
+            formatted_emails.append(
+            f"{index}. To: {email['recipient']} | "
+            f"Subject: {email['subject']} | "
+            f"Body: {email['body']}"
+         )
+
+         return jsonify({
+          "success": True,
+          "user_id": user_id,
+          "count": len(emails),
+          "limit": limit,
+          "offset": offset,
+          "search": search,
+          "date_from": date_from,
+          "date_to": date_to,
+          "emails": emails,
+          "formatted_emails": formatted_emails
+        })
+        # ============================================================
         # GET MEMORIES
-        # ====================================================
+        # ============================================================
 
         elif intent == "GET_MEMORIES":
 
-            if not user_id:
+         if not user_id:
+          return jsonify({
+            "success": False,
+            "message": "User ID is required"
+          }), 400
 
-                return jsonify({
-                    "success": False,
-                    "message": "User ID is required"
-                }), 400
+         # Smart retrieval parameters
+         limit = details.get("limit", 5)
+         offset = details.get("offset", 0)
+         search = details.get("search")
+         date_from = details.get("date_from")
+         date_to = details.get("date_to")
 
-            cur.execute(
-                """
-                SELECT id, memory, category, created_at
-                FROM memories
-                WHERE user_id = %s
-                ORDER BY created_at DESC
-                """,
-                (user_id,)
+         # Validate limit
+         try:
+          limit = int(limit)
+         except (TypeError, ValueError):
+           limit = 5
+
+         if limit < 1:
+           limit = 5
+
+         if limit > 100:
+           limit = 100
+
+         # Validate offset
+         try:
+           offset = int(offset)
+         except (TypeError, ValueError):
+           offset = 0
+
+         if offset < 0:
+           offset = 0
+
+         # Clean search value
+         if search is not None:
+           search = str(search).strip()
+
+         if search == "":
+           search = None
+
+         cur.execute(
+         """
+         SELECT id, memory, category, created_at
+         FROM memories
+         WHERE user_id = %s
+          AND (
+              %s IS NULL
+              OR memory ILIKE '%' || %s || '%'
+              OR category ILIKE '%' || %s || '%'
+          )
+          AND (%s IS NULL OR created_at::date >= %s::date)
+          AND (%s IS NULL OR created_at::date <= %s::date)
+         ORDER BY created_at DESC
+         LIMIT %s OFFSET %s
+         """,
+          (
+            user_id,
+            search, search, search,
+            date_from, date_from,
+            date_to, date_to,
+            limit, offset
+          )
+         )
+
+         rows = cur.fetchall()
+
+         memories = [
+          {
+            "id": row[0],
+            "memory": row[1],
+            "category": row[2],
+            "created_at": str(row[3])
+          }
+          for row in rows
+         ]
+
+         # Create clean numbered vertical format
+         formatted_memories = []
+
+         for index, memory in enumerate(memories, start=1):
+
+          if memory["category"]:
+            formatted_memories.append(
+                f"{index}. {memory['memory']} "
+                f"(Category: {memory['category']})"
+            )
+          else:
+            formatted_memories.append(
+                f"{index}. {memory['memory']}"
             )
 
-            rows = cur.fetchall()
+         return jsonify({
+          "success": True,
+          "user_id": user_id,
+          "count": len(memories),
+          "limit": limit,
+          "offset": offset,
+          "search": search,
+          "date_from": date_from,
+          "date_to": date_to,
+          "memories": memories,
+          "formatted_memories": formatted_memories
+        })
 
-            memories = [
-                {
-                    "id": row[0],
-                    "memory": row[1],
-                    "category": row[2],
-                    "created_at": str(row[3])
-                }
-                for row in rows
-            ]
-
-            return jsonify({
-                "success": True,
-                "user_id": user_id,
-                "memories": memories
-            })
-
-
-        # ====================================================
+        # ============================================================
         # GET CONTEXT
-        # ====================================================
+        # ============================================================
 
         elif intent == "GET_CONTEXT":
 
-            if not user_id:
+         if not user_id:
+           return jsonify({
+            "success": False,
+            "message": "User ID is required"
+          }), 400
 
-                return jsonify({
-                    "success": False,
-                    "message": "User ID is required"
-                }), 400
+         # Smart retrieval parameters
+         limit = details.get("limit", 5)
+         offset = details.get("offset", 0)
+         search = details.get("search")
+         date_from = details.get("date_from")
+         date_to = details.get("date_to")
 
-            cur.execute(
-                """
-                SELECT id, context, current_task, created_at
-                FROM user_context
-                WHERE user_id = %s
-                ORDER BY created_at DESC
-                LIMIT 10
-                """,
-                (user_id,)
+         # Validate limit
+         try:
+           limit = int(limit)
+         except (TypeError, ValueError):
+           limit = 5
+
+         if limit < 1:
+          limit = 5
+
+         if limit > 100:
+           limit = 100
+
+         # Validate offset
+         try:
+           offset = int(offset)
+         except (TypeError, ValueError):
+            offset = 0
+
+         if offset < 0:
+           offset = 0
+
+         # Clean search value
+         if search is not None:
+           search = str(search).strip()
+
+         if search == "":
+           search = None
+
+         # Retrieve context
+         cur.execute(
+         """
+         SELECT id, context, current_task, created_at
+         FROM user_context
+         WHERE user_id = %s
+          AND (
+              %s IS NULL
+              OR context ILIKE '%' || %s || '%'
+              OR current_task ILIKE '%' || %s || '%'
+          )
+          AND (
+              %s IS NULL
+              OR created_at >= %s::date
+          )
+          AND (
+              %s IS NULL
+              OR created_at < (%s::date + INTERVAL '1 day')
+          )
+         ORDER BY created_at DESC
+         LIMIT %s OFFSET %s
+         """,
+          (
+            user_id,
+            search, search, search,
+            date_from, date_from,
+            date_to, date_to,
+            limit, offset
+          )
+         )
+
+         rows = cur.fetchall()
+
+         contexts = [
+         {
+            "id": row[0],
+            "context": row[1],
+            "current_task": row[2],
+            "created_at": str(row[3])
+          }
+         for row in rows
+         ]
+
+         # Clean numbered vertical format
+         formatted_contexts = []
+
+         for index, context in enumerate(contexts, start=1):
+
+          if context["current_task"]:
+            formatted_contexts.append(
+                f"{index}. {context['context']} "
+                f"(Current task: {context['current_task']})"
+            )
+          else:
+            formatted_contexts.append(
+                f"{index}. {context['context']}"
             )
 
-            rows = cur.fetchall()
-
-            contexts = [
-                {
-                    "id": row[0],
-                    "context": row[1],
-                    "current_task": row[2],
-                    "created_at": str(row[3])
-                }
-                for row in rows
-            ]
-
-            return jsonify({
-                "success": True,
-                "user_id": user_id,
-                "contexts": contexts
-            })
-
+         return jsonify({
+          "success": True,
+          "user_id": user_id,
+          "count": len(contexts),
+          "limit": limit,
+          "offset": offset,
+          "search": search,
+          "date_from": date_from,
+          "date_to": date_to,
+          "contexts": contexts,
+          "formatted_contexts": formatted_contexts
+        })
 
         # ====================================================
         # UNKNOWN INTENT
