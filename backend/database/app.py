@@ -23,6 +23,28 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 load_dotenv()
 
+DEVICE_ACTION_INTENTS = [
+ "OPEN_APP",
+ "OPEN_FOLDER",
+ "CREATE_FOLDER",
+ "FIND_FILE",
+ "MUTE",
+ "UNMUTE",
+ "VOLUME_UP",
+ "VOLUME_DOWN",
+ "BRIGHTNESS_UP",
+ "BRIGHTNESS_DOWN",
+ "TAKE_SCREENSHOT",
+ "CLOSE_APP"
+ ]
+
+def create_notification(cur, user_id, title, message, icon="🔔"):
+    cur.execute("""
+        INSERT INTO notifications
+        (user_id, title, message, icon)
+        VALUES (%s, %s, %s, %s)
+    """, (user_id, title, message, icon))
+
 app = Flask(__name__)
 CORS(app)
 
@@ -628,7 +650,13 @@ def assistant():
                     text
                 )
             )
-
+            create_notification(
+               cur,
+               user_id,
+               "Note Saved",
+               "Your note was saved successfully.",
+               "📝"
+            )
             conn.commit()
 
             return jsonify({
@@ -677,6 +705,14 @@ def assistant():
                 )
             )
 
+            create_notification(
+               cur,
+               user_id,
+               "Reminder Set",
+               f"Reminder set for: {task}",
+               "⏰"
+            )
+            
             conn.commit()
 
             return jsonify({
@@ -2632,18 +2668,61 @@ DOCUMENT:
                 "contexts": contexts,
                 "formatted_contexts": formatted_contexts
             })
+        # =========================================================
+        # DEVICE ACTIONS
+        # =========================================================
 
-# ====================================================
-        # UNKNOWN INTENT
-        # ====================================================
+        elif intent in DEVICE_ACTION_INTENTS:
+         device_id = details.get(
+            "device_id",
+            "azzam-laptop-001"
+         )
+
+         cur.execute("""
+            INSERT INTO agent_queue
+            (device_id, user_id, action, data)
+            VALUES (%s, %s, %s, %s)
+            RETURNING id
+          """, (
+           device_id,
+           user_id,
+           intent,
+         psycopg.types.json.Json(details)
+         ))
+
+         queue_id = cur.fetchone()[0]
+
+         create_notification(
+             cur,
+             user_id,
+             "Laptop Action",
+             f"{intent.replace('_', ' ').title()} has been queued.",
+             "💻"
+            )
+         
+         conn.commit()
+
+         return jsonify({
+          "success": True,
+          "reply": "Executing on your laptop...",
+          "device_action": {
+            "action": intent,
+            "data": details,
+            "queue_id": queue_id
+           }
+        })
+
+     # =========================================================
+     # UNKNOWN INTENT
+     # =========================================================
 
         else:
 
             return jsonify({
-                "success": False,
-                "message": "Unknown intent"
-            }), 400
-
+          "success": False,
+         "message": "Unknown intent"
+        }), 400
+         
 
     # ========================================================
     # ERROR HANDLING
@@ -2666,7 +2745,270 @@ DOCUMENT:
         cur.close()
         conn.close()
 
+# ========================================
+# get_notification
+# ========================================
+@app.route("/api/notifications", methods=["GET"])
+def get_notifications():
 
+    conn = get_connection()
+    cur = conn.cursor()
+
+    try:
+        user_id = request.args.get("user_id")
+
+        if not user_id:
+            return jsonify({
+                "success": False,
+                "message": "user_id required"
+            }), 400
+
+        cur.execute("""
+            SELECT id, title, message, icon, read, created_at
+            FROM notifications
+            WHERE user_id = %s
+            ORDER BY created_at DESC
+        """, (user_id,))
+
+        rows = cur.fetchall()
+
+        notifications = []
+
+        for row in rows:
+            notifications.append({
+                "id": row[0],
+                "title": row[1],
+                "message": row[2],
+                "icon": row[3],
+                "read": row[4],
+                "created_at": row[5].isoformat() if row[5] else None
+            })
+
+        return jsonify({
+            "success": True,
+            "notifications": notifications
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "message": str(e)
+        }), 500
+
+    finally:
+        cur.close()
+        conn.close()
+
+# ==============================================
+# agent_poll
+# ==============================================
+@app.route("/api/agent/poll", methods=["POST"])
+def agent_poll():
+    data = request.get_json() or {}
+    device_id = data.get("device_id")
+
+    if not device_id:
+        return jsonify({
+            "success": False,
+            "message": "device_id required"
+        }), 400
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            SELECT id, action, data
+            FROM agent_queue
+            WHERE device_id = %s
+              AND status = 'pending'
+            ORDER BY created_at ASC
+            LIMIT 1
+        """, (device_id,))
+
+        row = cur.fetchone()
+
+        if not row:
+            return jsonify({
+                "success": True,
+                "action": None
+            })
+
+        queue_id, action, action_data = row
+
+        # Mark action as processing
+        cur.execute("""
+            UPDATE agent_queue
+            SET status = 'processing'
+            WHERE id = %s
+        """, (queue_id,))
+
+        conn.commit()
+
+        return jsonify({
+            "success": True,
+            "action": action,
+            "data": action_data,
+            "queue_id": queue_id
+        })
+
+    except Exception as e:
+        conn.rollback()
+
+        return jsonify({
+            "success": False,
+            "message": str(e)
+        }), 500
+
+    finally:
+        cur.close()
+        conn.close()
+
+# =========================================================
+# AGENT RESULT
+# =========================================================
+
+@app.route("/api/agent/result", methods=["POST"])
+def agent_result():
+    data = request.get_json() or {}
+
+    device_id = data.get("device_id")
+    action = data.get("action")
+    success = data.get("success")
+    message = data.get("message")
+    user_id = data.get("user_id")
+    action_data = data.get("data", {})
+
+    if not device_id or not action:
+        return jsonify({
+            "success": False,
+            "message": "device_id and action are required"
+        }), 400
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    try:
+        # Mark the processing action as completed
+        cur.execute("""
+            UPDATE agent_queue
+            SET status = %s
+            WHERE device_id = %s
+              AND action = %s
+              AND status = 'processing'
+        """, (
+            "done" if success else "failed",
+            device_id,
+            action
+        ))
+
+        # Save the action in the audit log
+        cur.execute("""
+            INSERT INTO action_logs
+            (user_id, action, target, status, message)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (
+            user_id,
+            action,
+            str(action_data),
+            "success" if success else "failed",
+            message
+        ))
+        # Create notification for completed/failed action
+        notification_title = "Action Completed" if success else "Action Failed"
+
+        notification_message = (
+            message
+            if message
+            else f"{action.replace('_', ' ').title()} completed successfully."
+            if success
+            else f"{action.replace('_', ' ').title()} failed."
+        )
+
+        create_notification(
+           cur,
+           user_id,
+           notification_title,
+           notification_message,
+           "💻" if success else "⚠️"
+        )
+        
+        conn.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "Agent result recorded"
+        })
+
+    except Exception as e:
+        conn.rollback()
+
+        return jsonify({
+            "success": False,
+            "message": str(e)
+        }), 500
+
+    finally:
+        cur.close()
+        conn.close()
+
+# =========================================================
+# AGENT QUEUE ACTION
+# =========================================================
+
+@app.route("/api/agent/queue", methods=["POST"])
+def agent_queue_action():
+    data = request.get_json() or {}
+
+    user_id = data.get("user_id")
+    device_id = data.get("device_id", "azzam-laptop-001")
+    action = data.get("action")
+    action_data = data.get("data", {})
+
+    if not user_id or not action:
+        return jsonify({
+            "success": False,
+            "message": "user_id and action are required"
+        }), 400
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            INSERT INTO agent_queue
+            (device_id, user_id, action, data)
+            VALUES (%s, %s, %s, %s)
+            RETURNING id
+        """, (
+            device_id,
+            user_id,
+            action,
+            psycopg.types.json.Json(action_data)
+        ))
+
+        queue_id = cur.fetchone()[0]
+
+        conn.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "Action queued successfully",
+            "queue_id": queue_id
+        })
+
+    except Exception as e:
+        conn.rollback()
+
+        return jsonify({
+            "success": False,
+            "message": str(e)
+        }), 500
+
+    finally:
+        cur.close()
+        conn.close()
+                
 # ============================================================
 # START APPLICATION
 # ============================================================
