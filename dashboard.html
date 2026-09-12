@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — NOVA</title>
+<link rel="icon" type="image/svg+xml" href="assets/images/nova-logo.svg">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #05060f;
+    color: #f1f5f9;
+    min-height: 100vh;
+  }
+  .dashboard-layout { display: flex; min-height: 100vh; }
+
+  /* ============ SIDEBAR ============ */
+  .sidebar {
+    width: 260px;
+    background: rgba(10,12,26,0.85);
+    border-right: 1px solid rgba(255,255,255,0.06);
+    padding: 20px 12px;
+    position: fixed;
+    top: 0; left: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .sidebar-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 12px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    margin-bottom: 12px;
+  }
+  .sidebar-logo-img {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(34,211,238,0.3);
+  }
+  .sidebar-brand {
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    background: linear-gradient(135deg, #22d3ee, #8b5cf6, #ec4899);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .nav-section-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 16px 12px 6px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    color: #64748b;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    position: relative;
+    margin-bottom: 2px;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.04); color: #f1f5f9; }
+  .nav-item.active {
+    background: rgba(34,211,238,0.08);
+    color: #22d3ee;
+    font-weight: 600;
+  }
+  .nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 50%;
+    transform: translateY(-50%);
+    width: 3px; height: 60%;
+    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
+    border-radius: 0 4px 4px 0;
+    box-shadow: 0 0 12px rgba(34,211,238,0.5);
+  }
+  .nav-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px; height: 20px;
+    flex-shrink: 0;
+  }
+  .nav-icon svg { width: 18px; height: 18px; stroke-width: 1.8; }
+  .nav-divider {
+    height: 1px;
+    background: rgba(255,255,255,0.06);
+    margin: 12px;
+  }
+
+  /* ============ MAIN ============ */
+  .main-content {
+    flex: 1;
+    margin-left: 260px;
+    min-height: 100vh;
+  }
+  .topbar {
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    background: rgba(10,12,26,0.6);
+    backdrop-filter: blur(20px);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  .greeting-title { font-size: 1.1rem; font-weight: 700; color: #f1f5f9; }
+  .greeting-subtitle { font-size: 0.8rem; color: #94a3b8; }
+  .topbar-right { display: flex; align-items: center; gap: 16px; }
+  .topbar-icon-btn {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: transparent;
+    border: 0;
+    color: #94a3b8;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: all 0.2s ease;
+  }
+  .topbar-icon-btn:hover { background: rgba(255,255,255,0.05); color: #f1f5f9; }
+  .topbar-icon-btn svg { width: 20px; height: 20px; stroke-width: 1.8; }
+  .notification-dot {
+    position: absolute;
+    top: 8px; right: 8px;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #22d3ee;
+    box-shadow: 0 0 8px rgba(34,211,238,0.6);
+  }
+  .avatar {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #fff;
+  }
+
+  .page-content { padding: 32px; }
+
+  /* ============ ASSISTANT AREA ============ */
+  .assistant-area {
+    background: rgba(18,21,45,0.65);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 24px;
+    padding: 40px 32px;
+    margin-bottom: 24px;
+    text-align: center;
+  }
+  .assistant-title {
+    font-size: 1.6rem;
+    font-weight: 800;
+    background: linear-gradient(135deg,#22d3ee,#8b5cf6,#ec4899);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 6px;
+  }
+  .assistant-subtitle {
+    font-size: 0.95rem;
+    color: #64748b;
+    margin-bottom: 32px;
+  }
+
+  /* ============ ORB ============ */
+  .orb-wrapper {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    margin: 0 auto 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .orb {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #22d3ee, #3b82f6 30%, #8b5cf6 65%, #1e1b4b 100%);
+    box-shadow:
+      0 0 60px rgba(34, 211, 238, 0.35),
+      0 0 120px rgba(139, 92, 246, 0.25),
+      inset 0 0 40px rgba(255, 255, 255, 0.08);
+    position: relative;
+    z-index: 3;
+    display: block;
+    animation: breathe 4s ease-in-out infinite;
+  }
+  .orb::before {
+    content: '';
+    position: absolute;
+    inset: 12px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.45), transparent 60%);
+    opacity: 0.6;
+  }
+  .orb-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(139, 92, 246, 0.15);
+    pointer-events: none;
+  }
+  .orb-ring-1 { width: 160px; height: 160px; }
+  .orb-ring-2 { width: 200px; height: 200px; border-color: rgba(34,211,238,0.1); }
+  .orb-ring-3 { width: 240px; height: 240px; border-style: dashed; border-color: rgba(34,211,238,0.06); }
+
+  @keyframes breathe {
+    0%,100% { transform: scale(1); opacity: 0.9; }
+    50%     { transform: scale(1.06); opacity: 1; }
+  }
+
+  .orb-status-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 4px;
+  }
+  .orb-status-text {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin-bottom: 24px;
+    transition: color 0.3s ease;
+  }
+
+  /* ============ MIC ============ */
+  .mic-btn {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #22d3ee, #8b5cf6);
+    border: 0;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 24px rgba(34, 211, 238, 0.3);
+    transition: all 0.3s ease;
+    margin: 0 auto 8px;
+    position: relative;
+    z-index: 3;
+  }
+  .mic-btn:hover { transform: scale(1.08); box-shadow: 0 6px 32px rgba(34,211,238,0.5); }
+  .mic-btn svg { width: 26px; height: 26px; stroke-width: 1.8; }
+  .mic-btn.listening {
+    background: linear-gradient(135deg, #ef4444, #ec4899);
+    box-shadow: 0 4px 24px rgba(239, 68, 68, 0.4);
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { transform: scale(1); }
+    50%     { transform: scale(1.08); }
+  }
+  .mic-label {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-bottom: 32px;
+    display: block;
+    text-align: center;
+  }
+
+  /* ============ INPUT ============ */
+  .assistant-input-area {
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  .assistant-input-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 9999px;
+    padding: 6px 6px 6px 20px;
+    transition: all 0.2s ease;
+    margin-bottom: 16px;
+  }
+  .assistant-input-group:focus-within {
+    border-color: #22d3ee;
+    box-shadow: 0 0 0 3px rgba(34,211,238,0.1);
+  }
+  .assistant-input {
+    flex: 1;
+    background: none;
+    border: 0;
+    color: #f1f5f9;
+    font-size: 0.95rem;
+    padding: 10px 0;
+    outline: none;
+    font-family: inherit;
+  }
+  .assistant-input::placeholder { color: #475569; }
+  .assistant-attach {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #94a3b8;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+  }
+  .assistant-attach:hover {
+    color: #22d3ee;
+    border-color: #22d3ee;
+    box-shadow: 0 0 12px rgba(34,211,238,0.3);
+  }
+  .assistant-attach svg { width: 18px; height: 18px; stroke-width: 2; }
+  .assistant-send {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
+    border: 0;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+  }
+  .assistant-send:hover { transform: scale(1.08); box-shadow: 0 0 20px rgba(34,211,238,0.4); }
+  .assistant-send svg { width: 20px; height: 20px; stroke-width: 2; }
+
+  /* ============ QUICK ACTIONS ============ */
+  .quick-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+  }
+  .quick-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s ease;
+  }
+  .quick-action:hover {
+    background: rgba(255,255,255,0.07);
+    border-color: rgba(34,211,238,0.3);
+    color: #f1f5f9;
+    transform: translateY(-2px);
+  }
+  .quick-action svg { width: 14px; height: 14px; stroke-width: 2; }
+
+  /* ============ CHAT ============ */
+  .chat-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 16px 0;
+    margin-bottom: 32px;
+  }
+  .chat-message {
+    display: flex;
+    gap: 12px;
+    max-width: 75%;
+    animation: fadeInUp 0.3s ease;
+  }
+  .chat-message.user { align-self: flex-end; flex-direction: row-reverse; }
+  .chat-message.nova { align-self: flex-start; }
+  .chat-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    background: linear-gradient(135deg,#3b82f6,#8b5cf6);
+    color: #fff;
+  }
+  .chat-message.nova .chat-avatar {
+    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
+    box-shadow: 0 0 12px rgba(34,211,238,0.3);
+  }
+  .chat-sender {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+    color: #475569;
+  }
+  .chat-message.user .chat-sender { color: #8b5cf6; text-align: right; }
+  .chat-message.nova .chat-sender { color: #22d3ee; }
+  .chat-bubble {
+    padding: 12px 18px;
+    border-radius: 14px;
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+  .chat-message.user .chat-bubble {
+    background: rgba(59,130,246,0.15);
+    border: 1px solid rgba(59,130,246,0.2);
+    border-bottom-right-radius: 4px;
+    color: #f1f5f9;
+  }
+  .chat-message.nova .chat-bubble {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-bottom-left-radius: 4px;
+    color: #cbd5e1;
+  }
+  .chat-time {
+    font-size: 0.7rem;
+    color: #475569;
+    margin-top: 4px;
+  }
+  .chat-message.user .chat-time { text-align: right; }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .typing-dots {
+    display: flex;
+    gap: 4px;
+    padding: 4px 0;
+  }
+  .typing-dots span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22d3ee;
+    animation: typingDot 1.4s infinite;
+  }
+  .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes typingDot {
+    0%,60%,100% { transform: translateY(0); opacity: 0.4; }
+    30%         { transform: translateY(-6px); opacity: 1; }
+  }
+
+  /* ============ OVERVIEW ============ */
+  .overview-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+  }
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+  }
+  .stat-card {
+    background: rgba(18,21,45,0.65);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 16px;
+    padding: 20px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .stat-card:hover::before { opacity: 1; }
+  .stat-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(255,255,255,0.1);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  }
+  .stat-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #22d3ee;
+    margin-bottom: 14px;
+  }
+  .stat-icon svg { width: 20px; height: 20px; stroke-width: 1.8; }
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #f1f5f9;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .stat-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* ============ TOAST ============ */
+  .toast-container {
+    position: fixed;
+    top: 20px; right: 20px;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+  }
+  .toast {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    background: #0a0c1a;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    min-width: 280px;
+    max-width: 380px;
+    pointer-events: auto;
+    animation: slideInRight 0.4s ease;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+    position: relative;
+    overflow: hidden;
+  }
+  .toast::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+  }
+  .toast-success::before { background: #10b981; }
+  .toast-error::before   { background: #ef4444; }
+  .toast-info::before    { background: #22d3ee; }
+  .toast-warning::before { background: #f59e0b; }
+  .toast-title { font-size: 0.9rem; font-weight: 600; color: #f1f5f9; }
+  .toast-message { font-size: 0.8rem; color: #94a3b8; margin-top: 2px; }
+  @keyframes slideInRight {
+    from { transform: translateX(30px); opacity: 0; }
+    to   { transform: translateX(0); opacity: 1; }
+  }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); }
+    .main-content { margin-left: 0; }
+    .page-content { padding: 20px 16px; }
+    .assistant-area { padding: 24px 16px; }
+    .orb-wrapper { width: 160px; height: 160px; }
+    .orb { width: 90px; height: 90px; }
+    .orb-ring-1 { width: 130px; height: 130px; }
+    .orb-ring-2 { width: 160px; height: 160px; }
+    .orb-ring-3 { width: 190px; height: 190px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="dashboard-layout">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <img src="assets/images/nova-logo.svg" alt="NOVA" class="sidebar-logo-img">
+      <div class="sidebar-brand">NOVA</div>
+    </div>
+    <nav>
+      <div class="nav-section-label">Main</div>
+      <a href="dashboard.html" class="nav-item active">
+        <i data-lucide="layout-dashboard" class="nav-icon"></i><span>Dashboard</span>
+      </a>
+      <a href="#" class="nav-item">
+        <i data-lucide="sparkles" class="nav-icon"></i><span>Assistant</span>
+      </a>
+      <div class="nav-section-label">Organize</div>
+      <a href="reminders.html" class="nav-item">
+        <i data-lucide="clock" class="nav-icon"></i><span>Reminders</span>
+      </a>
+      <a href="notes.html" class="nav-item">
+        <i data-lucide="file-text" class="nav-icon"></i><span>Notes</span>
+      </a>
+      <a href="shopping.html" class="nav-item">
+        <i data-lucide="shopping-cart" class="nav-icon"></i><span>Shopping</span>
+      </a>
+      <a href="expenses.html" class="nav-item">
+        <i data-lucide="wallet" class="nav-icon"></i><span>Expenses</span>
+      </a>
+      <a href="study_plans.html" class="nav-item">
+        <i data-lucide="book-open" class="nav-icon"></i><span>Study Plans</span>
+      </a>
+      <a href="goals.html" class="nav-item">
+        <i data-lucide="target" class="nav-icon"></i><span>Goals</span>
+      </a>
+      <div class="nav-divider"></div>
+      <a href="profile.html" class="nav-item">
+        <i data-lucide="settings" class="nav-icon"></i><span>Profile</span>
+      </a>
+      <a href="login.html" class="nav-item">
+        <i data-lucide="log-out" class="nav-icon"></i><span>Logout</span>
+      </a>
+    </nav>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div class="main-content">
+    <header class="topbar">
+      <div>
+        <div class="greeting-title" id="greetingTitle">Good morning 👋</div>
+        <div class="greeting-subtitle">Ready when you are.</div>
+      </div>
+      <div class="topbar-right">
+        <button class="topbar-icon-btn" id="notifBtn">
+          <i data-lucide="bell"></i>
+          <span class="notification-dot"></span>
+        </button>
+        <div class="avatar">AS</div>
+      </div>
+    </header>
+
+    <div class="page-content">
+
+      <!-- ============ ASSISTANT ============ -->
+      <div class="assistant-area">
+        <h2 class="assistant-title">NOVA</h2>
+        <p class="assistant-subtitle">How can I help you today?</p>
+
+        <div class="orb-wrapper" id="orbWrapper">
+          <div class="orb-ring orb-ring-1"></div>
+          <div class="orb-ring orb-ring-2"></div>
+          <div class="orb-ring orb-ring-3"></div>
+          <div class="orb" id="orb"></div>
+        </div>
+
+        <div class="orb-status-title">NOVA</div>
+        <div class="orb-status-text" id="orbStatusText">Ready when you are.</div>
+
+        <button class="mic-btn" id="micBtn" aria-label="Talk to NOVA">
+          <i data-lucide="mic"></i>
+        </button>
+        <div class="mic-label" id="micLabel">Talk to NOVA</div>
+
+        <div class="assistant-input-area">
+          <div class="assistant-input-group">
+            <input type="text" class="assistant-input" id="assistantInput" placeholder="Ask NOVA anything...">
+            <button class="assistant-attach" id="attachFileBtn" title="Summarize file">
+              <i data-lucide="paperclip"></i>
+            </button>
+            <button class="assistant-send" id="assistantSend">
+              <i data-lucide="send"></i>
+            </button>
+          </div>
+
+          <div class="quick-actions">
+            <button class="quick-action" data-quick="Remind me to study at 7 PM">
+              <i data-lucide="clock"></i> Remind me
+            </button>
+            <button class="quick-action" data-quick="Create a note">
+              <i data-lucide="file-text"></i> New note
+            </button>
+            <button class="quick-action" data-quick="Show my expenses">
+              <i data-lucide="wallet"></i> Expenses
+            </button>
+            <button class="quick-action" data-quick="Plan my study">
+              <i data-lucide="book-open"></i> Study plan
+            </button>
+            <button class="quick-action" id="summarizeFileBtn">
+              <i data-lucide="file-search"></i> Summarize File
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <input type="file" id="summarizeFileInput"
+             accept=".pdf,.docx,.doc,.txt,.csv,.xlsx,.xls,.png,.jpg,.jpeg,.webp"
+             hidden>
+
+      <!-- ============ CHAT ============ -->
+      <div class="chat-container" id="chatContainer">
+        <div class="chat-message user">
+          <div class="chat-avatar">A</div>
+          <div>
+            <div class="chat-sender">YOU</div>
+            <div class="chat-bubble">Remind me to study Python at 7 PM.</div>
+            <div class="chat-time">6:45 PM</div>
+          </div>
+        </div>
+        <div class="chat-message nova">
+          <div class="chat-avatar">N</div>
+          <div>
+            <div class="chat-sender">NOVA</div>
+            <div class="chat-bubble">Absolutely! ✨<br><br>I've created a reminder for Python study at 7:00 PM.</div>
+            <div class="chat-time">6:45 PM</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ OVERVIEW ============ -->
+      <h3 class="overview-title">Overview</h3>
+      <div class="dashboard-grid">
+        <div class="stat-card">
+          <div class="stat-icon"><i data-lucide="clock"></i></div>
+          <div class="stat-value">3</div>
+          <div class="stat-label">Today's Reminders</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon"><i data-lucide="file-text"></i></div>
+          <div class="stat-value">12</div>
+          <div class="stat-label">Notes</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon"><i data-lucide="shopping-cart"></i></div>
+          <div class="stat-value">5</div>
+          <div class="stat-label">Shopping Items</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon"><i data-lucide="book-open"></i></div>
+          <div class="stat-value">4</div>
+          <div class="stat-label">Study Tasks</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon"><i data-lucide="target"></i></div>
+          <div class="stat-value">72%</div>
+          <div class="stat-label">Goal Progress</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   NOVA Dashboard — all logic inline, paste-safe
+   ========================================================= */
+
+/* ---------- Greeting ---------- */
+var userName = localStorage.getItem("nova-user-name") || "User";
+document.getElementById("greetingTitle").textContent =
+  getGreeting() + ", " + userName + " 👋";
+
+function getGreeting() {
+  var h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+/* ---------- Toast ---------- */
+function showToast(type, title, message) {
+  var container = document.querySelector(".toast-container");
+  if (!container) {
+    container = document.createElement("div");
+    container.className = "toast-container";
+    document.body.appendChild(container);
+  }
+  var icons = { success: "✅", error: "❌", info: "ℹ️", warning: "⚠️" };
+  var t = document.createElement("div");
+  t.className = "toast toast-" + type;
+  t.innerHTML =
+    '<span>' + (icons[type] || "ℹ️") + '</span>' +
+    '<div>' +
+      '<div class="toast-title">' + title + '</div>' +
+      (message ? '<div class="toast-message">' + message + '</div>' : '') +
+    '</div>';
+  container.appendChild(t);
+  setTimeout(function () { t.remove(); }, 4000);
+}
+
+/* ---------- Chat helpers ---------- */
+function escapeHtml(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function addChatMessage(sender, text, time) {
+  var container = document.getElementById("chatContainer");
+  var msg = document.createElement("div");
+  msg.className = "chat-message " + sender;
+
+  var initial = sender === "nova"
+    ? "N"
+    : (userName.charAt(0) || "U").toUpperCase();
+  var senderLabel = sender === "nova" ? "NOVA" : "YOU";
+  var safeText = escapeHtml(text).split("\n").join("<br>");
+
+  msg.innerHTML =
+    '<div class="chat-avatar">' + initial + '</div>' +
+    '<div>' +
+      '<div class="chat-sender">' + senderLabel + '</div>' +
+      '<div class="chat-bubble">' + safeText + '</div>' +
+      '<div class="chat-time">' + time + '</div>' +
+    '</div>';
+  container.appendChild(msg);
+  container.scrollTop = container.scrollHeight;
+}
+
+function showTyping() {
+  var container = document.getElementById("chatContainer");
+  var t = document.createElement("div");
+  t.className = "chat-message nova";
+  t.id = "typingIndicator";
+  t.innerHTML =
+    '<div class="chat-avatar">N</div>' +
+    '<div>' +
+      '<div class="chat-sender">NOVA</div>' +
+      '<div class="chat-bubble"><div class="typing-dots">' +
+        '<span></span><span></span><span></span>' +
+      '</div></div>' +
+    '</div>';
+  container.appendChild(t);
+  container.scrollTop = container.scrollHeight;
+}
+
+function removeTyping() {
+  var t = document.getElementById("typingIndicator");
+  if (t) t.remove();
+}
+
+function nowTime() {
+  return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+/* ---------- Chat send ---------- */
+document.getElementById("assistantSend").addEventListener("click", sendMessage);
+document.getElementById("assistantInput").addEventListener("keydown", function (e) {
+  if (e.key === "Enter") { e.preventDefault(); sendMessage(); }
+});
+
+function sendMessage() {
+  var input = document.getElementById("assistantInput");
+  var text = input.value.trim();
+  if (!text) return;
+  input.value = "";
+
+  addChatMessage("user", text, nowTime());
+  showTyping();
+
+  setTimeout(function () {
+    removeTyping();
+    var responses = [
+      "I've noted that down for you. ✨",
+      "Got it! I'll remember that.",
+      "Consider it done! 🚀",
+      "Absolutely! I've added that to your list.",
+      "I'm on it! Anything else you need?",
+      "Done! I've updated your information."
+    ];
+    var reply = responses[Math.floor(Math.random() * responses.length)];
+    addChatMessage("nova", reply, nowTime());
+  }, 1200);
+}
+
+/* ---------- Quick actions ---------- */
+document.querySelectorAll(".quick-action").forEach(function (btn) {
+  btn.addEventListener("click", function () {
+    if (btn.id === "summarizeFileBtn") return;
+    var input = document.getElementById("assistantInput");
+    input.value = btn.dataset.quick;
+    input.focus();
+  });
+});
+
+/* ---------- Mic toggle ---------- */
+var isListening = false;
+document.getElementById("micBtn").addEventListener("click", function () {
+  var btn = this;
+  var statusEl = document.getElementById("orbStatusText");
+  var labelEl = document.getElementById("micLabel");
+
+  isListening = !isListening;
+
+  if (isListening) {
+    btn.classList.add("listening");
+    statusEl.textContent = "🎤 I'm listening...";
+    statusEl.style.color = "#22d3ee";
+    labelEl.textContent = "Listening...";
+  } else {
+    btn.classList.remove("listening");
+    statusEl.textContent = "Ready when you are.";
+    statusEl.style.color = "";
+    labelEl.textContent = "Talk to NOVA";
+  }
+});
+
+/* ---------- Summarize File ---------- */
+var fileInput = document.getElementById("summarizeFileInput");
+var fileBtn = document.getElementById("summarizeFileBtn");
+var attachBtn = document.getElementById("attachFileBtn");
+
+fileBtn.addEventListener("click", function () { fileInput.click(); });
+attachBtn.addEventListener("click", function () { fileInput.click(); });
+
+fileInput.addEventListener("change", function () {
+  var file = fileInput.files[0];
+  if (!file) return;
+
+  addChatMessage("user", "📄 Please summarize: " + file.name, nowTime());
+  showTyping();
+
+  var formData = new FormData();
+  formData.append("file", file);
+
+  fetch("http://127.0.0.1:8000/api/summarize", {
+    method: "POST",
+    body: formData
+  })
+  .then(function (res) { return res.json(); })
+  .then(function (data) {
+    removeTyping();
+    var summary = data.summary || data.text || "Summary ready.";
+    addChatMessage("nova", summary, nowTime());
+  })
+  .catch(function () {
+    removeTyping();
+    addChatMessage("nova",
+      "The summarizer isn't connected yet. Once the backend endpoint is live, I'll summarize this file for you.",
+      nowTime());
+  })
+  .finally(function () { fileInput.value = ""; });
+});
+
+/* ---------- Notifications ---------- */
+document.getElementById("notifBtn").addEventListener("click", function () {
+  showToast("info", "🔔 Notifications", "You have 3 new notifications.");
+});
+
+/* ---------- Reset state on page load ---------- */
+isListening = false;
+var micBtnReset = document.getElementById("micBtn");
+if (micBtnReset) micBtnReset.classList.remove("listening");
+var orbStatusReset = document.getElementById("orbStatusText");
+if (orbStatusReset) {
+  orbStatusReset.textContent = "Ready when you are.";
+  orbStatusReset.style.color = "";
+}
+var micLabelReset = document.getElementById("micLabel");
+if (micLabelReset) micLabelReset.textContent = "Talk to NOVA";
+
+/* ---------- Render icons ---------- */
+if (window.lucide) lucide.createIcons();
+</script>
+</body>
+</html>

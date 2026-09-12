@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reminders — NOVA</title>
+<link rel="icon" type="image/svg+xml" href="assets/images/nova-logo.svg">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #05060f;
+    color: #f1f5f9;
+    min-height: 100vh;
+  }
+  .dashboard-layout { display: flex; min-height: 100vh; }
+
+  .sidebar {
+    width: 260px;
+    background: rgba(10,12,26,0.85);
+    border-right: 1px solid rgba(255,255,255,0.06);
+    padding: 20px 12px;
+    position: fixed; top: 0; left: 0;
+    height: 100vh; overflow-y: auto;
+  }
+  .sidebar-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 12px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    margin-bottom: 12px;
+  }
+  .sidebar-logo-img {
+    width: 40px; height: 40px; border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(34,211,238,0.3);
+  }
+  .sidebar-brand {
+    font-size: 1.3rem; font-weight: 700; letter-spacing: 0.05em;
+    background: linear-gradient(135deg, #22d3ee, #8b5cf6, #ec4899);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .nav-section-label {
+    font-size: 0.7rem; font-weight: 700; color: #475569;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    padding: 16px 12px 6px;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 10px;
+    color: #64748b; text-decoration: none;
+    font-size: 0.9rem; font-weight: 500;
+    transition: all 0.2s ease; position: relative;
+    margin-bottom: 2px;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.04); color: #f1f5f9; }
+  .nav-item.active {
+    background: rgba(34,211,238,0.08); color: #22d3ee; font-weight: 600;
+  }
+  .nav-item.active::before {
+    content: ''; position: absolute;
+    left: 0; top: 50%; transform: translateY(-50%);
+    width: 3px; height: 60%;
+    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
+    border-radius: 0 4px 4px 0;
+    box-shadow: 0 0 12px rgba(34,211,238,0.5);
+  }
+  .nav-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; flex-shrink: 0;
+  }
+  .nav-icon svg { width: 18px; height: 18px; stroke-width: 1.8; }
+  .nav-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 12px; }
+
+  .main-content { flex: 1; margin-left: 260px; min-height: 100vh; }
+  .topbar {
+    height: 72px; display: flex; align-items: center; justify-content: space-between;
+    padding: 0 32px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    background: rgba(10,12,26,0.6);
+    backdrop-filter: blur(20px);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .greeting-title { font-size: 1.1rem; font-weight: 700; color: #f1f5f9; }
+  .greeting-subtitle { font-size: 0.8rem; color: #94a3b8; }
+  .topbar-right { display: flex; align-items: center; gap: 16px; }
+  .topbar-icon-btn {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: transparent; border: 0; color: #94a3b8;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    position: relative; transition: all 0.2s ease;
+  }
+  .topbar-icon-btn:hover { background: rgba(255,255,255,0.05); color: #f1f5f9; }
+  .topbar-icon-btn svg { width: 20px; height: 20px; stroke-width: 1.8; }
+  .notification-dot {
+    position: absolute; top: 8px; right: 8px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #22d3ee;
+    box-shadow: 0 0 8px rgba(34,211,238,0.6);
+  }
+  .avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.9rem; color: #fff;
+  }
+
+  .page-content { padding: 32px; }
+
+  .reminders-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; margin-bottom: 32px; flex-wrap: wrap;
+  }
+  .reminders-toolbar-left {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  .search-bar { position: relative; display: flex; align-items: center; }
+  .search-bar input {
+    padding: 10px 16px 10px 42px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 9999px; color: #f1f5f9;
+    font-size: 0.9rem; outline: none;
+    transition: all 0.2s ease;
+  }
+  .search-bar input::placeholder { color: #475569; }
+  .search-bar input:focus {
+    border-color: #22d3ee;
+    box-shadow: 0 0 0 3px rgba(34,211,238,0.1);
+  }
+  .search-icon {
+    position: absolute; left: 14px;
+    font-size: 1rem; color: #64748b; pointer-events: none;
+  }
+  .tabs {
+    display: flex; gap: 4px; padding: 4px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+  }
+  .tab {
+    padding: 8px 18px; font-size: 0.85rem; font-weight: 600;
+    color: #64748b; background: transparent;
+    border: 0; border-radius: 8px; cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .tab:hover { color: #94a3b8; }
+  .tab.active {
+    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
+    color: #fff; box-shadow: 0 2px 12px rgba(34,211,238,0.25);
+  }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 8px; padding: 10px 22px;
+    font-size: 0.9rem; font-weight: 600;
+    border-radius: 9999px; border: 0; cursor: pointer;
+    font-family: inherit; transition: all 0.2s ease;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(34,211,238,0.25);
+  }
+  .btn-primary:hover {
+    box-shadow: 0 6px 30px rgba(34,211,238,0.4);
+    transform: translateY(-2px);
+  }
+
+  .reminders-list {
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .reminder-card {
+    display: flex; align-items: center; gap: 16px;
+    padding: 18px 20px;
+    background: rgba(18,21,45,0.65);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    transition: all 0.3s ease;
+  }
+  .reminder-card:hover {
+    border-color: rgba(255,255,255,0.1);
+    transform: translateX(4px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  }
+  .reminder-card.completed { opacity: 0.55; }
+  .reminder-card.completed .reminder-title { text-decoration: line-through; }
+
+  .reminder-check {
+    width: 24px; height: 24px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.1);
+    background: transparent;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; color: transparent;
+    font-size: 0.7rem; font-weight: 700;
+  }
+  .reminder-card.completed .reminder-check {
+    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
+    border-color: transparent; color: #fff;
+  }
+
+  .reminder-content { flex: 1; min-width: 0; }
+  .reminder-title {
+    font-size: 1rem; font-weight: 600;
+    color: #f1f5f9; margin-bottom: 6px;
+  }
+  .reminder-meta {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .reminder-time { font-size: 0.85rem; color: #94a3b8; }
+
+  .badge {
+    display: inline-flex; align-items: center;
+    padding: 3px 10px;
+    font-size: 0.7rem; font-weight: 700;
+    border-radius: 9999px; letter-spacing: 0.03em;
+  }
+  .badge-cyan  { background: rgba(34,211,238,0.12); color: #22d3ee; border: 1px solid rgba(34,211,238,0.2); }
+  .badge-amber { background: rgba(245,158,11,0.12); color: #f59e0b; border: 1px solid rgba(245,158,11,0.2); }
+  .badge-red   { background: rgba(239,68,68,0.12);  color: #ef4444; border: 1px solid rgba(239,68,68,0.2); }
+
+  .reminder-actions {
+    display: flex; gap: 4px;
+    opacity: 0; transition: opacity 0.2s ease;
+  }
+  .reminder-card:hover .reminder-actions { opacity: 1; }
+  .btn-icon-sm {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: transparent; border: 0; color: #94a3b8;
+    cursor: pointer; display: inline-flex;
+    align-items: center; justify-content: center;
+    transition: all 0.2s ease;
+  }
+  .btn-icon-sm svg { width: 16px; height: 16px; stroke-width: 2; }
+  .btn-icon-sm:hover { background: rgba(255,255,255,0.05); color: #f1f5f9; }
+
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); }
+    .main-content { margin-left: 0; }
+    .page-content { padding: 20px 16px; }
+    .reminders-toolbar { flex-direction: column; align-items: stretch; }
+    .reminders-toolbar-left { flex-direction: column; align-items: stretch; }
+    .reminder-actions { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+
+<div class="dashboard-layout">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <img src="assets/images/nova-logo.svg" alt="NOVA" class="sidebar-logo-img">
+      <div class="sidebar-brand">NOVA</div>
+    </div>
+    <nav>
+      <div class="nav-section-label">Main</div>
+      <a href="dashboard.html" class="nav-item">
+        <i data-lucide="layout-dashboard" class="nav-icon"></i><span>Dashboard</span>
+      </a>
+      <div class="nav-section-label">Organize</div>
+      <a href="reminders.html" class="nav-item active">
+        <i data-lucide="clock" class="nav-icon"></i><span>Reminders</span>
+      </a>
+      <a href="notes.html" class="nav-item">
+        <i data-lucide="file-text" class="nav-icon"></i><span>Notes</span>
+      </a>
+      <a href="shopping.html" class="nav-item">
+        <i data-lucide="shopping-cart" class="nav-icon"></i><span>Shopping</span>
+      </a>
+      <a href="expenses.html" class="nav-item">
+        <i data-lucide="wallet" class="nav-icon"></i><span>Expenses</span>
+      </a>
+      <a href="study_plans.html" class="nav-item">
+        <i data-lucide="book-open" class="nav-icon"></i><span>Study Plans</span>
+      </a>
+      <a href="goals.html" class="nav-item">
+        <i data-lucide="target" class="nav-icon"></i><span>Goals</span>
+      </a>
+      <div class="nav-divider"></div>
+      <a href="profile.html" class="nav-item">
+        <i data-lucide="settings" class="nav-icon"></i><span>Profile</span>
+      </a>
+      <a href="login.html" class="nav-item">
+        <i data-lucide="log-out" class="nav-icon"></i><span>Logout</span>
+      </a>
+    </nav>
+  </aside>
+
+  <div class="main-content">
+    <header class="topbar">
+      <div>
+        <div class="greeting-title">Your Reminders</div>
+        <div class="greeting-subtitle">Stay ahead of your day.</div>
+      </div>
+      <div class="topbar-right">
+        <button class="topbar-icon-btn">
+          <i data-lucide="bell"></i>
+          <span class="notification-dot"></span>
+        </button>
+        <div class="avatar">AS</div>
+      </div>
+    </header>
+
+    <div class="page-content">
+      <div class="reminders-toolbar">
+        <div class="reminders-toolbar-left">
+          <div class="search-bar">
+            <span class="search-icon">🔍</span>
+            <input type="text" placeholder="Search reminders...">
+          </div>
+          <div class="tabs">
+            <button class="tab active">All</button>
+            <button class="tab">Today</button>
+            <button class="tab">Upcoming</button>
+            <button class="tab">Completed</button>
+          </div>
+        </div>
+        <button class="btn btn-primary">+ New Reminder</button>
+      </div>
+
+      <div class="reminders-list">
+
+        <div class="reminder-card">
+          <div class="reminder-check">✓</div>
+          <div class="reminder-content">
+            <div class="reminder-title">Study Python</div>
+            <div class="reminder-meta">
+              <span class="reminder-time">Today · 7:00 PM</span>
+              <span class="badge badge-red">high</span>
+            </div>
+          </div>
+          <div class="reminder-actions">
+            <button class="btn-icon-sm"><i data-lucide="pencil"></i></button>
+            <button class="btn-icon-sm"><i data-lucide="trash-2"></i></button>
+          </div>
+        </div>
+
+        <div class="reminder-card">
+          <div class="reminder-check">✓</div>
+          <div class="reminder-content">
+            <div class="reminder-title">Submit assignment</div>
+            <div class="reminder-meta">
+              <span class="reminder-time">Tomorrow · 11:59 PM</span>
+              <span class="badge badge-red">high</span>
+            </div>
+          </div>
+          <div class="reminder-actions">
+            <button class="btn-icon-sm"><i data-lucide="pencil"></i></button>
+            <button class="btn-icon-sm"><i data-lucide="trash-2"></i></button>
+          </div>
+        </div>
+
+        <div class="reminder-card">
+          <div class="reminder-check">✓</div>
+          <div class="reminder-content">
+            <div class="reminder-title">Team meeting</div>
+            <div class="reminder-meta">
+              <span class="reminder-time">Friday · 3:00 PM</span>
+              <span class="badge badge-amber">medium</span>
+            </div>
+          </div>
+          <div class="reminder-actions">
+            <button class="btn-icon-sm"><i data-lucide="pencil"></i></button>
+            <button class="btn-icon-sm"><i data-lucide="trash-2"></i></button>
+          </div>
+        </div>
+
+        <div class="reminder-card completed">
+          <div class="reminder-check">✓</div>
+          <div class="reminder-content">
+            <div class="reminder-title">Gym session</div>
+            <div class="reminder-meta">
+              <span class="reminder-time">Today · 6:00 AM</span>
+              <span class="badge badge-cyan">low</span>
+            </div>
+          </div>
+          <div class="reminder-actions">
+            <button class="btn-icon-sm"><i data-lucide="pencil"></i></button>
+            <button class="btn-icon-sm"><i data-lucide="trash-2"></i></button>
+          </div>
+        </div>
+
+        <div class="reminder-card">
+          <div class="reminder-check">✓</div>
+          <div class="reminder-content">
+            <div class="reminder-title">Call parents</div>
+            <div class="reminder-meta">
+              <span class="reminder-time">Sunday · 10:00 AM</span>
+              <span class="badge badge-amber">medium</span>
+            </div>
+          </div>
+          <div class="reminder-actions">
+            <button class="btn-icon-sm"><i data-lucide="pencil"></i></button>
+            <button class="btn-icon-sm"><i data-lucide="trash-2"></i></button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  if (window.lucide) lucide.createIcons();
+</script>
+</body>
+</html>

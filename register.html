@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Register — NOVA</title>
+<link rel="icon" type="image/svg+xml" href="assets/images/nova-logo.svg">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #05060f;
+    color: #f1f5f9;
+    min-height: 100vh;
+  }
+  .auth-page {
+    display: flex;
+    min-height: 100vh;
+    position: relative;
+  }
+  .auth-page::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% 0%, rgba(34,211,238,0.08), transparent 60%),
+      radial-gradient(ellipse 60% 50% at 80% 100%, rgba(139,92,246,0.08), transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .auth-left {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    position: relative;
+    z-index: 1;
+    background: linear-gradient(160deg, rgba(10,12,26,0.8), rgba(5,6,15,0.95));
+  }
+  .auth-left-content { text-align: center; max-width: 420px; }
+  .auth-brand {
+    display: flex; align-items: center; justify-content: center;
+    gap: 0.75rem; margin-bottom: 2.5rem;
+  }
+  .auth-brand-logo {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(34,211,238,0.3);
+  }
+  .auth-brand-text {
+    font-size: 1.6rem; font-weight: 700; letter-spacing: 0.05em;
+    background: linear-gradient(135deg, #22d3ee, #8b5cf6, #ec4899);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .auth-orb-wrapper {
+    position: relative;
+    width: 180px; height: 180px;
+    margin: 0 auto 2.5rem;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .auth-orb {
+    width: 120px; height: 120px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #22d3ee, #3b82f6 30%, #8b5cf6 65%, #1e1b4b 100%);
+    box-shadow: 0 0 60px rgba(34,211,238,0.35), 0 0 120px rgba(139,92,246,0.25);
+    animation: breathe 4s ease-in-out infinite;
+  }
+  .auth-orb-ring {
+    position: absolute; border-radius: 50%;
+    border: 1px solid rgba(139,92,246,0.15);
+    pointer-events: none;
+  }
+  .auth-orb-ring:nth-of-type(1) { width: 150px; height: 150px; }
+  .auth-orb-ring:nth-of-type(2) { width: 180px; height: 180px; }
+  @keyframes breathe {
+    0%,100% { transform: scale(1); opacity: 0.85; }
+    50%     { transform: scale(1.05); opacity: 1; }
+  }
+  .auth-tagline {
+    font-size: 1.3rem; font-weight: 600; color: #f1f5f9;
+    margin-bottom: 0.5rem;
+  }
+  .auth-subtitle {
+    font-size: 0.95rem; color: #64748b; line-height: 1.6;
+  }
+  .auth-right {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    padding: 3rem; position: relative; z-index: 1;
+  }
+  .auth-card {
+    width: 100%; max-width: 440px;
+    background: rgba(18,21,45,0.65);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 24px;
+    padding: 2.5rem;
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    position: relative;
+  }
+  .auth-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(34,211,238,0.4), transparent);
+  }
+  .auth-card-header { text-align: center; margin-bottom: 2rem; }
+  .auth-card-title {
+    font-size: 1.8rem; font-weight: 700; color: #f1f5f9;
+    margin-bottom: 0.5rem;
+  }
+  .auth-card-subtitle { font-size: 0.9rem; color: #64748b; }
+
+  .auth-error {
+    display: none;
+    align-items: center; gap: 0.5rem;
+    padding: 0.85rem 1rem;
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.25);
+    border-radius: 12px;
+    color: #ef4444;
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+  }
+  .auth-error.show { display: flex; }
+
+  .auth-form { display: flex; flex-direction: column; gap: 1.25rem; }
+  .form-group { position: relative; }
+
+  .form-label {
+    display: block;
+    font-size: 0.85rem; font-weight: 600;
+    color: #94a3b8; margin-bottom: 0.5rem;
+  }
+  .form-label .required { color: #ef4444; margin-left: 2px; }
+
+  .input-group { position: relative; display: flex; align-items: center; }
+  .input-icon {
+    position: absolute;
+    left: 1rem;
+    font-size: 1rem;
+    color: #64748b;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .form-input {
+    width: 100%;
+    padding: 0.85rem 1rem 0.85rem 2.75rem;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    color: #f1f5f9;
+    font-size: 0.95rem;
+    font-family: inherit;
+    outline: none;
+    transition: all 0.2s ease;
+  }
+  .form-input::placeholder { color: #475569; }
+  .form-input:focus {
+    border-color: #22d3ee;
+    background: rgba(34,211,238,0.05);
+    box-shadow: 0 0 0 3px rgba(34,211,238,0.1);
+  }
+  .form-input.error {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239,68,68,0.1);
+  }
+
+  .input-toggle {
+    position: absolute;
+    right: 0.75rem;
+    background: none; border: none;
+    color: #64748b;
+    cursor: pointer;
+    padding: 0.25rem;
+    font-size: 1.1rem;
+    z-index: 2;
+  }
+  .input-toggle:hover { color: #22d3ee; }
+
+  .form-error {
+    display: none;
+    font-size: 0.8rem;
+    color: #ef4444;
+    margin-top: 0.35rem;
+  }
+  .form-error.show { display: block; }
+
+  .auth-submit {
+    width: 100%;
+    padding: 0.95rem;
+    font-size: 1rem; font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, #22d3ee, #8b5cf6);
+    border: none;
+    border-radius: 9999px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    box-shadow: 0 4px 20px rgba(34,211,238,0.25);
+    margin-top: 0.5rem;
+    font-family: inherit;
+  }
+  .auth-submit:hover {
+    box-shadow: 0 6px 30px rgba(34,211,238,0.4);
+    transform: translateY(-2px);
+  }
+  .auth-submit:active { transform: scale(0.97); }
+
+  .auth-footer {
+    text-align: center;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    font-size: 0.9rem;
+    color: #64748b;
+  }
+  .auth-link {
+    color: #22d3ee;
+    text-decoration: none;
+    font-weight: 600;
+    margin-left: 4px;
+  }
+  .auth-link:hover { text-decoration: underline; }
+
+  @media (max-width: 768px) {
+    .auth-page { flex-direction: column; }
+    .auth-left { min-height: 32vh; padding: 2rem 1.5rem; }
+    .auth-orb-wrapper { width: 120px; height: 120px; margin-bottom: 1.5rem; }
+    .auth-orb { width: 80px; height: 80px; }
+    .auth-orb-ring:nth-of-type(1) { width: 100px; height: 100px; }
+    .auth-orb-ring:nth-of-type(2) { width: 120px; height: 120px; }
+    .auth-tagline { font-size: 1.05rem; }
+    .auth-right { padding: 1.5rem 1rem; }
+    .auth-card { padding: 1.75rem; }
+    .auth-card-title { font-size: 1.4rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="auth-page">
+  <div class="auth-left">
+    <div class="auth-left-content">
+      <div class="auth-brand">
+        <img src="assets/images/nova-logo.svg" alt="NOVA" class="auth-brand-logo">
+        <div class="auth-brand-text">NOVA</div>
+      </div>
+      <div class="auth-orb-wrapper">
+        <div class="auth-orb"></div>
+        <div class="auth-orb-ring"></div>
+        <div class="auth-orb-ring"></div>
+      </div>
+      <h2 class="auth-tagline">Start your journey</h2>
+      <p class="auth-subtitle">Join NOVA and organize your life<br>intelligently.</p>
+    </div>
+  </div>
+
+  <div class="auth-right">
+    <div class="auth-card">
+      <div class="auth-card-header">
+        <h1 class="auth-card-title">Create account</h1>
+        <p class="auth-card-subtitle">Get started with NOVA for free</p>
+      </div>
+
+      <div class="auth-error" id="registerError">
+        <span>⚠️</span>
+        <span id="registerErrorText">Something went wrong.</span>
+      </div>
+
+      <form class="auth-form" id="registerForm" novalidate autocomplete="off">
+
+        <div class="form-group">
+          <label class="form-label" for="regFullName">Full Name <span class="required">*</span></label>
+          <div class="input-group">
+            <span class="input-icon">👤</span>
+            <input type="text" id="regFullName" class="form-input" placeholder="Arjun Sharma">
+          </div>
+          <div class="form-error" id="regFullNameError">Please enter your full name.</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="regEmail">Email <span class="required">*</span></label>
+          <div class="input-group">
+            <span class="input-icon">✉️</span>
+            <input type="email" id="regEmail" class="form-input" placeholder="you@example.com">
+          </div>
+          <div class="form-error" id="regEmailError">Please enter a valid email.</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="regUsername">Username <span class="required">*</span></label>
+          <div class="input-group">
+            <span class="input-icon">@</span>
+            <input type="text" id="regUsername" class="form-input" placeholder="arjun_dev">
+          </div>
+          <div class="form-error" id="regUsernameError">Username must be at least 3 characters.</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="regPassword">Password <span class="required">*</span></label>
+          <div class="input-group">
+            <span class="input-icon">🔒</span>
+            <input type="password" id="regPassword" class="form-input" placeholder="Create a strong password">
+            <button type="button" class="input-toggle" id="toggleRegPassword" tabindex="-1">👁️</button>
+          </div>
+          <div class="form-error" id="regPasswordError">Password must be at least 8 characters.</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="regConfirmPassword">Confirm Password <span class="required">*</span></label>
+          <div class="input-group">
+            <span class="input-icon">🔒</span>
+            <input type="password" id="regConfirmPassword" class="form-input" placeholder="Confirm your password">
+            <button type="button" class="input-toggle" id="toggleRegConfirmPassword" tabindex="-1">👁️</button>
+          </div>
+          <div class="form-error" id="regConfirmPasswordError">Passwords do not match.</div>
+        </div>
+
+        <button type="submit" class="auth-submit" id="registerSubmit">Create Account</button>
+      </form>
+
+      <div class="auth-footer">
+        Already have an account?
+        <a href="login.html" class="auth-link">Sign in</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById("registerForm").addEventListener("submit", function (e) {
+  e.preventDefault();
+
+  var name  = document.getElementById("regFullName").value.trim();
+  var email = document.getElementById("regEmail").value.trim();
+  var user  = document.getElementById("regUsername").value.trim();
+  var pass  = document.getElementById("regPassword").value;
+  var conf  = document.getElementById("regConfirmPassword").value;
+
+  var fields = ["regFullName", "regEmail", "regUsername", "regPassword", "regConfirmPassword"];
+  fields.forEach(function (id) {
+    document.getElementById(id + "Error").classList.remove("show");
+    document.getElementById(id).classList.remove("error");
+  });
+  document.getElementById("registerError").classList.remove("show");
+
+  var bad = false;
+
+  function show(errId, inputId) {
+    document.getElementById(errId).classList.add("show");
+    document.getElementById(inputId).classList.add("error");
+  }
+
+  if (name.length < 2) { show("regFullNameError", "regFullName"); bad = true; }
+  if (email.indexOf("@") === -1 || email.indexOf(".") === -1) { show("regEmailError", "regEmail"); bad = true; }
+  if (user.length < 3) { show("regUsernameError", "regUsername"); bad = true; }
+  if (pass.length < 8) { show("regPasswordError", "regPassword"); bad = true; }
+  if (pass !== conf) { show("regConfirmPasswordError", "regConfirmPassword"); bad = true; }
+
+  if (bad) return;
+
+  localStorage.setItem("nova-user-name", name);
+  localStorage.setItem("nova-auth-token", "token-" + Date.now());
+  window.location.href = "dashboard.html";
+});
+
+document.getElementById("toggleRegPassword").addEventListener("click", function (e) {
+  e.preventDefault();
+  var p = document.getElementById("regPassword");
+  p.type = p.type === "password" ? "text" : "password";
+  this.textContent = p.type === "password" ? "👁️" : "🙈";
+});
+
+document.getElementById("toggleRegConfirmPassword").addEventListener("click", function (e) {
+  e.preventDefault();
+  var p = document.getElementById("regConfirmPassword");
+  p.type = p.type === "password" ? "text" : "password";
+  this.textContent = p.type === "password" ? "👁️" : "🙈";
+});
+</script>
+</body>
+</html>
