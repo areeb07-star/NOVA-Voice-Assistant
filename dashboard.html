@@ -575,7 +575,6 @@
     to   { transform: translateX(0); opacity: 1; }
   }
 
-  /* ============ RESPONSIVE ============ */
   @media (max-width: 768px) {
     .sidebar { transform: translateX(-100%); }
     .main-content { margin-left: 0; }
@@ -593,7 +592,7 @@
 
 <div class="dashboard-layout">
 
-  <!-- ============ SIDEBAR ============ -->
+  <!-- SIDEBAR -->
   <aside class="sidebar">
     <div class="sidebar-header">
       <img src="assets/images/nova-logo.svg" alt="NOVA" class="sidebar-logo-img">
@@ -636,11 +635,11 @@
     </nav>
   </aside>
 
-  <!-- ============ MAIN ============ -->
+  <!-- MAIN -->
   <div class="main-content">
     <header class="topbar">
       <div>
-        <div class="greeting-title" id="greetingTitle">Good morning 👋</div>
+        <div class="greeting-title" id="greetingTitle">Good evening 👋</div>
         <div class="greeting-subtitle">Ready when you are.</div>
       </div>
       <div class="topbar-right">
@@ -654,7 +653,7 @@
 
     <div class="page-content">
 
-      <!-- ============ ASSISTANT ============ -->
+      <!-- ASSISTANT -->
       <div class="assistant-area">
         <h2 class="assistant-title">NOVA</h2>
         <p class="assistant-subtitle">How can I help you today?</p>
@@ -709,27 +708,10 @@
              accept=".pdf,.docx,.doc,.txt,.csv,.xlsx,.xls,.png,.jpg,.jpeg,.webp"
              hidden>
 
-      <!-- ============ CHAT ============ -->
-      <div class="chat-container" id="chatContainer">
-        <div class="chat-message user">
-          <div class="chat-avatar">A</div>
-          <div>
-            <div class="chat-sender">YOU</div>
-            <div class="chat-bubble">Remind me to study Python at 7 PM.</div>
-            <div class="chat-time">6:45 PM</div>
-          </div>
-        </div>
-        <div class="chat-message nova">
-          <div class="chat-avatar">N</div>
-          <div>
-            <div class="chat-sender">NOVA</div>
-            <div class="chat-bubble">Absolutely! ✨<br><br>I've created a reminder for Python study at 7:00 PM.</div>
-            <div class="chat-time">6:45 PM</div>
-          </div>
-        </div>
-      </div>
+      <!-- CHAT -->
+      <div class="chat-container" id="chatContainer"></div>
 
-      <!-- ============ OVERVIEW ============ -->
+      <!-- OVERVIEW -->
       <h3 class="overview-title">Overview</h3>
       <div class="dashboard-grid">
         <div class="stat-card">
@@ -763,21 +745,17 @@
   </div>
 </div>
 
+<!-- =========================================================
+     Dashboard logic (greeting, toast, notifications only)
+     ========================================================= -->
 <script>
-/* =========================================================
-   NOVA Dashboard — all logic inline, paste-safe
-   ========================================================= */
-
 /* ---------- Greeting ---------- */
 var userName = localStorage.getItem("nova-user-name") || "User";
-document.getElementById("greetingTitle").textContent =
-  getGreeting() + ", " + userName + " 👋";
-
-function getGreeting() {
+var greetingEl = document.getElementById("greetingTitle");
+if (greetingEl) {
   var h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 17) return "Good afternoon";
-  return "Good evening";
+  var g = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+  greetingEl.textContent = g + ", " + userName + " 👋";
 }
 
 /* ---------- Toast ---------- */
@@ -801,7 +779,7 @@ function showToast(type, title, message) {
   setTimeout(function () { t.remove(); }, 4000);
 }
 
-/* ---------- Chat helpers ---------- */
+/* ---------- Chat helpers (used by voice.js + file-summarizer.js) ---------- */
 function escapeHtml(str) {
   if (str === null || str === undefined) return "";
   return String(str)
@@ -812,17 +790,14 @@ function escapeHtml(str) {
     .replace(/'/g, "&#039;");
 }
 
-function addChatMessage(sender, text, time) {
-  var container = document.getElementById("chatContainer");
+function createChatMessage(sender, text, time) {
   var msg = document.createElement("div");
   msg.className = "chat-message " + sender;
-
   var initial = sender === "nova"
     ? "N"
     : (userName.charAt(0) || "U").toUpperCase();
   var senderLabel = sender === "nova" ? "NOVA" : "YOU";
   var safeText = escapeHtml(text).split("\n").join("<br>");
-
   msg.innerHTML =
     '<div class="chat-avatar">' + initial + '</div>' +
     '<div>' +
@@ -830,12 +805,12 @@ function addChatMessage(sender, text, time) {
       '<div class="chat-bubble">' + safeText + '</div>' +
       '<div class="chat-time">' + time + '</div>' +
     '</div>';
-  container.appendChild(msg);
-  container.scrollTop = container.scrollHeight;
+  return msg;
 }
 
-function showTyping() {
+function showTypingIndicator() {
   var container = document.getElementById("chatContainer");
+  if (document.getElementById("typingIndicator")) return;
   var t = document.createElement("div");
   t.className = "chat-message nova";
   t.id = "typingIndicator";
@@ -851,121 +826,34 @@ function showTyping() {
   container.scrollTop = container.scrollHeight;
 }
 
-function removeTyping() {
+function removeTypingIndicator() {
   var t = document.getElementById("typingIndicator");
   if (t) t.remove();
 }
 
-function nowTime() {
-  return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+function scrollChatToBottom() {
+  var c = document.getElementById("chatContainer");
+  if (c) c.scrollTop = c.scrollHeight;
 }
-
-/* ---------- Chat send ---------- */
-document.getElementById("assistantSend").addEventListener("click", sendMessage);
-document.getElementById("assistantInput").addEventListener("keydown", function (e) {
-  if (e.key === "Enter") { e.preventDefault(); sendMessage(); }
-});
-
-function sendMessage() {
-  var input = document.getElementById("assistantInput");
-  var text = input.value.trim();
-  if (!text) return;
-  input.value = "";
-
-  addChatMessage("user", text, nowTime());
-  showTyping();
-
-  setTimeout(function () {
-    removeTyping();
-    var responses = [
-      "I've noted that down for you. ✨",
-      "Got it! I'll remember that.",
-      "Consider it done! 🚀",
-      "Absolutely! I've added that to your list.",
-      "I'm on it! Anything else you need?",
-      "Done! I've updated your information."
-    ];
-    var reply = responses[Math.floor(Math.random() * responses.length)];
-    addChatMessage("nova", reply, nowTime());
-  }, 1200);
-}
-
-/* ---------- Quick actions ---------- */
-document.querySelectorAll(".quick-action").forEach(function (btn) {
-  btn.addEventListener("click", function () {
-    if (btn.id === "summarizeFileBtn") return;
-    var input = document.getElementById("assistantInput");
-    input.value = btn.dataset.quick;
-    input.focus();
-  });
-});
-
-/* ---------- Mic toggle ---------- */
-var isListening = false;
-document.getElementById("micBtn").addEventListener("click", function () {
-  var btn = this;
-  var statusEl = document.getElementById("orbStatusText");
-  var labelEl = document.getElementById("micLabel");
-
-  isListening = !isListening;
-
-  if (isListening) {
-    btn.classList.add("listening");
-    statusEl.textContent = "🎤 I'm listening...";
-    statusEl.style.color = "#22d3ee";
-    labelEl.textContent = "Listening...";
-  } else {
-    btn.classList.remove("listening");
-    statusEl.textContent = "Ready when you are.";
-    statusEl.style.color = "";
-    labelEl.textContent = "Talk to NOVA";
-  }
-});
-
-/* ---------- Summarize File ---------- */
-var fileInput = document.getElementById("summarizeFileInput");
-var fileBtn = document.getElementById("summarizeFileBtn");
-var attachBtn = document.getElementById("attachFileBtn");
-
-fileBtn.addEventListener("click", function () { fileInput.click(); });
-attachBtn.addEventListener("click", function () { fileInput.click(); });
-
-fileInput.addEventListener("change", function () {
-  var file = fileInput.files[0];
-  if (!file) return;
-
-  addChatMessage("user", "📄 Please summarize: " + file.name, nowTime());
-  showTyping();
-
-  var formData = new FormData();
-  formData.append("file", file);
-
-  fetch("http://127.0.0.1:8000/api/summarize", {
-    method: "POST",
-    body: formData
-  })
-  .then(function (res) { return res.json(); })
-  .then(function (data) {
-    removeTyping();
-    var summary = data.summary || data.text || "Summary ready.";
-    addChatMessage("nova", summary, nowTime());
-  })
-  .catch(function () {
-    removeTyping();
-    addChatMessage("nova",
-      "The summarizer isn't connected yet. Once the backend endpoint is live, I'll summarize this file for you.",
-      nowTime());
-  })
-  .finally(function () { fileInput.value = ""; });
-});
 
 /* ---------- Notifications ---------- */
 document.getElementById("notifBtn").addEventListener("click", function () {
   showToast("info", "🔔 Notifications", "You have 3 new notifications.");
 });
 
-/* ---------- Reset state on page load ---------- */
-isListening = false;
+/* ---------- Quick actions (fill input only) ---------- */
+document.querySelectorAll(".quick-action").forEach(function (btn) {
+  if (btn.id === "summarizeFileBtn") return;
+  btn.addEventListener("click", function () {
+    var input = document.getElementById("assistantInput");
+    if (btn.dataset.quick) {
+      input.value = btn.dataset.quick;
+      input.focus();
+    }
+  });
+});
+
+/* ---------- Reset mic state on load ---------- */
 var micBtnReset = document.getElementById("micBtn");
 if (micBtnReset) micBtnReset.classList.remove("listening");
 var orbStatusReset = document.getElementById("orbStatusText");
@@ -976,8 +864,15 @@ if (orbStatusReset) {
 var micLabelReset = document.getElementById("micLabel");
 if (micLabelReset) micLabelReset.textContent = "Talk to NOVA";
 
-/* ---------- Render icons ---------- */
+/* ---------- Render Lucide icons ---------- */
 if (window.lucide) lucide.createIcons();
 </script>
+
+<!-- =========================================================
+     Person 4 modules
+     ========================================================= -->
+<script src="js/voice.js"></script>
+<script src="js/file-summarizer.js"></script>
+
 </body>
 </html>
