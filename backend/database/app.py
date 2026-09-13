@@ -34,7 +34,7 @@ DEVICE_ACTION_INTENTS = [
  "OPEN_FOLDER",
  "CREATE_FOLDER",
  "FIND_FILE",
- "OPEN_URL"
+ "OPEN_URL",
  "MUTE",
  "UNMUTE",
  "VOLUME_UP",
@@ -139,7 +139,8 @@ def send_email(recipient, subject, body):
         data=data,
         headers={
             "Authorization": f"Bearer {resend_api_key}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "User-Agent":"NOVA-Voice-Assistant/1.0"
         },
         method="POST"
     )
