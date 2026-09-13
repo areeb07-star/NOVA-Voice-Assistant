@@ -1,10 +1,13 @@
 /* ============================================
    NOVA - Voice Module (Person 4)
    Speech Recognition + TTS + AI Brain
+   Auto-detects device_id from local agent
    ============================================ */
 
 const CONFIG = {
-  AI_URL: 'http://127.0.0.1:5000/api/process'
+  AI_URL: 'http://127.0.0.1:5000/api/process',
+  SUMMARIZE_URL: 'http://127.0.0.1:5000/api/summarize',
+  LOCAL_AGENT_URL: 'http://127.0.0.1:5050'
 };
 
 const VOICE_STATES = {
@@ -20,6 +23,46 @@ let isStartingUp = false;
 let lastStopTime = 0;
 let recognition = null;
 let currentUtterance = null;
+let cachedDeviceId = null;
+
+// ============================================================
+// AUTO-DETECT DEVICE ID FROM LOCAL AGENT
+// ============================================================
+async function autoDetectDeviceId() {
+  if (cachedDeviceId) return cachedDeviceId;
+
+  // 1. Try localStorage first (fast)
+  const stored = localStorage.getItem('nova-device-id');
+  if (stored) {
+    cachedDeviceId = stored;
+    console.log('[NOVA] Device from cache:', stored);
+    return stored;
+  }
+
+  // 2. Try local agent on port 5050
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 1500);
+
+    const res = await fetch(CONFIG.LOCAL_AGENT_URL + '/device_id', {
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+
+    const data = await res.json();
+    cachedDeviceId = data.device_id;
+    localStorage.setItem('nova-device-id', data.device_id);
+    console.log('[NOVA] ✅ Auto-detected device:', data.device_id);
+    return data.device_id;
+  } catch (e) {
+    console.log('[NOVA] No local agent detected (browser-only mode)');
+    return null;
+  }
+}
+
+function getDeviceId() {
+  return cachedDeviceId || localStorage.getItem('nova-device-id') || null;
+}
 
 // ============================================================
 // LANGUAGE DETECTION
@@ -165,7 +208,7 @@ function stopListening() {
 }
 
 // ============================================================
-// MAIN HANDLER
+// MAIN HANDLER — sends device_id to bridge
 // ============================================================
 async function handleVoiceInput(transcript) {
   if (!transcript) return;
@@ -182,18 +225,31 @@ async function handleVoiceInput(transcript) {
   updateVoiceStatus(VOICE_STATES.THINKING);
 
   try {
+    // Auto-detect device_id (from local agent)
+    const deviceId = await autoDetectDeviceId();
+    console.log('[NOVA] Using device_id:', deviceId || '(none)');
+
+    const payload = {
+      text: transcript,
+      user_id: 'nova_user'
+    };
+    if (deviceId) {
+      payload.device_id = deviceId;
+    }
+
     const response = await fetch(CONFIG.AI_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: transcript, user_id: 'nova_user' })
+      body: JSON.stringify(payload)
     });
 
     if (!response.ok) throw new Error('HTTP ' + response.status);
 
     const data = await response.json();
+    console.log('[NOVA] AI Response:', data);
+
     let reply = data.response || data.reply || 'No response';
 
-    // Add extra details if present
     if (data.data && typeof data.data === 'object') {
       const extras = [];
       if (data.data.body) extras.push(data.data.body);
@@ -311,12 +367,11 @@ function createChatMessage(sender, text, time) {
 
 function showTypingIndicator() {
   const container = document.getElementById("chatContainer");
-  if (!container) return;
-  if (document.getElementById("typingIndicator")) return;
-  const typing = document.createElement("div");
-  typing.className = "chat-message nova chat-typing";
-  typing.id = "typingIndicator";
-  typing.innerHTML =
+  if (!container || document.getElementById("typingIndicator")) return;
+  const t = document.createElement("div");
+  t.className = "chat-message nova";
+  t.id = "typingIndicator";
+  t.innerHTML =
     '<div class="chat-avatar">N</div>' +
     '<div>' +
       '<div class="chat-sender">NOVA</div>' +
@@ -324,7 +379,7 @@ function showTypingIndicator() {
         '<span></span><span></span><span></span>' +
       '</div></div>' +
     '</div>';
-  container.appendChild(typing);
+  container.appendChild(t);
   container.scrollTop = container.scrollHeight;
 }
 
@@ -392,6 +447,7 @@ function wireUp() {
 
   document.querySelectorAll('.quick-action').forEach(function(btn) {
     if (btn.dataset.wired) return;
+    if (btn.id === 'summarizeFileBtn') return;
     btn.dataset.wired = 'true';
     btn.addEventListener('click', function() {
       const text = btn.dataset.quick;
@@ -405,9 +461,15 @@ function wireUp() {
 // ============================================================
 window.addEventListener('DOMContentLoaded', function() {
   console.log('[NOVA] Initializing...');
+
   wireUp();
   setTimeout(wireUp, 500);
   setTimeout(wireUp, 1500);
+
+  // Auto-detect device on page load
+  autoDetectDeviceId().then(id => {
+    if (id) console.log('[NOVA] Device ready:', id);
+  });
 
   if (window.speechSynthesis) {
     window.speechSynthesis.getVoices();
@@ -426,11 +488,16 @@ window.addEventListener('DOMContentLoaded', function() {
   console.log('[NOVA] Ready');
 });
 
+// ============================================================
+// PUBLIC API
+// ============================================================
 window.NOVA_VOICE = {
   startListening,
   stopListening,
   handleVoiceInput,
   updateVoiceStatus,
   toggleMicrophone,
+  getDeviceId,
+  autoDetectDeviceId,
   VOICE_STATES
 };
