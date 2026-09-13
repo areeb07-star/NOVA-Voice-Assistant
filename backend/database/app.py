@@ -7,6 +7,9 @@ import uuid
 import hashlib
 import secrets
 import google.genai as genai
+from google.genai import types
+from pgvector import Vector
+from pgvector.psycopg import register_vector
 
 from datetime import datetime, timedelta, timezone
 from email.mime.text import MIMEText
@@ -52,19 +55,58 @@ gemini_client = genai.Client(
     api_key=os.getenv("GEMINI_API_KEY")
 )
 
+EMBEDDING_MODEL = "gemini-embedding-001"
+EMBEDDING_DIMENSION = 768
+
+
+def generate_embedding(text, task_type="RETRIEVAL_DOCUMENT"):
+    text = str(text).strip()
+
+    if not text:
+        raise ValueError("Text cannot be empty")
+
+    result = gemini_client.models.embed_content(
+        model=EMBEDDING_MODEL,
+        contents=text,
+        config=types.EmbedContentConfig(
+            task_type=task_type,
+            output_dimensionality=EMBEDDING_DIMENSION
+        )
+    )
+
+    if not result.embeddings:
+        raise ValueError("No embedding returned from Gemini")
+
+    embedding = result.embeddings[0]
+    values = getattr(embedding, "values", None)
+
+    if values is None:
+        raise ValueError("Embedding values were not returned")
+
+    if len(values) != EMBEDDING_DIMENSION:
+        raise ValueError(
+            f"Expected {EMBEDDING_DIMENSION} dimensions, "
+            f"but received {len(values)}"
+        )
+
+    return values
 
 # ============================================================
 # DATABASE CONNECTION
 # ============================================================
 
 def get_connection():
-    return psycopg.connect(
+    conn = psycopg.connect(
         host=os.getenv("DB_HOST"),
         port=os.getenv("DB_PORT"),
         dbname=os.getenv("DB_NAME"),
         user=os.getenv("DB_USER"),
         password=os.getenv("DB_PASSWORD")
     )
+
+    register_vector(conn)
+
+    return conn
 
 
 # ============================================================
@@ -513,6 +555,157 @@ def logout():
         cur.close()
         conn.close()
 
+# ============================================================
+# SEMANTIC NOTE SEARCH
+# ============================================================
+
+@app.route("/api/notes/semantic-search", methods=["POST"])
+def semantic_note_search():
+
+    data = request.get_json() or {}
+
+    # --------------------------------------------------------
+    # AUTHENTICATION
+    # --------------------------------------------------------
+
+    auth_header = request.headers.get("Authorization", "")
+
+    if not auth_header.startswith("Bearer "):
+        return jsonify({
+            "success": False,
+            "message": "Authorization token is required"
+        }), 401
+
+    token = auth_header.split(" ", 1)[1].strip()
+
+    authenticated_user_id = get_user_from_token(token)
+
+    if not authenticated_user_id:
+        return jsonify({
+            "success": False,
+            "message": "Invalid or expired authorization token"
+        }), 401
+
+    # --------------------------------------------------------
+    # GET SEARCH QUERY
+    # --------------------------------------------------------
+
+    query = str(data.get("query", "")).strip()
+
+    if not query:
+        return jsonify({
+            "success": False,
+            "message": "Search query is required"
+        }), 400
+
+    # --------------------------------------------------------
+    # RESULT LIMIT
+    # --------------------------------------------------------
+
+    try:
+        limit = int(data.get("limit", 5))
+    except (TypeError, ValueError):
+        limit = 5
+
+    # Keep the limit within a safe range
+    limit = max(1, min(limit, 20))
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    try:
+
+        # ----------------------------------------------------
+        # GENERATE QUERY EMBEDDING
+        # ----------------------------------------------------
+
+        query_embedding = generate_embedding(
+            query,
+            task_type="RETRIEVAL_QUERY"
+        )
+
+        query_vector = Vector(query_embedding)
+
+        # ----------------------------------------------------
+        # SEMANTIC SIMILARITY SEARCH
+        # ----------------------------------------------------
+
+        cur.execute(
+            """
+            SELECT
+                id,
+                text,
+                created_at,
+                1 - (embedding <=> %s) AS similarity
+            FROM notes
+            WHERE user_id = %s
+              AND embedding IS NOT NULL
+            ORDER BY embedding <=> %s
+            LIMIT %s
+            """,
+            (
+                query_vector,
+                authenticated_user_id,
+                query_vector,
+                limit
+            )
+        )
+
+        rows = cur.fetchall()
+
+        # ----------------------------------------------------
+        # FORMAT RESULTS
+        # ----------------------------------------------------
+
+        results = []
+        formatted_results = []
+
+        for row in rows:
+
+            note_id = row[0]
+            note_text = row[1]
+            created_at = row[2]
+            similarity = float(row[3])
+
+            results.append({
+                "id": note_id,
+                "text": note_text,
+                "created_at": created_at.isoformat()
+                    if created_at else None,
+                "similarity": round(similarity, 4)
+            })
+
+            formatted_results.append(
+                f"{len(formatted_results) + 1}. "
+                f"{note_text} "
+                f"(similarity: {similarity:.2f})"
+            )
+
+        # ----------------------------------------------------
+        # RETURN SEARCH RESULTS
+        # ----------------------------------------------------
+
+        return jsonify({
+            "success": True,
+            "query": query,
+            "results": results,
+            "formatted_results": formatted_results,
+            "count": len(results)
+        })
+
+    except Exception as e:
+
+        print("SEMANTIC SEARCH ERROR:", e)
+
+        return jsonify({
+            "success": False,
+            "message": f"Semantic search failed: {str(e)}"
+        }), 500
+
+    finally:
+
+        cur.close()
+        conn.close()
 
 # ============================================================
 # MAIN ASSISTANT API
@@ -620,50 +813,166 @@ def assistant():
         # ====================================================
 
         if intent == "CREATE_NOTE":
+          text = str(details.get("text", "")).strip()
 
-            text = str(
-                details.get("text", "")
-            ).strip()
-
-            if not user_id:
-
-                return jsonify({
-                    "success": False,
-                    "message": "User ID is required"
-                }), 400
-
-            if not text:
-
-                return jsonify({
-                    "success": False,
-                    "message": "Note text is required"
-                }), 400
-
-            cur.execute(
-                """
-                INSERT INTO notes
-                (user_id, text)
-                VALUES (%s, %s)
-                """,
-                (
-                    user_id,
-                    text
-                )
-            )
-            create_notification(
-               cur,
-               user_id,
-               "Note Saved",
-               "Your note was saved successfully.",
-               "📝"
-            )
-            conn.commit()
-
+          if not text:
             return jsonify({
+            "success": False,
+            "message": "Note text is required"
+           }), 400
+
+          conn = get_connection()
+          cur = conn.cursor()
+
+          try:
+              
+             # Generate semantic embedding for the note
+              embedding_values = generate_embedding(
+              text,
+              task_type="RETRIEVAL_DOCUMENT"
+              )
+
+             # Save note + embedding
+              cur.execute("""
+               INSERT INTO notes (user_id, text, embedding)
+               VALUES (%s, %s, %s)
+               RETURNING id
+               """, (
+               user_id,
+               text,
+               Vector(embedding_values)
+             ))
+
+              note_id = cur.fetchone()[0]
+
+             # Create notification
+              create_notification(
+                cur,
+                user_id,
+                "Note Saved",
+                "Your note has been saved successfully.",
+                "📝"
+               )
+
+              conn.commit()
+
+              return jsonify({
                 "success": True,
                 "message": "Note saved successfully",
-                "user_id": user_id
-            })
+                "note_id": note_id,
+                "embedding_created": True
+             })
+
+          except Exception as e:
+             conn.rollback()
+
+             return jsonify({
+              "success": False,
+              "message": f"Failed to save note: {str(e)}"
+             }), 500
+
+          finally:
+             cur.close()
+             conn.close()
+
+        # ====================================================
+        # SEARCH NOTES - SEMANTIC SEARCH
+        # ====================================================
+
+        elif intent == "SEARCH_NOTES":
+
+            query = str(
+                details.get("query", "")
+            ).strip()
+
+            if not query:
+                return jsonify({
+                    "success": False,
+                    "message": "Search query is required"
+                }), 400
+
+            try:
+                # Generate embedding for the user's search query
+                query_embedding = generate_embedding(
+                    query,
+                    task_type="RETRIEVAL_QUERY"
+                )
+
+                query_vector = Vector(query_embedding)
+
+                # Search only this authenticated user's notes
+                cur.execute(
+                    """
+                    SELECT
+                        id,
+                        text,
+                        created_at,
+                        1 - (embedding <=> %s) AS similarity
+                    FROM notes
+                    WHERE user_id = %s
+                      AND embedding IS NOT NULL
+                    ORDER BY embedding <=> %s
+                    LIMIT 5
+                    """,
+                    (
+                        query_vector,
+                        user_id,
+                        query_vector
+                    )
+                )
+
+                rows = cur.fetchall()
+
+                results = []
+                formatted_results = []
+
+                for row in rows:
+
+                    note_id = row[0]
+                    note_text = row[1]
+                    created_at = row[2]
+                    similarity = float(row[3])
+
+                    results.append({
+                        "id": note_id,
+                        "text": note_text,
+                        "created_at": (
+                            created_at.isoformat()
+                            if created_at else None
+                        ),
+                        "similarity": round(
+                            similarity,
+                            4
+                        )
+                    })
+
+                    formatted_results.append(
+                        f"{len(formatted_results) + 1}. "
+                        f"{note_text} "
+                        f"(similarity: {similarity:.2f})"
+                    )
+
+                return jsonify({
+                    "success": True,
+                    "query": query,
+                    "results": results,
+                    "formatted_results": formatted_results,
+                    "count": len(results)
+                })
+
+            except Exception as e:
+
+                print(
+                    "SEARCH NOTES ERROR:",
+                    e
+                )
+
+                return jsonify({
+                    "success": False,
+                    "message": (
+                        f"Semantic note search failed: {str(e)}"
+                    )
+                }), 500
 
 
         # ====================================================
