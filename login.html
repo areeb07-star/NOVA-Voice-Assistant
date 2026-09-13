@@ -4,9 +4,220 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Login — NOVA</title>
-<link rel="stylesheet" href="css/style.css">
-<link rel="stylesheet" href="css/components.css">
-<link rel="stylesheet" href="css/auth.css">
+<link rel="icon" type="image/svg+xml" href="assets/images/nova-logo.svg">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #05060f;
+    color: #f1f5f9;
+    min-height: 100vh;
+  }
+  .auth-page {
+    display: flex;
+    min-height: 100vh;
+    position: relative;
+  }
+  .auth-page::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% 0%, rgba(34,211,238,0.08), transparent 60%),
+      radial-gradient(ellipse 60% 50% at 80% 100%, rgba(139,92,246,0.08), transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .auth-left {
+    flex: 1;
+    display: flex; align-items: center; justify-content: center;
+    padding: 3rem;
+    position: relative;
+    z-index: 1;
+    background: linear-gradient(160deg, rgba(10,12,26,0.8), rgba(5,6,15,0.95));
+  }
+  .auth-left-content { text-align: center; max-width: 420px; }
+  .auth-brand {
+    display: flex; align-items: center; justify-content: center;
+    gap: 0.75rem; margin-bottom: 2.5rem;
+  }
+  .auth-brand-logo {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(34,211,238,0.3);
+  }
+  .auth-brand-text {
+    font-size: 1.6rem; font-weight: 700; letter-spacing: 0.05em;
+    background: linear-gradient(135deg, #22d3ee, #8b5cf6, #ec4899);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .auth-orb-wrapper {
+    position: relative;
+    width: 180px; height: 180px;
+    margin: 0 auto 2.5rem;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .auth-orb {
+    width: 120px; height: 120px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #22d3ee, #3b82f6 30%, #8b5cf6 65%, #1e1b4b 100%);
+    box-shadow: 0 0 60px rgba(34,211,238,0.35), 0 0 120px rgba(139,92,246,0.25);
+    animation: breathe 4s ease-in-out infinite;
+  }
+  .auth-orb-ring {
+    position: absolute; border-radius: 50%;
+    border: 1px solid rgba(139,92,246,0.15);
+    pointer-events: none;
+  }
+  .auth-orb-ring:nth-of-type(1) { width: 150px; height: 150px; }
+  .auth-orb-ring:nth-of-type(2) { width: 180px; height: 180px; }
+  @keyframes breathe {
+    0%,100% { transform: scale(1); opacity: 0.85; }
+    50%     { transform: scale(1.05); opacity: 1; }
+  }
+  .auth-tagline { font-size: 1.3rem; font-weight: 600; color: #f1f5f9; margin-bottom: 0.5rem; }
+  .auth-subtitle { font-size: 0.95rem; color: #64748b; line-height: 1.6; }
+
+  .auth-right {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    padding: 3rem; position: relative; z-index: 1;
+  }
+  .auth-card {
+    width: 100%; max-width: 440px;
+    background: rgba(18,21,45,0.65);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 24px;
+    padding: 2.5rem;
+    backdrop-filter: blur(30px);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    position: relative;
+  }
+  .auth-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(34,211,238,0.4), transparent);
+  }
+  .auth-card-header { text-align: center; margin-bottom: 2rem; }
+  .auth-card-title { font-size: 1.8rem; font-weight: 700; color: #f1f5f9; margin-bottom: 0.5rem; }
+  .auth-card-subtitle { font-size: 0.9rem; color: #64748b; }
+
+  .auth-error {
+    display: none;
+    align-items: center; gap: 0.5rem;
+    padding: 0.85rem 1rem;
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.25);
+    border-radius: 12px;
+    color: #ef4444; font-size: 0.85rem;
+    margin-bottom: 1rem;
+  }
+  .auth-error.show { display: flex; }
+
+  .auth-form { display: flex; flex-direction: column; gap: 1.25rem; }
+  .form-group { position: relative; }
+  .form-label {
+    display: block; font-size: 0.85rem; font-weight: 600;
+    color: #94a3b8; margin-bottom: 0.5rem;
+  }
+  .input-group { position: relative; display: flex; align-items: center; }
+  .input-icon {
+    position: absolute; left: 1rem; font-size: 1rem;
+    color: #64748b; pointer-events: none; z-index: 2;
+  }
+  .form-input {
+    width: 100%;
+    padding: 0.85rem 1rem 0.85rem 2.75rem;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    color: #f1f5f9; font-size: 0.95rem;
+    font-family: inherit; outline: none;
+    transition: all 0.2s ease;
+  }
+  .form-input::placeholder { color: #475569; }
+  .form-input:focus {
+    border-color: #22d3ee;
+    background: rgba(34,211,238,0.05);
+    box-shadow: 0 0 0 3px rgba(34,211,238,0.1);
+  }
+  .form-input.error { border-color: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,0.1); }
+  .input-toggle {
+    position: absolute; right: 0.75rem;
+    background: none; border: none; color: #64748b;
+    cursor: pointer; padding: 0.25rem;
+    font-size: 1.1rem; z-index: 2;
+  }
+  .input-toggle:hover { color: #22d3ee; }
+  .form-error {
+    display: none; font-size: 0.8rem;
+    color: #ef4444; margin-top: 0.35rem;
+  }
+  .form-error.show { display: block; }
+
+  .auth-submit {
+    width: 100%; padding: 0.95rem;
+    font-size: 1rem; font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, #22d3ee, #8b5cf6);
+    border: none; border-radius: 9999px;
+    cursor: pointer; transition: all 0.25s ease;
+    box-shadow: 0 4px 20px rgba(34,211,238,0.25);
+    margin-top: 0.5rem; font-family: inherit;
+    position: relative;
+  }
+  .auth-submit:hover:not(:disabled) {
+    box-shadow: 0 6px 30px rgba(34,211,238,0.4);
+    transform: translateY(-2px);
+  }
+  .auth-submit:active { transform: scale(0.97); }
+  .auth-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+  .auth-submit .btn-text { transition: opacity 0.2s ease; }
+  .auth-submit.loading .btn-text { opacity: 0; }
+  .auth-submit .btn-loader {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px; height: 20px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: none;
+  }
+  .auth-submit.loading .btn-loader { display: block; }
+  @keyframes spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
+
+  .auth-options {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 0.85rem; color: #94a3b8;
+  }
+  .form-check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .form-check input { accent-color: #22d3ee; }
+
+  .auth-footer {
+    text-align: center; margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    font-size: 0.9rem; color: #64748b;
+  }
+  .auth-link {
+    color: #22d3ee; text-decoration: none;
+    font-weight: 600; margin-left: 4px;
+  }
+  .auth-link:hover { text-decoration: underline; }
+
+  @media (max-width: 768px) {
+    .auth-page { flex-direction: column; }
+    .auth-left { min-height: 32vh; padding: 2rem 1.5rem; }
+    .auth-orb-wrapper { width: 120px; height: 120px; margin-bottom: 1.5rem; }
+    .auth-orb { width: 80px; height: 80px; }
+    .auth-orb-ring:nth-of-type(1) { width: 100px; height: 100px; }
+    .auth-orb-ring:nth-of-type(2) { width: 120px; height: 120px; }
+    .auth-tagline { font-size: 1.05rem; }
+    .auth-right { padding: 1.5rem 1rem; }
+    .auth-card { padding: 1.75rem; }
+    .auth-card-title { font-size: 1.4rem; }
+  }
+</style>
 </head>
 <body>
 
@@ -14,7 +225,7 @@
   <div class="auth-left">
     <div class="auth-left-content">
       <div class="auth-brand">
-        <div class="auth-brand-logo">N</div>
+        <img src="assets/images/nova-logo.svg" alt="NOVA" class="auth-brand-logo">
         <div class="auth-brand-text">NOVA</div>
       </div>
       <div class="auth-orb-wrapper">
@@ -39,25 +250,25 @@
         <span id="loginErrorText">Invalid email or password.</span>
       </div>
 
-      <form class="auth-form" id="loginForm" novalidate autocomplete="off">
+      <form class="auth-form" id="login-form" novalidate autocomplete="off">
 
         <div class="form-group">
-          <label class="form-label" for="loginEmail">Email</label>
+          <label class="form-label" for="email">Email</label>
           <div class="input-group">
             <span class="input-icon">✉️</span>
-            <input type="email" id="loginEmail" class="form-input" placeholder="you@example.com">
+            <input type="email" id="email" class="form-input" placeholder="you@example.com">
           </div>
-          <div class="form-error" id="loginEmailError">Please enter a valid email.</div>
+          <div class="form-error" id="emailError">Please enter a valid email.</div>
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="loginPassword">Password</label>
+          <label class="form-label" for="password">Password</label>
           <div class="input-group">
             <span class="input-icon">🔒</span>
-            <input type="password" id="loginPassword" class="form-input" placeholder="Enter your password">
-            <button type="button" class="input-toggle" id="toggleLoginPassword" tabindex="-1">👁️</button>
+            <input type="password" id="password" class="form-input" placeholder="Enter your password">
+            <button type="button" class="input-toggle" id="togglePassword" tabindex="-1">👁️</button>
           </div>
-          <div class="form-error" id="loginPasswordError">Password is required.</div>
+          <div class="form-error" id="passwordError">Password is required.</div>
         </div>
 
         <div class="auth-options">
@@ -68,8 +279,9 @@
           <a href="#" class="auth-link">Forgot password?</a>
         </div>
 
-        <button type="submit" class="btn btn-primary auth-submit" id="loginSubmit">
+        <button type="submit" class="auth-submit" id="loginSubmit">
           <span class="btn-text">Sign In</span>
+          <span class="btn-loader"></span>
         </button>
       </form>
 
@@ -82,38 +294,77 @@
 </div>
 
 <script>
-document.getElementById("loginForm").addEventListener("submit", function (e) {
+/* =========================================================
+   NOVA — Login (wired to backend)
+   ========================================================= */
+var API_BASE = "https://nova-voice-assistant-6vve.onrender.com";
+
+document.getElementById("login-form").addEventListener("submit", async function (e) {
   e.preventDefault();
 
-  var email = document.getElementById("loginEmail").value.trim();
-  var pass  = document.getElementById("loginPassword").value;
+  var emailInput = document.getElementById("email");
+  var passwordInput = document.getElementById("password");
+  var submitBtn = document.getElementById("loginSubmit");
+  var errorBox = document.getElementById("loginError");
+  var errorText = document.getElementById("loginErrorText");
 
-  document.getElementById("loginEmailError").classList.remove("show");
-  document.getElementById("loginPasswordError").classList.remove("show");
-  document.getElementById("loginError").classList.remove("show");
+  var email = emailInput.value.trim();
+  var password = passwordInput.value;
+
+  // Reset errors
+  document.getElementById("emailError").classList.remove("show");
+  document.getElementById("passwordError").classList.remove("show");
+  emailInput.classList.remove("error");
+  passwordInput.classList.remove("error");
+  errorBox.classList.remove("show");
 
   var bad = false;
-  if (email.indexOf("@") === -1 || email.indexOf(".") === -1) {
-    document.getElementById("loginEmailError").classList.add("show");
+  if (!email || email.indexOf("@") === -1 || email.indexOf(".") === -1) {
+    document.getElementById("emailError").classList.add("show");
+    emailInput.classList.add("error");
     bad = true;
   }
-  if (pass.length < 6) {
-    document.getElementById("loginPasswordError").classList.add("show");
+  if (!password || password.length < 6) {
+    document.getElementById("passwordError").classList.add("show");
+    passwordInput.classList.add("error");
     bad = true;
   }
   if (bad) return;
 
-  // Save + redirect
-  var stored = localStorage.getItem("nova-user-name") || email.split("@")[0];
-  localStorage.setItem("nova-user-name", stored);
-  localStorage.setItem("nova-auth-token", "token-" + Date.now());
-  window.location.href = "dashboard.html";
+  submitBtn.classList.add("loading");
+  submitBtn.disabled = true;
+
+  try {
+    var res = await fetch(API_BASE + "/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email, password: password })
+    });
+
+    var data = await res.json();
+
+    if (res.ok && data.success) {
+      localStorage.setItem("nova-auth-token", data.access_token);
+      localStorage.setItem("nova-user-name", data.user && data.user.name ? data.user.name : "User");
+      window.location.href = "dashboard.html";
+    } else {
+      throw new Error(data.error || "Invalid credentials");
+    }
+  } catch (err) {
+    errorText.textContent = err.message || "Login failed. Please try again.";
+    errorBox.classList.add("show");
+    submitBtn.classList.remove("loading");
+    submitBtn.disabled = false;
+  }
 });
 
-// password toggle
-document.getElementById("toggleLoginPassword").addEventListener("click", function(){
-  var p = document.getElementById("loginPassword");
-  p.type = p.type === "password" ? "text" : "password";
+// Password toggle
+document.getElementById("togglePassword").addEventListener("click", function (e) {
+  e.preventDefault();
+  var p = document.getElementById("password");
+  var isPwd = p.type === "password";
+  p.type = isPwd ? "text" : "password";
+  this.textContent = isPwd ? "🙈" : "👁️";
 });
 </script>
 </body>
