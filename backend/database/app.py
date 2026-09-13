@@ -6,6 +6,7 @@ import smtplib
 import uuid
 import hashlib
 import secrets
+import json
 import google.genai as genai
 from google.genai import types
 from pgvector import Vector
@@ -14,6 +15,8 @@ from pgvector.psycopg import register_vector
 from datetime import datetime, timedelta, timezone
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
 
 from dotenv import load_dotenv
 
@@ -31,6 +34,7 @@ DEVICE_ACTION_INTENTS = [
  "OPEN_FOLDER",
  "CREATE_FOLDER",
  "FIND_FILE",
+ "OPEN_URL"
  "MUTE",
  "UNMUTE",
  "VOLUME_UP",
@@ -116,21 +120,41 @@ def get_connection():
 # ============================================================
 
 def send_email(recipient, subject, body):
+    resend_api_key = os.getenv("RESEND_API_KEY")
 
-    sender = os.getenv("EMAIL_ADDRESS")
-    password = os.getenv("EMAIL_APP_PASSWORD")
+    if not resend_api_key:
+        raise Exception("RESEND_API_KEY is not configured")
 
-    msg = MIMEMultipart()
-    msg["From"] = sender
-    msg["To"] = recipient
-    msg["Subject"] = subject
+    payload = {
+        "from": "NOVA <onboarding@resend.dev>",
+        "to": [recipient],
+        "subject": subject,
+        "text": body
+    }
 
-    msg.attach(MIMEText(body, "plain"))
+    data = json.dumps(payload).encode("utf-8")
 
-    with smtplib.SMTP("smtp.gmail.com", 587) as server:
-        server.starttls()
-        server.login(sender, password)
-        server.send_message(msg)
+    req = Request(
+        "https://api.resend.com/emails",
+        data=data,
+        headers={
+            "Authorization": f"Bearer {resend_api_key}",
+            "Content-Type": "application/json"
+        },
+        method="POST"
+    )
+
+    try:
+        with urlopen(req, timeout=15) as response:
+            response_data = response.read().decode("utf-8")
+            return json.loads(response_data)
+
+    except HTTPError as e:
+        error_body = e.read().decode("utf-8")
+        raise Exception(f"Resend API error: {error_body}")
+
+    except URLError as e:
+        raise Exception(f"Email connection error: {e}")
 
 
 
