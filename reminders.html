@@ -16,13 +16,16 @@
   }
   .dashboard-layout { display: flex; min-height: 100vh; }
 
+  /* ============ SIDEBAR ============ */
   .sidebar {
     width: 260px;
     background: rgba(10,12,26,0.85);
     border-right: 1px solid rgba(255,255,255,0.06);
     padding: 20px 12px;
-    position: fixed; top: 0; left: 0;
-    height: 100vh; overflow-y: auto;
+    position: fixed;
+    top: 0; left: 0;
+    height: 100vh;
+    overflow-y: auto;
   }
   .sidebar-header {
     display: flex; align-items: center; gap: 12px;
@@ -31,7 +34,8 @@
     margin-bottom: 12px;
   }
   .sidebar-logo-img {
-    width: 40px; height: 40px; border-radius: 12px;
+    width: 40px; height: 40px;
+    border-radius: 12px;
     box-shadow: 0 4px 16px rgba(34,211,238,0.3);
   }
   .sidebar-brand {
@@ -72,6 +76,7 @@
   .nav-icon svg { width: 18px; height: 18px; stroke-width: 1.8; }
   .nav-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 12px; }
 
+  /* ============ MAIN ============ */
   .main-content { flex: 1; margin-left: 260px; min-height: 100vh; }
   .topbar {
     height: 72px; display: flex; align-items: center; justify-content: space-between;
@@ -95,8 +100,7 @@
   .notification-dot {
     position: absolute; top: 8px; right: 8px;
     width: 8px; height: 8px; border-radius: 50%;
-    background: #22d3ee;
-    box-shadow: 0 0 8px rgba(34,211,238,0.6);
+    background: #22d3ee; box-shadow: 0 0 8px rgba(34,211,238,0.6);
   }
   .avatar {
     width: 40px; height: 40px; border-radius: 50%;
@@ -107,49 +111,23 @@
 
   .page-content { padding: 32px; }
 
+  /* ============ TOOLBAR ============ */
   .reminders-toolbar {
     display: flex; align-items: center; justify-content: space-between;
-    gap: 16px; margin-bottom: 32px; flex-wrap: wrap;
+    gap: 16px; margin-bottom: 24px; flex-wrap: wrap;
   }
-  .reminders-toolbar-left {
-    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  .toolbar-left {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
   }
-  .search-bar { position: relative; display: flex; align-items: center; }
-  .search-bar input {
-    padding: 10px 16px 10px 42px;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 9999px; color: #f1f5f9;
-    font-size: 0.9rem; outline: none;
-    transition: all 0.2s ease;
+  .count-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px;
+    background: rgba(34,211,238,0.08);
+    border: 1px solid rgba(34,211,238,0.2);
+    border-radius: 9999px;
+    font-size: 0.8rem; font-weight: 600;
+    color: #22d3ee;
   }
-  .search-bar input::placeholder { color: #475569; }
-  .search-bar input:focus {
-    border-color: #22d3ee;
-    box-shadow: 0 0 0 3px rgba(34,211,238,0.1);
-  }
-  .search-icon {
-    position: absolute; left: 14px;
-    font-size: 1rem; color: #64748b; pointer-events: none;
-  }
-  .tabs {
-    display: flex; gap: 4px; padding: 4px;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 10px;
-  }
-  .tab {
-    padding: 8px 18px; font-size: 0.85rem; font-weight: 600;
-    color: #64748b; background: transparent;
-    border: 0; border-radius: 8px; cursor: pointer;
-    transition: all 0.2s ease;
-  }
-  .tab:hover { color: #94a3b8; }
-  .tab.active {
-    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
-    color: #fff; box-shadow: 0 2px 12px rgba(34,211,238,0.25);
-  }
-
   .btn {
     display: inline-flex; align-items: center; justify-content: center;
     gap: 8px; padding: 10px 22px;
@@ -157,16 +135,19 @@
     border-radius: 9999px; border: 0; cursor: pointer;
     font-family: inherit; transition: all 0.2s ease;
   }
-  .btn-primary {
-    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
-    color: #fff;
-    box-shadow: 0 4px 20px rgba(34,211,238,0.25);
+  .btn-ghost {
+    background: rgba(255,255,255,0.04);
+    color: #94a3b8;
+    border: 1px solid rgba(255,255,255,0.08);
   }
-  .btn-primary:hover {
-    box-shadow: 0 6px 30px rgba(34,211,238,0.4);
-    transform: translateY(-2px);
+  .btn-ghost:hover {
+    background: rgba(255,255,255,0.07);
+    color: #f1f5f9;
+    border-color: rgba(34,211,238,0.3);
   }
+  .btn-ghost svg { width: 16px; height: 16px; stroke-width: 2; }
 
+  /* ============ LIST ============ */
   .reminders-list {
     display: flex; flex-direction: column; gap: 12px;
   }
@@ -183,70 +164,76 @@
     transform: translateX(4px);
     box-shadow: 0 4px 20px rgba(0,0,0,0.3);
   }
-  .reminder-card.completed { opacity: 0.55; }
-  .reminder-card.completed .reminder-title { text-decoration: line-through; }
-
-  .reminder-check {
-    width: 24px; height: 24px; border-radius: 50%;
-    border: 2px solid rgba(255,255,255,0.1);
-    background: transparent;
+  .reminder-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    background: rgba(34,211,238,0.08);
+    border: 1px solid rgba(34,211,238,0.15);
     display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0; color: transparent;
-    font-size: 0.7rem; font-weight: 700;
+    color: #22d3ee;
+    flex-shrink: 0;
   }
-  .reminder-card.completed .reminder-check {
-    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
-    border-color: transparent; color: #fff;
-  }
+  .reminder-icon svg { width: 20px; height: 20px; stroke-width: 1.8; }
 
   .reminder-content { flex: 1; min-width: 0; }
   .reminder-title {
     font-size: 1rem; font-weight: 600;
     color: #f1f5f9; margin-bottom: 6px;
+    word-break: break-word;
   }
   .reminder-meta {
     display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    font-size: 0.82rem; color: #64748b;
   }
-  .reminder-time { font-size: 0.85rem; color: #94a3b8; }
-
-  .badge {
+  .reminder-meta .badge {
     display: inline-flex; align-items: center;
     padding: 3px 10px;
     font-size: 0.7rem; font-weight: 700;
-    border-radius: 9999px; letter-spacing: 0.03em;
+    border-radius: 9999px;
+    background: rgba(34,211,238,0.12);
+    color: #22d3ee;
+    border: 1px solid rgba(34,211,238,0.2);
   }
-  .badge-cyan  { background: rgba(34,211,238,0.12); color: #22d3ee; border: 1px solid rgba(34,211,238,0.2); }
-  .badge-amber { background: rgba(245,158,11,0.12); color: #f59e0b; border: 1px solid rgba(245,158,11,0.2); }
-  .badge-red   { background: rgba(239,68,68,0.12);  color: #ef4444; border: 1px solid rgba(239,68,68,0.2); }
 
-  .reminder-actions {
-    display: flex; gap: 4px;
-    opacity: 0; transition: opacity 0.2s ease;
+  /* ============ STATES ============ */
+  .state-box {
+    padding: 48px 32px;
+    text-align: center;
+    color: #64748b;
+    font-size: 0.95rem;
   }
-  .reminder-card:hover .reminder-actions { opacity: 1; }
-  .btn-icon-sm {
-    width: 36px; height: 36px; border-radius: 8px;
-    background: transparent; border: 0; color: #94a3b8;
-    cursor: pointer; display: inline-flex;
-    align-items: center; justify-content: center;
-    transition: all 0.2s ease;
+  .state-box .state-icon {
+    font-size: 3rem; opacity: 0.5;
+    margin-bottom: 16px;
   }
-  .btn-icon-sm svg { width: 16px; height: 16px; stroke-width: 2; }
-  .btn-icon-sm:hover { background: rgba(255,255,255,0.05); color: #f1f5f9; }
+  .state-box.error { color: #ef4444; }
+  .state-box.loading {
+    display: flex; flex-direction: column; align-items: center; gap: 16px;
+  }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid rgba(255,255,255,0.08);
+    border-top-color: #22d3ee;
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
+  /* ============ RESPONSIVE ============ */
   @media (max-width: 768px) {
     .sidebar { transform: translateX(-100%); }
     .main-content { margin-left: 0; }
     .page-content { padding: 20px 16px; }
     .reminders-toolbar { flex-direction: column; align-items: stretch; }
-    .reminders-toolbar-left { flex-direction: column; align-items: stretch; }
-    .reminder-actions { opacity: 1; }
+    .toolbar-left { flex-direction: column; align-items: stretch; }
   }
 </style>
 </head>
 <body>
 
 <div class="dashboard-layout">
+
+  <!-- ============ SIDEBAR ============ -->
   <aside class="sidebar">
     <div class="sidebar-header">
       <img src="assets/images/nova-logo.svg" alt="NOVA" class="sidebar-logo-img">
@@ -256,6 +243,9 @@
       <div class="nav-section-label">Main</div>
       <a href="dashboard.html" class="nav-item">
         <i data-lucide="layout-dashboard" class="nav-icon"></i><span>Dashboard</span>
+      </a>
+      <a href="#" class="nav-item">
+        <i data-lucide="sparkles" class="nav-icon"></i><span>Assistant</span>
       </a>
       <div class="nav-section-label">Organize</div>
       <a href="reminders.html" class="nav-item active">
@@ -280,12 +270,13 @@
       <a href="profile.html" class="nav-item">
         <i data-lucide="settings" class="nav-icon"></i><span>Profile</span>
       </a>
-      <a href="login.html" class="nav-item">
+      <a href="login.html" class="nav-item" id="logoutBtn">
         <i data-lucide="log-out" class="nav-icon"></i><span>Logout</span>
       </a>
     </nav>
   </aside>
 
+  <!-- ============ MAIN ============ -->
   <div class="main-content">
     <header class="topbar">
       <div>
@@ -293,115 +284,210 @@
         <div class="greeting-subtitle">Stay ahead of your day.</div>
       </div>
       <div class="topbar-right">
-        <button class="topbar-icon-btn">
+        <button class="topbar-icon-btn" id="notifBtn">
           <i data-lucide="bell"></i>
           <span class="notification-dot"></span>
         </button>
-        <div class="avatar">AS</div>
+        <div class="avatar" id="avatarInitial">U</div>
       </div>
     </header>
 
     <div class="page-content">
       <div class="reminders-toolbar">
-        <div class="reminders-toolbar-left">
-          <div class="search-bar">
-            <span class="search-icon">🔍</span>
-            <input type="text" placeholder="Search reminders...">
-          </div>
-          <div class="tabs">
-            <button class="tab active">All</button>
-            <button class="tab">Today</button>
-            <button class="tab">Upcoming</button>
-            <button class="tab">Completed</button>
+        <div class="toolbar-left">
+          <div class="count-badge">
+            <i data-lucide="clock" style="width:14px;height:14px;"></i>
+            <span id="countText">Loading...</span>
           </div>
         </div>
-        <button class="btn btn-primary">+ New Reminder</button>
+        <button class="btn btn-ghost" id="refreshBtn">
+          <i data-lucide="refresh-cw"></i> Refresh
+        </button>
       </div>
 
-      <div class="reminders-list">
-
-        <div class="reminder-card">
-          <div class="reminder-check">✓</div>
-          <div class="reminder-content">
-            <div class="reminder-title">Study Python</div>
-            <div class="reminder-meta">
-              <span class="reminder-time">Today · 7:00 PM</span>
-              <span class="badge badge-red">high</span>
-            </div>
-          </div>
-          <div class="reminder-actions">
-            <button class="btn-icon-sm"><i data-lucide="pencil"></i></button>
-            <button class="btn-icon-sm"><i data-lucide="trash-2"></i></button>
-          </div>
-        </div>
-
-        <div class="reminder-card">
-          <div class="reminder-check">✓</div>
-          <div class="reminder-content">
-            <div class="reminder-title">Submit assignment</div>
-            <div class="reminder-meta">
-              <span class="reminder-time">Tomorrow · 11:59 PM</span>
-              <span class="badge badge-red">high</span>
-            </div>
-          </div>
-          <div class="reminder-actions">
-            <button class="btn-icon-sm"><i data-lucide="pencil"></i></button>
-            <button class="btn-icon-sm"><i data-lucide="trash-2"></i></button>
-          </div>
-        </div>
-
-        <div class="reminder-card">
-          <div class="reminder-check">✓</div>
-          <div class="reminder-content">
-            <div class="reminder-title">Team meeting</div>
-            <div class="reminder-meta">
-              <span class="reminder-time">Friday · 3:00 PM</span>
-              <span class="badge badge-amber">medium</span>
-            </div>
-          </div>
-          <div class="reminder-actions">
-            <button class="btn-icon-sm"><i data-lucide="pencil"></i></button>
-            <button class="btn-icon-sm"><i data-lucide="trash-2"></i></button>
-          </div>
-        </div>
-
-        <div class="reminder-card completed">
-          <div class="reminder-check">✓</div>
-          <div class="reminder-content">
-            <div class="reminder-title">Gym session</div>
-            <div class="reminder-meta">
-              <span class="reminder-time">Today · 6:00 AM</span>
-              <span class="badge badge-cyan">low</span>
-            </div>
-          </div>
-          <div class="reminder-actions">
-            <button class="btn-icon-sm"><i data-lucide="pencil"></i></button>
-            <button class="btn-icon-sm"><i data-lucide="trash-2"></i></button>
-          </div>
-        </div>
-
-        <div class="reminder-card">
-          <div class="reminder-check">✓</div>
-          <div class="reminder-content">
-            <div class="reminder-title">Call parents</div>
-            <div class="reminder-meta">
-              <span class="reminder-time">Sunday · 10:00 AM</span>
-              <span class="badge badge-amber">medium</span>
-            </div>
-          </div>
-          <div class="reminder-actions">
-            <button class="btn-icon-sm"><i data-lucide="pencil"></i></button>
-            <button class="btn-icon-sm"><i data-lucide="trash-2"></i></button>
-          </div>
-        </div>
-
-      </div>
+      <div class="reminders-list" id="data-list"></div>
     </div>
   </div>
 </div>
 
 <script>
+/* =========================================================
+   NOVA — Reminders (wired to POST /api/assistant)
+   Intent: GET_REMINDERS
+   Response: { success, count, total, reminders: [{ id, task, time, created_at }] }
+   ========================================================= */
+
+var API_BASE = "https://nova-voice-assistant-6vve.onrender.com";
+var INTENT   = "GET_REMINDERS";
+var DATA_KEY = "reminders";
+
+document.addEventListener("DOMContentLoaded", function () {
+  // Set avatar initial from stored user name
+  var name = localStorage.getItem("nova-user-name") || "User";
+  var avatar = document.getElementById("avatarInitial");
+  if (avatar) avatar.textContent = (name.charAt(0) || "U").toUpperCase();
+
+  // Lucide icons
   if (window.lucide) lucide.createIcons();
+
+  // Logout
+  var logoutBtn = document.getElementById("logoutBtn");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+      localStorage.removeItem("nova-auth-token");
+      localStorage.removeItem("nova-user-name");
+      localStorage.removeItem("nova-user-email");
+      localStorage.removeItem("nova-user-id");
+      window.location.href = "login.html";
+    });
+  }
+
+  // Notifications
+  var notifBtn = document.getElementById("notifBtn");
+  if (notifBtn) {
+    notifBtn.addEventListener("click", function () {
+      showToast("info", "🔔 Notifications", "You have 3 new notifications.");
+    });
+  }
+
+  // Refresh button
+  var refreshBtn = document.getElementById("refreshBtn");
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", loadData);
+  }
+
+  // Initial load
+  loadData();
+});
+
+/* ---------- Load data ---------- */
+async function loadData() {
+  var token = localStorage.getItem("nova-auth-token");
+  if (!token) {
+    window.location.href = "login.html";
+    return;
+  }
+
+  var container = document.getElementById("data-list");
+  var countText = document.getElementById("countText");
+  if (!container) return;
+
+  // Loading state
+  container.innerHTML = '<div class="state-box loading"><div class="spinner"></div><div>Loading your reminders...</div></div>';
+  if (countText) countText.textContent = "Loading...";
+
+  try {
+    var res = await fetch(API_BASE + "/api/assistant", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+      },
+      body: JSON.stringify({ intent: INTENT, data: {} })
+    });
+
+    if (res.status === 401) {
+      localStorage.removeItem("nova-auth-token");
+      window.location.href = "login.html";
+      return;
+    }
+
+    var data = await res.json();
+
+    if (!data.success) {
+      container.innerHTML = '<div class="state-box error">⚠️ ' + (data.error || "Could not load reminders.") + '</div>';
+      if (countText) countText.textContent = "Error";
+      return;
+    }
+
+    var items = data[DATA_KEY] || [];
+
+    // Update count
+    if (countText) {
+      countText.textContent = items.length + (items.length === 1 ? " reminder" : " reminders");
+    }
+
+    if (items.length === 0) {
+      container.innerHTML =
+        '<div class="state-box">' +
+          '<div class="state-icon">⏰</div>' +
+          '<div>No reminders yet. Ask NOVA to add one!</div>' +
+        '</div>';
+      return;
+    }
+
+    // Render items
+    var html = "";
+    items.forEach(function (r) {
+      html += renderRow(r);
+    });
+    container.innerHTML = html;
+
+    // Re-render icons inside new rows
+    if (window.lucide) lucide.createIcons();
+  } catch (err) {
+    console.error("Load error:", err);
+    container.innerHTML =
+      '<div class="state-box error">' +
+        '⚠️ Could not connect to server.<br>' +
+        '<span style="font-size:0.85rem;color:#94a3b8;">If the server is cold, wait 30 seconds and click Refresh.</span>' +
+      '</div>';
+    if (countText) countText.textContent = "Offline";
+  }
+}
+
+/* ---------- Row template ---------- */
+function renderRow(r) {
+  var time = r.time || "";
+  var created = r.created_at || "";
+
+  return (
+    '<div class="reminder-card">' +
+      '<div class="reminder-icon"><i data-lucide="clock"></i></div>' +
+      '<div class="reminder-content">' +
+        '<div class="reminder-title">' + escapeHtml(r.task || "Untitled") + '</div>' +
+        '<div class="reminder-meta">' +
+          (time ? '<span class="badge">' + escapeHtml(time) + '</span>' : '') +
+          (created ? '<span>Created ' + escapeHtml(created) + '</span>' : '') +
+        '</div>' +
+      '</div>' +
+    '</div>'
+  );
+}
+
+/* ---------- Helpers ---------- */
+function escapeHtml(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+/* ---------- Toast ---------- */
+function showToast(type, title, message) {
+  var container = document.querySelector(".toast-container");
+  if (!container) {
+    container = document.createElement("div");
+    container.className = "toast-container";
+    container.style.cssText = "position:fixed;top:20px;right:20px;z-index:2000;display:flex;flex-direction:column;gap:8px;pointer-events:none;";
+    document.body.appendChild(container);
+  }
+  var icons = { success: "✅", error: "❌", info: "ℹ️", warning: "⚠️" };
+  var t = document.createElement("div");
+  t.style.cssText = "display:flex;align-items:center;gap:12px;padding:14px 20px;background:#0a0c1a;border:1px solid rgba(255,255,255,0.1);border-radius:12px;min-width:280px;max-width:380px;pointer-events:auto;box-shadow:0 10px 40px rgba(0,0,0,0.4);color:#f1f5f9;font-size:0.9rem;";
+  t.innerHTML =
+    '<span>' + (icons[type] || "ℹ️") + '</span>' +
+    '<div>' +
+      '<div style="font-weight:600;">' + title + '</div>' +
+      (message ? '<div style="font-size:0.8rem;color:#94a3b8;margin-top:2px;">' + message + '</div>' : '') +
+    '</div>';
+  container.appendChild(t);
+  setTimeout(function () { t.remove(); }, 4000);
+}
 </script>
 </body>
 </html>
