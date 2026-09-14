@@ -1,311 +1,728 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Profile — NOVA</title>
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/components.css">
-  <link rel="stylesheet" href="css/dashboard.css">
-  <style>
-    .profile-header {
-      display: flex;
-      align-items: center;
-      gap: var(--space-xl);
-      margin-bottom: var(--space-2xl);
-      flex-wrap: wrap;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile — NOVA</title>
+<link rel="icon" type="image/svg+xml" href="assets/images/nova-logo.svg">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #05060f;
+    color: #f1f5f9;
+    min-height: 100vh;
+  }
+  .dashboard-layout { display: flex; min-height: 100vh; }
 
-    .profile-info {
-      flex: 1;
-      min-width: 200px;
-    }
+  /* SIDEBAR */
+  .sidebar {
+    width: 260px;
+    background: rgba(10,12,26,0.85);
+    border-right: 1px solid rgba(255,255,255,0.06);
+    padding: 20px 12px;
+    position: fixed;
+    top: 0; left: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .sidebar-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 12px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    margin-bottom: 12px;
+  }
+  .sidebar-logo-img {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(34,211,238,0.3);
+  }
+  .sidebar-brand {
+    font-size: 1.3rem; font-weight: 700; letter-spacing: 0.05em;
+    background: linear-gradient(135deg, #22d3ee, #8b5cf6, #ec4899);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .nav-section-label {
+    font-size: 0.7rem; font-weight: 700; color: #475569;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    padding: 16px 12px 6px;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 10px;
+    color: #64748b; text-decoration: none;
+    font-size: 0.9rem; font-weight: 500;
+    transition: all 0.2s ease; position: relative;
+    margin-bottom: 2px;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.04); color: #f1f5f9; }
+  .nav-item.active {
+    background: rgba(34,211,238,0.08); color: #22d3ee; font-weight: 600;
+  }
+  .nav-item.active::before {
+    content: ''; position: absolute;
+    left: 0; top: 50%; transform: translateY(-50%);
+    width: 3px; height: 60%;
+    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
+    border-radius: 0 4px 4px 0;
+    box-shadow: 0 0 12px rgba(34,211,238,0.5);
+  }
+  .nav-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; flex-shrink: 0;
+  }
+  .nav-icon svg { width: 18px; height: 18px; stroke-width: 1.8; }
+  .nav-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 12px; }
 
-    .profile-name {
-      font-family: var(--font-display);
-      font-size: 1.6rem;
-      font-weight: 700;
-      color: var(--text-primary);
-      margin-bottom: var(--space-xs);
-    }
+  /* MAIN */
+  .main-content { flex: 1; margin-left: 260px; min-height: 100vh; }
+  .topbar {
+    height: 72px; display: flex; align-items: center; justify-content: space-between;
+    padding: 0 32px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    background: rgba(10,12,26,0.6);
+    backdrop-filter: blur(20px);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .greeting-title { font-size: 1.1rem; font-weight: 700; color: #f1f5f9; }
+  .greeting-subtitle { font-size: 0.8rem; color: #94a3b8; }
+  .topbar-right { display: flex; align-items: center; gap: 16px; }
+  .topbar-icon-btn {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: transparent; border: 0; color: #94a3b8;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    position: relative; transition: all 0.2s ease;
+  }
+  .topbar-icon-btn:hover { background: rgba(255,255,255,0.05); color: #f1f5f9; }
+  .topbar-icon-btn svg { width: 20px; height: 20px; stroke-width: 1.8; }
+  .notification-dot {
+    position: absolute; top: 8px; right: 8px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #22d3ee; box-shadow: 0 0 8px rgba(34,211,238,0.6);
+  }
+  .avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.9rem; color: #fff;
+  }
 
-    .profile-username {
-      font-size: 0.9rem;
-      color: var(--text-muted);
-      margin-bottom: var(--space-sm);
-    }
+  .page-content { padding: 32px; }
 
-    .profile-email {
-      font-size: 0.85rem;
-      color: var(--text-dim);
-    }
+  /* PROFILE HEADER */
+  .profile-header {
+    display: flex; align-items: center; gap: 24px;
+    padding: 32px;
+    background: rgba(18,21,45,0.65);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 20px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    position: relative;
+    overflow: hidden;
+  }
+  .profile-header::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(135deg,#22d3ee,#8b5cf6,#ec4899);
+  }
+  .profile-avatar-wrap {
+    position: relative;
+  }
+  .profile-avatar-wrap::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    background: linear-gradient(135deg,#22d3ee,#8b5cf6,#ec4899);
+    z-index: -1;
+    opacity: 0.4;
+    filter: blur(6px);
+  }
+  .profile-avatar {
+    width: 96px; height: 96px;
+    border-radius: 50%;
+    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 2.2rem;
+    color: #fff;
+    box-shadow: 0 8px 32px rgba(34,211,238,0.35);
+    border: 3px solid rgba(255,255,255,0.1);
+  }
+  .profile-info { flex: 1; min-width: 200px; }
+  .profile-name {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #f1f5f9;
+    margin-bottom: 6px;
+    line-height: 1.2;
+  }
+  .profile-username {
+    font-size: 0.95rem;
+    color: #22d3ee;
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+  .profile-email {
+    font-size: 0.9rem;
+    color: #94a3b8;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .profile-email svg { width: 14px; height: 14px; stroke-width: 2; }
+  .profile-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px;
+    background: rgba(34,211,238,0.08);
+    border: 1px solid rgba(34,211,238,0.2);
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #22d3ee;
+    margin-top: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .profile-badge svg { width: 12px; height: 12px; stroke-width: 2.5; }
 
-    .profile-settings {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: var(--space-lg);
-    }
+  /* SETTINGS GRID */
+  .settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 20px;
+  }
+  .settings-card {
+    background: rgba(18,21,45,0.65);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 18px;
+    padding: 24px;
+    transition: all 0.3s ease;
+  }
+  .settings-card:hover {
+    border-color: rgba(255,255,255,0.1);
+  }
+  .settings-card-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 18px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .settings-card-title svg {
+    width: 18px; height: 18px;
+    stroke-width: 2;
+    color: #22d3ee;
+  }
+  .settings-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .settings-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .settings-row:first-of-type { padding-top: 0; }
+  .settings-label {
+    font-size: 0.9rem;
+    color: #f1f5f9;
+    font-weight: 500;
+    margin-bottom: 3px;
+  }
+  .settings-desc {
+    font-size: 0.75rem;
+    color: #64748b;
+  }
+  .settings-value {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    font-weight: 600;
+    text-align: right;
+    word-break: break-all;
+    max-width: 60%;
+  }
 
-    .settings-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-lg);
-      padding: var(--space-lg);
-    }
+  /* Toggle switch */
+  .toggle {
+    position: relative;
+    width: 46px;
+    height: 24px;
+    flex-shrink: 0;
+    display: inline-block;
+  }
+  .toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+  }
+  .toggle-slider {
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 9999px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+  }
+  .toggle-slider::before {
+    content: '';
+    position: absolute;
+    width: 16px; height: 16px;
+    left: 3px; top: 50%;
+    transform: translateY(-50%);
+    background: #64748b;
+    border-radius: 50%;
+    transition: all 0.25s ease;
+  }
+  .toggle input:checked + .toggle-slider {
+    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
+    border-color: transparent;
+  }
+  .toggle input:checked + .toggle-slider::before {
+    transform: translateY(-50%) translateX(22px);
+    background: #fff;
+  }
 
-    .settings-card-title {
-      font-family: var(--font-display);
-      font-size: 1rem;
-      font-weight: 700;
-      color: var(--text-primary);
-      margin-bottom: var(--space-lg);
-      display: flex;
-      align-items: center;
-      gap: var(--space-sm);
-    }
+  /* Badge */
+  .color-swatch {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    display: inline-block;
+  }
 
-    .settings-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: var(--space-md) 0;
-      border-bottom: 1px solid var(--border-subtle);
-    }
+  /* Danger button */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 8px; padding: 10px 22px;
+    font-size: 0.9rem; font-weight: 600;
+    border-radius: 9999px; border: 0; cursor: pointer;
+    font-family: inherit; transition: all 0.2s ease;
+  }
+  .btn-ghost {
+    background: rgba(255,255,255,0.04);
+    color: #94a3b8;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .btn-ghost:hover {
+    background: rgba(255,255,255,0.07);
+    color: #f1f5f9;
+  }
+  .btn-ghost svg { width: 16px; height: 16px; stroke-width: 2; }
+  .btn-danger {
+    background: rgba(239,68,68,0.12);
+    color: #ef4444;
+    border: 1px solid rgba(239,68,68,0.3);
+  }
+  .btn-danger:hover {
+    background: rgba(239,68,68,0.2);
+    border-color: #ef4444;
+  }
+  .btn-sm {
+    padding: 7px 16px;
+    font-size: 0.8rem;
+  }
 
-    .settings-row:last-child {
-      border-bottom: none;
-    }
-
-    .settings-label {
-      font-size: 0.9rem;
-      color: var(--text-secondary);
-    }
-
-    .settings-desc {
-      font-size: 0.75rem;
-      color: var(--text-dim);
-      margin-top: 2px;
-    }
-
-    @media (max-width: 768px) {
-      .profile-header {
-        flex-direction: column;
-        text-align: center;
-      }
-
-      .profile-settings {
-        grid-template-columns: 1fr;
-      }
-    }
-  </style>
+  /* RESPONSIVE */
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); }
+    .main-content { margin-left: 0; }
+    .page-content { padding: 20px 16px; }
+    .profile-header { flex-direction: column; text-align: center; padding: 24px; }
+    .profile-info { text-align: center; }
+    .profile-email { justify-content: center; }
+    .settings-grid { grid-template-columns: 1fr; }
+    .settings-value { max-width: 50%; }
+  }
+</style>
 </head>
 <body>
 
-  <div class="dashboard-layout">
-    <aside class="sidebar" id="sidebar">
-      <div class="sidebar-header">
-        <div class="sidebar-logo">N</div>
-        <div class="sidebar-brand">NOVA</div>
+<div class="dashboard-layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <img src="assets/images/nova-logo.svg" alt="NOVA" class="sidebar-logo-img">
+      <div class="sidebar-brand">NOVA</div>
+    </div>
+    <nav>
+      <div class="nav-section-label">Main</div>
+      <a href="dashboard.html" class="nav-item">
+        <i data-lucide="layout-dashboard" class="nav-icon"></i><span>Dashboard</span>
+      </a>
+      <a href="#" class="nav-item">
+        <i data-lucide="sparkles" class="nav-icon"></i><span>Assistant</span>
+      </a>
+      <div class="nav-section-label">Organize</div>
+      <a href="reminders.html" class="nav-item">
+        <i data-lucide="clock" class="nav-icon"></i><span>Reminders</span>
+      </a>
+      <a href="notes.html" class="nav-item">
+        <i data-lucide="file-text" class="nav-icon"></i><span>Notes</span>
+      </a>
+      <a href="shopping.html" class="nav-item">
+        <i data-lucide="shopping-cart" class="nav-icon"></i><span>Shopping</span>
+      </a>
+      <a href="expenses.html" class="nav-item">
+        <i data-lucide="wallet" class="nav-icon"></i><span>Expenses</span>
+      </a>
+      <a href="study_plans.html" class="nav-item">
+        <i data-lucide="book-open" class="nav-icon"></i><span>Study Plans</span>
+      </a>
+      <a href="goals.html" class="nav-item">
+        <i data-lucide="target" class="nav-icon"></i><span>Goals</span>
+      </a>
+      <div class="nav-divider"></div>
+      <a href="profile.html" class="nav-item active">
+        <i data-lucide="settings" class="nav-icon"></i><span>Profile</span>
+      </a>
+      <a href="login.html" class="nav-item" id="logoutBtn">
+        <i data-lucide="log-out" class="nav-icon"></i><span>Logout</span>
+      </a>
+    </nav>
+  </aside>
+
+  <div class="main-content">
+    <header class="topbar">
+      <div>
+        <div class="greeting-title">Profile & Settings</div>
+        <div class="greeting-subtitle">Manage your account and preferences.</div>
       </div>
-      <nav class="sidebar-nav">
-        <div class="nav-section-label">Main</div>
-        <a href="dashboard.html" class="nav-item"><span class="nav-icon">⌂</span><span class="nav-label">Dashboard</span></a>
-        <div class="nav-section-label">Organize</div>
-        <a href="reminders.html" class="nav-item"><span class="nav-icon">⏰</span><span class="nav-label">Reminders</span></a>
-        <a href="notes.html" class="nav-item"><span class="nav-icon">📝</span><span class="nav-label">Notes</span></a>
-        <a href="shopping.html" class="nav-item"><span class="nav-icon">🛒</span><span class="nav-label">Shopping</span></a>
-        <a href="expenses.html" class="nav-item"><span class="nav-icon">💰</span><span class="nav-label">Expenses</span></a>
-        <a href="study_plans.html" class="nav-item"><span class="nav-icon">📚</span><span class="nav-label">Study Plans</span></a>
-        <a href="goals.html" class="nav-item"><span class="nav-icon">🎯</span><span class="nav-label">Goals</span></a>
-        <div class="nav-divider"></div>
-        <a href="profile.html" class="nav-item active"><span class="nav-icon">⚙</span><span class="nav-label">Profile</span></a>
-        <a href="login.html" class="nav-item"><span class="nav-icon">↪</span><span class="nav-label">Logout</span></a>
-      </nav>
-      <div class="sidebar-footer">
-        <div class="sidebar-user">
-          <div class="avatar avatar-sm">AS</div>
-          <div class="sidebar-user-info">
-            <div class="sidebar-user-name" id="sidebarUserName">Arjun Sharma</div>
-            <div class="sidebar-user-role">Student</div>
+      <div class="topbar-right">
+        <button class="topbar-icon-btn" id="notifBtn">
+          <i data-lucide="bell"></i>
+          <span class="notification-dot"></span>
+        </button>
+        <div class="avatar" id="topbarAvatar">U</div>
+      </div>
+    </header>
+
+    <div class="page-content">
+
+      <!-- Profile header -->
+      <div class="profile-header">
+        <div class="profile-avatar-wrap">
+          <div class="profile-avatar" id="profileAvatar">U</div>
+        </div>
+        <div class="profile-info">
+          <div class="profile-name" id="profileName">Loading...</div>
+          <div class="profile-username" id="profileUsername">@user</div>
+          <div class="profile-email">
+            <i data-lucide="mail"></i>
+            <span id="profileEmail">—</span>
+          </div>
+          <div class="profile-badge">
+            <i data-lucide="sparkles"></i>
+            NOVA User
           </div>
         </div>
       </div>
-    </aside>
 
-    <div class="main-content" id="mainContent">
-      <header class="topbar">
-        <div class="topbar-left">
-          <button class="hamburger" aria-label="Toggle menu">☰</button>
-          <div class="topbar-greeting">
-            <div class="greeting-title">Profile & Settings</div>
-            <div class="greeting-subtitle">Manage your account and preferences.</div>
+      <!-- Settings grid -->
+      <div class="settings-grid">
+
+        <!-- Account -->
+        <div class="settings-card">
+          <div class="settings-card-title">
+            <i data-lucide="user"></i>
+            Account
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">User ID</div>
+              <div class="settings-desc">Your unique account identifier</div>
+            </div>
+            <div class="settings-value" id="profileUserId">—</div>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Email</div>
+              <div class="settings-desc">Used for login</div>
+            </div>
+            <div class="settings-value" id="profileEmail2">—</div>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Session</div>
+              <div class="settings-desc">Sign out of NOVA</div>
+            </div>
+            <button class="btn btn-danger btn-sm" id="logoutBtn2">
+              <i data-lucide="log-out"></i> Logout
+            </button>
           </div>
         </div>
-        <div class="topbar-right">
-          <button class="topbar-icon-btn" data-notifications aria-label="Notifications">🔔<span class="notification-dot"></span></button>
-          <div class="topbar-avatar"><div class="avatar">AS</div></div>
-        </div>
-      </header>
 
-      <div class="page-content">
-        <!-- Profile Header -->
-        <div class="profile-header">
-          <div class="avatar avatar-xl avatar-ring">AS</div>
-          <div class="profile-info">
-            <div class="profile-name" id="profileName">Arjun Sharma</div>
-            <div class="profile-username" id="profileUsername">@arjun_dev</div>
-            <div class="profile-email" id="profileEmail">arjun@example.com</div>
+        <!-- Notifications -->
+        <div class="settings-card">
+          <div class="settings-card-title">
+            <i data-lucide="bell"></i>
+            Notifications
           </div>
-          <button class="btn btn-secondary" id="editProfileBtn">Edit Profile</button>
-        </div>
-
-        <!-- Settings -->
-        <div class="profile-settings">
-          <div class="settings-card">
-            <div class="settings-card-title">🔔 Notifications</div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Reminder alerts</div>
-                <div class="settings-desc">Get notified when reminders are due</div>
-              </div>
-              <label class="toggle">
-                <input type="checkbox" checked>
-                <span class="toggle-slider"></span>
-              </label>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Reminder alerts</div>
+              <div class="settings-desc">Notify when reminders are due</div>
             </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Daily summary</div>
-                <div class="settings-desc">Receive a daily overview of your tasks</div>
-              </div>
-              <label class="toggle">
-                <input type="checkbox" checked>
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Goal milestones</div>
-                <div class="settings-desc">Celebrate when you hit milestones</div>
-              </div>
-              <label class="toggle">
-                <input type="checkbox">
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
+            <label class="toggle">
+              <input type="checkbox" id="prefReminders" checked>
+              <span class="toggle-slider"></span>
+            </label>
           </div>
-
-          <div class="settings-card">
-            <div class="settings-card-title">⚙ Preferences</div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Voice responses</div>
-                <div class="settings-desc">NOVA speaks responses aloud</div>
-              </div>
-              <label class="toggle">
-                <input type="checkbox" checked>
-                <span class="toggle-slider"></span>
-              </label>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Daily summary</div>
+              <div class="settings-desc">Daily overview of your tasks</div>
             </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Auto-save notes</div>
-                <div class="settings-desc">Automatically save notes as you type</div>
-              </div>
-              <label class="toggle">
-                <input type="checkbox" checked>
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Compact mode</div>
-                <div class="settings-desc">Show more content in less space</div>
-              </div>
-              <label class="toggle">
-                <input type="checkbox">
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
+            <label class="toggle">
+              <input type="checkbox" id="prefSummary" checked>
+              <span class="toggle-slider"></span>
+            </label>
           </div>
-
-          <div class="settings-card">
-            <div class="settings-card-title">🎨 Appearance</div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Theme</div>
-                <div class="settings-desc">Dark mode is currently active</div>
-              </div>
-              <span class="badge badge-cyan">Dark</span>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Goal milestones</div>
+              <div class="settings-desc">Celebrate when you hit milestones</div>
             </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Accent color</div>
-                <div class="settings-desc">Cyan & violet gradient</div>
-              </div>
-              <div style="display:flex;gap:6px;">
-                <span style="width:16px;height:16px;border-radius:50%;background:var(--accent-cyan);"></span>
-                <span style="width:16px;height:16px;border-radius:50%;background:var(--accent-violet);"></span>
-              </div>
-            </div>
-          </div>
-
-          <div class="settings-card">
-            <div class="settings-card-title">🔐 Account</div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Change password</div>
-                <div class="settings-desc">Update your account password</div>
-              </div>
-              <button class="btn btn-ghost btn-sm">Change</button>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Export data</div>
-                <div class="settings-desc">Download all your NOVA data</div>
-              </div>
-              <button class="btn btn-ghost btn-sm">Export</button>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label" style="color:var(--accent-red);">Logout</div>
-                <div class="settings-desc">Sign out of your NOVA account</div>
-              </div>
-              <button class="btn btn-danger btn-sm" id="logoutBtn2">Logout</button>
-            </div>
+            <label class="toggle">
+              <input type="checkbox" id="prefGoals">
+              <span class="toggle-slider"></span>
+            </label>
           </div>
         </div>
+
+        <!-- Preferences -->
+        <div class="settings-card">
+          <div class="settings-card-title">
+            <i data-lucide="sliders"></i>
+            Preferences
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Voice responses</div>
+              <div class="settings-desc">NOVA speaks responses aloud</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="prefVoice" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Local device control</div>
+              <div class="settings-desc">Let NOVA open apps and files</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="prefAgent">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Compact mode</div>
+              <div class="settings-desc">Show more in less space</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="prefCompact">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Appearance -->
+        <div class="settings-card">
+          <div class="settings-card-title">
+            <i data-lucide="palette"></i>
+            Appearance
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Theme</div>
+              <div class="settings-desc">Dark mode is active</div>
+            </div>
+            <span class="badge" style="display:inline-flex;align-items:center;gap:4px;padding:4px 12px;background:rgba(34,211,238,0.12);color:#22d3ee;border:1px solid rgba(34,211,238,0.2);border-radius:9999px;font-size:0.75rem;font-weight:700;">Dark</span>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Accent color</div>
+              <div class="settings-desc">Cyan to violet gradient</div>
+            </div>
+            <div style="display:flex;gap:6px;">
+              <span class="color-swatch" style="background:#22d3ee;"></span>
+              <span class="color-swatch" style="background:#8b5cf6;"></span>
+              <span class="color-swatch" style="background:#ec4899;"></span>
+            </div>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Logo</div>
+              <div class="settings-desc">NOVA brand mark</div>
+            </div>
+            <img src="assets/images/nova-logo.svg" alt="NOVA" style="width:32px;height:32px;border-radius:8px;">
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
+</div>
 
-  <script src="js/main.js"></script>
-  <script>
-    // Load user info from localStorage
-    const name = getUserName();
-    const nameEl = document.getElementById('profileName');
-    const sideNameEl = document.getElementById('sidebarUserName');
-    if (nameEl) nameEl.textContent = name;
-    if (sideNameEl) sideNameEl.textContent = name;
+<script>
+/* =========================================================
+   NOVA — Profile (reads from localStorage; no backend endpoint)
+   Data populated at login/register: nova-user-name, nova-user-email, nova-user-id
+   ========================================================= */
 
-    // Logout
-    document.getElementById('logoutBtn2')?.addEventListener('click', () => {
-      localStorage.removeItem('nova-auth-token');
-      localStorage.removeItem('nova-user-name');
-      showToast('info', 'Logged out', 'See you soon!');
-      setTimeout(() => window.location.href = 'login.html', 600);
-    });
+document.addEventListener("DOMContentLoaded", function () {
+  if (window.lucide) lucide.createIcons();
+  loadProfile();
+  initPreferences();
+  initLogout();
+  initNotifications();
+});
 
-    // Edit profile
-    document.getElementById('editProfileBtn')?.addEventListener('click', () => {
-      const newName = prompt('Enter your new full name:', getUserName());
-      if (newName && newName.trim()) {
-        setUserName(newName.trim());
-        document.getElementById('profileName').textContent = newName.trim();
-        document.getElementById('sidebarUserName').textContent = newName.trim();
-        showToast('success', 'Profile updated', 'Your name has been changed.');
+/* ---------- Load profile ---------- */
+function loadProfile() {
+  var token = localStorage.getItem("nova-auth-token");
+  if (!token) {
+    window.location.href = "login.html";
+    return;
+  }
+
+  var name  = localStorage.getItem("nova-user-name")  || "User";
+  var email = localStorage.getItem("nova-user-email") || "—";
+  var id    = localStorage.getItem("nova-user-id")    || "—";
+
+  var initial = (name.charAt(0) || "U").toUpperCase();
+
+  // Avatar (both topbar and profile)
+  var avatar = document.getElementById("profileAvatar");
+  var topbarAvatar = document.getElementById("topbarAvatar");
+  if (avatar) avatar.textContent = initial;
+  if (topbarAvatar) topbarAvatar.textContent = initial;
+
+  // Name + username
+  var nameEl = document.getElementById("profileName");
+  var userEl = document.getElementById("profileUsername");
+  if (nameEl) nameEl.textContent = name;
+  if (userEl) userEl.textContent = "@" + name.toLowerCase().replace(/\s+/g, "_");
+
+  // Email (both places)
+  var emailEl = document.getElementById("profileEmail");
+  var email2El = document.getElementById("profileEmail2");
+  if (emailEl) emailEl.textContent = email;
+  if (email2El) email2El.textContent = email;
+
+  // User ID
+  var idEl = document.getElementById("profileUserId");
+  if (idEl) idEl.textContent = id;
+}
+
+/* ---------- Preferences ---------- */
+function initPreferences() {
+  var prefs = [
+    "prefReminders", "prefSummary", "prefGoals",
+    "prefVoice", "prefAgent", "prefCompact"
+  ];
+
+  prefs.forEach(function (key) {
+    var el = document.getElementById(key);
+    if (!el) return;
+
+    // Restore from localStorage
+    var saved = localStorage.getItem("nova-" + key);
+    if (saved !== null) {
+      el.checked = saved === "true";
+    }
+
+    // Save on change
+    el.addEventListener("change", function () {
+      localStorage.setItem("nova-" + key, el.checked ? "true" : "false");
+
+      // Special handling for agent toggle
+      if (key === "prefAgent") {
+        // Mirror to nova-agent-enabled for the device action handler
+        localStorage.setItem("nova-agent-enabled", el.checked ? "true" : "false");
+        showToast(
+          el.checked ? "success" : "info",
+          el.checked ? "Agent enabled" : "Agent disabled",
+          el.checked ? "NOVA can now control your device." : "Local control turned off."
+        );
+      } else {
+        showToast(
+          "success",
+          "Preference saved",
+          el.checked ? "Enabled" : "Disabled"
+        );
       }
     });
-  </script>
+  });
+
+  // Sync agent toggle on load
+  var agentEl = document.getElementById("prefAgent");
+  if (agentEl) {
+    var agentEnabled = localStorage.getItem("nova-agent-enabled") === "true";
+    if (agentEl.checked !== agentEnabled) {
+      agentEl.checked = agentEnabled;
+    }
+  }
+}
+
+/* ---------- Logout ---------- */
+function initLogout() {
+  function doLogout() {
+    localStorage.removeItem("nova-auth-token");
+    localStorage.removeItem("nova-user-name");
+    localStorage.removeItem("nova-user-email");
+    localStorage.removeItem("nova-user-id");
+    window.location.href = "login.html";
+  }
+
+  var btn1 = document.getElementById("logoutBtn");
+  if (btn1) {
+    btn1.addEventListener("click", function (e) {
+      e.preventDefault();
+      doLogout();
+    });
+  }
+
+  var btn2 = document.getElementById("logoutBtn2");
+  if (btn2) {
+    btn2.addEventListener("click", doLogout);
+  }
+}
+
+/* ---------- Notifications ---------- */
+function initNotifications() {
+  var notifBtn = document.getElementById("notifBtn");
+  if (notifBtn) {
+    notifBtn.addEventListener("click", function () {
+      showToast("info", "🔔 Notifications", "You have 3 new notifications.");
+    });
+  }
+}
+
+/* ---------- Toast ---------- */
+function showToast(type, title, message) {
+  var container = document.querySelector(".toast-container");
+  if (!container) {
+    container = document.createElement("div");
+    container.className = "toast-container";
+    container.style.cssText = "position:fixed;top:20px;right:20px;z-index:2000;display:flex;flex-direction:column;gap:8px;pointer-events:none;";
+    document.body.appendChild(container);
+  }
+  var icons = { success: "✅", error: "❌", info: "ℹ️", warning: "⚠️" };
+  var t = document.createElement("div");
+  t.style.cssText = "display:flex;align-items:center;gap:12px;padding:14px 20px;background:#0a0c1a;border:1px solid rgba(255,255,255,0.1);border-radius:12px;min-width:280px;max-width:380px;pointer-events:auto;box-shadow:0 10px 40px rgba(0,0,0,0.4);color:#f1f5f9;font-size:0.9rem;";
+  t.innerHTML =
+    '<span>' + (icons[type] || "ℹ️") + '</span>' +
+    '<div>' +
+      '<div style="font-weight:600;">' + title + '</div>' +
+      (message ? '<div style="font-size:0.8rem;color:#94a3b8;margin-top:2px;">' + message + '</div>' : '') +
+    '</div>';
+  container.appendChild(t);
+  setTimeout(function () { t.remove(); }, 4000);
+}
+</script>
 </body>
 </html>
