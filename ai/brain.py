@@ -62,8 +62,11 @@ Output: {"intent":"GET_NOTES","mood":"neutral","emoji":"😐","data":{"limit":5,
 User: "show notes about best friend"
 Output: {"intent":"SEARCH_NOTES","mood":"neutral","emoji":"😐","data":{"query":"best friend"},"reply":"Searching your notes about best friend..."}
 
-User: "find notes about my project"
-Output: {"intent":"SEARCH_NOTES","mood":"neutral","emoji":"😐","data":{"query":"my project"},"reply":"Searching your notes..."}
+User: "send an email to firdousfathima275@gmail.com about taking 2 days of leave"
+Output: {"intent":"DRAFT_EMAIL","mood":"neutral","emoji":"😐","data":{"recipient":"firdousfathima275@gmail.com","subject":"Leave Request","body":"Hi Firdous, I would like to take 2 days of leave. Please let me know if this works."},"reply":"Email drafted! Confirm to send."}
+
+User: "send an email to my boss about sick leave"
+Output: {"intent":"DRAFT_EMAIL","mood":"neutral","emoji":"😐","data":{"recipient":"boss","subject":"Sick Leave","body":"Hi, I am feeling unwell today and will be taking a sick day. Thank you for your understanding."},"reply":"Email drafted! Confirm to send."}
 
 User: "open youtube"
 Output: {"intent":"OPEN_URL","mood":"neutral","emoji":"😐","data":{"url":"https://youtube.com"},"reply":"Opening YouTube!"}
@@ -83,7 +86,15 @@ Output: {"intent":"CLOSE_APP","mood":"neutral","emoji":"😐","data":{"app":"cal
 User: "What is Java?"
 Output: {"intent":"GENERAL_CHAT","mood":"neutral","emoji":"😐","data":{},"reply":"Java is a popular programming language."}
 
-CRITICAL HONESTY RULE: NEVER claim you did something you haven't.
+CRITICAL HONESTY RULE: NEVER claim you did something you haven't done.
+
+CRITICAL EMAIL RULE:
+For DRAFT_EMAIL, you MUST include ALL THREE fields:
+- "recipient" (the email address or name)
+- "subject" (a short subject line)
+- "body" (the email content)
+
+NEVER omit the subject. If you don't know it, generate an appropriate one.
 
 CRITICAL CLARIFICATION RULE:
 If the user's message is ambiguous, respond with a CLARIFYING QUESTION.
@@ -96,28 +107,11 @@ NEVER say "Here are jokes!" without providing them.
 CRITICAL REPEAT RULE (SPEAK_LAST):
 If user asks to repeat, use SPEAK_LAST.
 
-======================================================
-CRITICAL NOTE FILTER RULE
-======================================================
-If the user asks for notes ABOUT a specific topic, use SEARCH_NOTES with the topic as the query.
-If the user asks for ALL notes (no filter), use GET_NOTES.
-
-Distinguish:
+CRITICAL NOTE FILTER RULE:
 - "show my notes" → GET_NOTES (all notes)
 - "show notes about X" → SEARCH_NOTES with query "X"
 - "find my notes about X" → SEARCH_NOTES with query "X"
 - "notes related to X" → SEARCH_NOTES with query "X"
-- "notes on X" → SEARCH_NOTES with query "X"
-
-Examples:
-User: "show notes about best friend"
-Output: {"intent":"SEARCH_NOTES","mood":"neutral","emoji":"😐","data":{"query":"best friend"},"reply":"Searching your notes about best friend..."}
-
-User: "show my notes"
-Output: {"intent":"GET_NOTES","mood":"neutral","emoji":"😐","data":{"limit":5,"offset":0},"reply":"Here are your notes!"}
-
-User: "notes related to physics"
-Output: {"intent":"SEARCH_NOTES","mood":"neutral","emoji":"😐","data":{"query":"physics"},"reply":"Searching your notes about physics..."}
 
 CRITICAL FILE SEARCH RULE (FIND_FILE):
 - "open [folder] and give/find [file]" → FIND_FILE with search_term + folder
@@ -328,13 +322,36 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
             "reply": result.get("reply")
         }
 
+    # --- DATA SAVING ---
     if result["intent"] in ["CREATE_NOTE", "CREATE_REMINDER", "ADD_EXPENSE",
                             "ADD_SHOPPING_ITEM", "STUDY_PLAN", "CREATE_GOAL",
-                            "LOG_MOOD", "CREATE_MEMORY", "SAVE_CONTEXT", "DRAFT_EMAIL"]:
+                            "LOG_MOOD", "CREATE_MEMORY", "SAVE_CONTEXT"]:
         result["data"]["user_id"] = user_id
         backend_response = send_to_backend(result["intent"], result["data"], token)
         print("Backend says:", backend_response)
 
+    # --- DRAFT_EMAIL with HONESTY CHECK ---
+    elif result["intent"] == "DRAFT_EMAIL":
+        result["data"]["user_id"] = user_id
+
+        # Ensure required fields exist
+        if not result["data"].get("subject"):
+            # Auto-generate a subject if AI forgot
+            body = result["data"].get("body", "")
+            recipient = result["data"].get("recipient", "")
+            result["data"]["subject"] = "Nova Message"
+
+        backend_response = send_to_backend(result["intent"], result["data"], token)
+        print("Backend says:", backend_response)
+
+        if isinstance(backend_response, dict) and backend_response.get("success"):
+            recipient = result["data"].get("recipient", "the recipient")
+            result["reply"] = f"Email sent to {recipient}."
+        else:
+            error_msg = backend_response.get("message", "unknown error") if isinstance(backend_response, dict) else "unknown"
+            result["reply"] = f"Sorry, I couldn't send the email: {error_msg}"
+
+    # --- FIND_FILE ---
     elif result["intent"] == "FIND_FILE":
         result["data"]["user_id"] = user_id
         result["data"]["device_id"] = device_id
@@ -364,6 +381,7 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         else:
             result["reply"] = f"Sorry, I couldn't find '{search_term}'."
 
+    # --- CLOSE_APP with confirmation ---
     elif result["intent"] == "CLOSE_APP":
         if not is_confirmation:
             pending_confirmations[user_id] = {
@@ -387,6 +405,7 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         backend_response = send_to_backend(result["intent"], result["data"], token)
         print("Backend says:", backend_response)
 
+    # --- OPEN_FOLDER with pre-check ---
     elif result["intent"] == "OPEN_FOLDER":
         folder = result["data"].get("folder", "")
 
@@ -413,6 +432,7 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
             else:
                 result["reply"] = f"Sorry, I couldn't open {folder}."
 
+    # --- OPEN_APP / OPEN_URL / CREATE_FOLDER ---
     elif result["intent"] in ["OPEN_APP", "OPEN_URL", "CREATE_FOLDER"]:
         result["data"]["user_id"] = user_id
         result["data"]["device_id"] = device_id
@@ -431,6 +451,7 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         else:
             result["reply"] = "Sorry, I couldn't complete that action right now."
 
+    # --- OTHER DEVICE ACTIONS ---
     elif result["intent"] in ["MUTE", "UNMUTE",
                               "VOLUME_UP", "VOLUME_DOWN", "SET_VOLUME",
                               "BRIGHTNESS_UP", "BRIGHTNESS_DOWN", "SET_BRIGHTNESS",
@@ -440,6 +461,7 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         backend_response = send_to_backend(result["intent"], result["data"], token)
         print("Backend says:", backend_response)
 
+    # --- SEMANTIC SEARCH ---
     elif result["intent"] == "SEARCH_NOTES":
         query = result["data"].get("query", user_text)
         search_payload = {"query": query, "user_id": user_id}
@@ -451,7 +473,6 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
             print("Semantic search result:", fetched_data)
 
             if fetched_data.get("success"):
-                # Filter results by similarity threshold
                 results = fetched_data.get("results", [])
                 filtered = [item for item in results if item.get("similarity", 0) >= SIMILARITY_THRESHOLD]
 
@@ -466,6 +487,7 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         except Exception as e:
             result["reply"] = f"Could not search: {e}"
 
+    # --- FETCHING DATA ---
     elif result["intent"] in ["GET_NOTES", "GET_REMINDERS", "GET_EXPENSES",
                               "GET_SHOPPING_LIST", "GET_STUDY_PLANS", "GET_GOALS",
                               "GET_MOODS", "GET_MEMORIES", "GET_CONTEXT", "SHOW_INFORMATION"]:
@@ -502,6 +524,7 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
                 elif result["intent"] == "GET_MEMORIES":
                     result["reply"] = "Here is what I remember:\n" + "\n".join(formatted)
 
+    # --- INSTANT MODULES ---
     elif result["intent"] in ["TRANSLATE_TEXT", "SUMMARIZE_TEXT", "GENERATE_FLASHCARDS", "GENERAL_CHAT"]:
         print("INSTANT MODULE: No backend needed. Just showing AI's answer!")
 
