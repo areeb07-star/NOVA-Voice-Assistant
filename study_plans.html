@@ -1,266 +1,541 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Study Plans — NOVA</title>
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/components.css">
-  <link rel="stylesheet" href="css/dashboard.css">
-  <style>
-    .study-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--space-md);
-      margin-bottom: var(--space-xl);
-      flex-wrap: wrap;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Study Plans — NOVA</title>
+<link rel="icon" type="image/svg+xml" href="assets/images/nova-logo.svg">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #05060f;
+    color: #f1f5f9;
+    min-height: 100vh;
+  }
+  .dashboard-layout { display: flex; min-height: 100vh; }
 
-    .study-plans-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-      gap: var(--space-lg);
-    }
+  /* SIDEBAR */
+  .sidebar {
+    width: 260px;
+    background: rgba(10,12,26,0.85);
+    border-right: 1px solid rgba(255,255,255,0.06);
+    padding: 20px 12px;
+    position: fixed;
+    top: 0; left: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .sidebar-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 12px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    margin-bottom: 12px;
+  }
+  .sidebar-logo-img {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(34,211,238,0.3);
+  }
+  .sidebar-brand {
+    font-size: 1.3rem; font-weight: 700; letter-spacing: 0.05em;
+    background: linear-gradient(135deg, #22d3ee, #8b5cf6, #ec4899);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .nav-section-label {
+    font-size: 0.7rem; font-weight: 700; color: #475569;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    padding: 16px 12px 6px;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 10px;
+    color: #64748b; text-decoration: none;
+    font-size: 0.9rem; font-weight: 500;
+    transition: all 0.2s ease; position: relative;
+    margin-bottom: 2px;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.04); color: #f1f5f9; }
+  .nav-item.active {
+    background: rgba(34,211,238,0.08); color: #22d3ee; font-weight: 600;
+  }
+  .nav-item.active::before {
+    content: ''; position: absolute;
+    left: 0; top: 50%; transform: translateY(-50%);
+    width: 3px; height: 60%;
+    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
+    border-radius: 0 4px 4px 0;
+    box-shadow: 0 0 12px rgba(34,211,238,0.5);
+  }
+  .nav-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; flex-shrink: 0;
+  }
+  .nav-icon svg { width: 18px; height: 18px; stroke-width: 1.8; }
+  .nav-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 12px; }
 
-    .study-plan-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-xl);
-      padding: var(--space-xl);
-      transition: all var(--transition-base);
-      position: relative;
-      overflow: hidden;
-    }
+  /* MAIN */
+  .main-content { flex: 1; margin-left: 260px; min-height: 100vh; }
+  .topbar {
+    height: 72px; display: flex; align-items: center; justify-content: space-between;
+    padding: 0 32px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    background: rgba(10,12,26,0.6);
+    backdrop-filter: blur(20px);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .greeting-title { font-size: 1.1rem; font-weight: 700; color: #f1f5f9; }
+  .greeting-subtitle { font-size: 0.8rem; color: #94a3b8; }
+  .topbar-right { display: flex; align-items: center; gap: 16px; }
+  .topbar-icon-btn {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: transparent; border: 0; color: #94a3b8;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    position: relative; transition: all 0.2s ease;
+  }
+  .topbar-icon-btn:hover { background: rgba(255,255,255,0.05); color: #f1f5f9; }
+  .topbar-icon-btn svg { width: 20px; height: 20px; stroke-width: 1.8; }
+  .notification-dot {
+    position: absolute; top: 8px; right: 8px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #22d3ee; box-shadow: 0 0 8px rgba(34,211,238,0.6);
+  }
+  .avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.9rem; color: #fff;
+  }
 
-    .study-plan-card:hover {
-      border-color: var(--border-glass);
-      transform: translateY(-4px);
-      box-shadow: var(--shadow-lg);
-    }
+  .page-content { padding: 32px; }
 
-    .study-plan-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 3px;
-      background: var(--gradient-primary);
-      opacity: 0.6;
-    }
+  /* TOOLBAR */
+  .toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; margin-bottom: 24px; flex-wrap: wrap;
+  }
+  .toolbar-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .count-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px;
+    background: rgba(34,211,238,0.08);
+    border: 1px solid rgba(34,211,238,0.2);
+    border-radius: 9999px;
+    font-size: 0.8rem; font-weight: 600;
+    color: #22d3ee;
+  }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 8px; padding: 10px 22px;
+    font-size: 0.9rem; font-weight: 600;
+    border-radius: 9999px; border: 0; cursor: pointer;
+    font-family: inherit; transition: all 0.2s ease;
+  }
+  .btn-ghost {
+    background: rgba(255,255,255,0.04);
+    color: #94a3b8;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .btn-ghost:hover {
+    background: rgba(255,255,255,0.07);
+    color: #f1f5f9;
+    border-color: rgba(34,211,238,0.3);
+  }
+  .btn-ghost svg { width: 16px; height: 16px; stroke-width: 2; }
 
-    .study-plan-subject {
-      font-family: var(--font-display);
-      font-size: 1.2rem;
-      font-weight: 700;
-      color: var(--text-primary);
-      margin-bottom: var(--space-xs);
-    }
+  /* STUDY PLANS GRID */
+  .plans-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+  }
+  .plan-card {
+    background: rgba(18,21,45,0.65);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 18px;
+    padding: 24px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .plan-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
+    opacity: 0.7;
+  }
+  .plan-card:hover {
+    border-color: rgba(255,255,255,0.1);
+    transform: translateY(-4px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  }
+  .plan-header {
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 16px;
+  }
+  .plan-icon {
+    width: 48px; height: 48px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(34,211,238,0.15), rgba(139,92,246,0.15));
+    border: 1px solid rgba(34,211,238,0.2);
+    display: flex; align-items: center; justify-content: center;
+    color: #22d3ee;
+    flex-shrink: 0;
+  }
+  .plan-icon svg { width: 22px; height: 22px; stroke-width: 1.8; }
+  .plan-header-info { flex: 1; min-width: 0; }
+  .plan-subject {
+    font-size: 1.15rem; font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 4px;
+    word-break: break-word;
+  }
+  .plan-id {
+    font-size: 0.7rem;
+    color: #475569;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+  .plan-detail {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    font-size: 0.85rem;
+    color: #cbd5e1;
+    margin-bottom: 12px;
+  }
+  .plan-detail svg {
+    width: 16px; height: 16px;
+    stroke-width: 2;
+    color: #22d3ee;
+    flex-shrink: 0;
+  }
+  .plan-detail-label {
+    color: #64748b;
+    margin-right: 6px;
+  }
+  .plan-detail-value {
+    color: #f1f5f9;
+    font-weight: 600;
+  }
 
-    .study-plan-meta {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      margin-bottom: var(--space-lg);
-    }
+  /* STATES */
+  .state-box {
+    padding: 48px 32px;
+    text-align: center;
+    color: #64748b;
+    font-size: 0.95rem;
+    grid-column: 1 / -1;
+  }
+  .state-box .state-icon {
+    font-size: 3rem; opacity: 0.5;
+    margin-bottom: 16px;
+  }
+  .state-box.error { color: #ef4444; }
+  .state-box.loading {
+    display: flex; flex-direction: column; align-items: center; gap: 16px;
+  }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid rgba(255,255,255,0.08);
+    border-top-color: #22d3ee;
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
-    .study-progress-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: var(--space-sm);
-    }
-
-    .study-progress-label {
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--text-muted);
-    }
-
-    .study-progress-percent {
-      font-family: var(--font-display);
-      font-size: 1.1rem;
-      font-weight: 700;
-      background: var(--gradient-text);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .study-timeline {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-sm);
-      margin-top: var(--space-lg);
-    }
-
-    .timeline-item {
-      display: flex;
-      align-items: center;
-      gap: var(--space-md);
-      font-size: 0.85rem;
-    }
-
-    .timeline-day {
-      width: 42px;
-      font-weight: 700;
-      color: var(--text-dim);
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      flex-shrink: 0;
-    }
-
-    .timeline-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      flex-shrink: 0;
-      border: 2px solid var(--border-glass);
-    }
-
-    .timeline-dot.completed {
-      background: var(--accent-green);
-      border-color: var(--accent-green);
-      box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
-    }
-
-    .timeline-dot.today {
-      background: var(--accent-cyan);
-      border-color: var(--accent-cyan);
-      box-shadow: 0 0 12px rgba(34, 211, 238, 0.6);
-      animation: pulse 2s infinite;
-    }
-
-    .timeline-topic {
-      flex: 1;
-      color: var(--text-secondary);
-    }
-
-    .timeline-topic.completed {
-      color: var(--text-dim);
-      text-decoration: line-through;
-    }
-
-    .timeline-topic.today {
-      color: var(--accent-cyan);
-      font-weight: 600;
-    }
-
-    .timeline-status {
-      font-size: 0.7rem;
-      font-weight: 700;
-      color: var(--text-dim);
-    }
-
-    @media (max-width: 768px) {
-      .study-header {
-        flex-direction: column;
-        align-items: stretch;
-      }
-
-      .study-plans-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-  </style>
+  /* RESPONSIVE */
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); }
+    .main-content { margin-left: 0; }
+    .page-content { padding: 20px 16px; }
+    .toolbar { flex-direction: column; align-items: stretch; }
+    .toolbar-left { flex-direction: column; align-items: stretch; }
+    .plans-grid { grid-template-columns: 1fr; }
+  }
+</style>
 </head>
 <body>
 
-  <div class="dashboard-layout">
-    <aside class="sidebar" id="sidebar">
-      <div class="sidebar-header">
-        <div class="sidebar-logo">N</div>
-        <div class="sidebar-brand">NOVA</div>
+<div class="dashboard-layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <img src="assets/images/nova-logo.svg" alt="NOVA" class="sidebar-logo-img">
+      <div class="sidebar-brand">NOVA</div>
+    </div>
+    <nav>
+      <div class="nav-section-label">Main</div>
+      <a href="dashboard.html" class="nav-item">
+        <i data-lucide="layout-dashboard" class="nav-icon"></i><span>Dashboard</span>
+      </a>
+      <a href="#" class="nav-item">
+        <i data-lucide="sparkles" class="nav-icon"></i><span>Assistant</span>
+      </a>
+      <div class="nav-section-label">Organize</div>
+      <a href="reminders.html" class="nav-item">
+        <i data-lucide="clock" class="nav-icon"></i><span>Reminders</span>
+      </a>
+      <a href="notes.html" class="nav-item">
+        <i data-lucide="file-text" class="nav-icon"></i><span>Notes</span>
+      </a>
+      <a href="shopping.html" class="nav-item">
+        <i data-lucide="shopping-cart" class="nav-icon"></i><span>Shopping</span>
+      </a>
+      <a href="expenses.html" class="nav-item">
+        <i data-lucide="wallet" class="nav-icon"></i><span>Expenses</span>
+      </a>
+      <a href="study_plans.html" class="nav-item active">
+        <i data-lucide="book-open" class="nav-icon"></i><span>Study Plans</span>
+      </a>
+      <a href="goals.html" class="nav-item">
+        <i data-lucide="target" class="nav-icon"></i><span>Goals</span>
+      </a>
+      <div class="nav-divider"></div>
+      <a href="profile.html" class="nav-item">
+        <i data-lucide="settings" class="nav-icon"></i><span>Profile</span>
+      </a>
+      <a href="login.html" class="nav-item" id="logoutBtn">
+        <i data-lucide="log-out" class="nav-icon"></i><span>Logout</span>
+      </a>
+    </nav>
+  </aside>
+
+  <div class="main-content">
+    <header class="topbar">
+      <div>
+        <div class="greeting-title">Study Plans</div>
+        <div class="greeting-subtitle">Study smarter, not harder.</div>
       </div>
-      <nav class="sidebar-nav">
-        <div class="nav-section-label">Main</div>
-        <a href="dashboard.html" class="nav-item"><span class="nav-icon">⌂</span><span class="nav-label">Dashboard</span></a>
-        <div class="nav-section-label">Organize</div>
-        <a href="reminders.html" class="nav-item"><span class="nav-icon">⏰</span><span class="nav-label">Reminders</span></a>
-        <a href="notes.html" class="nav-item"><span class="nav-icon">📝</span><span class="nav-label">Notes</span></a>
-        <a href="shopping.html" class="nav-item"><span class="nav-icon">🛒</span><span class="nav-label">Shopping</span></a>
-        <a href="expenses.html" class="nav-item"><span class="nav-icon">💰</span><span class="nav-label">Expenses</span></a>
-        <a href="study_plans.html" class="nav-item active"><span class="nav-icon">📚</span><span class="nav-label">Study Plans</span></a>
-        <a href="goals.html" class="nav-item"><span class="nav-icon">🎯</span><span class="nav-label">Goals</span></a>
-        <div class="nav-divider"></div>
-        <a href="profile.html" class="nav-item"><span class="nav-icon">⚙</span><span class="nav-label">Profile</span></a>
-        <a href="login.html" class="nav-item"><span class="nav-icon">↪</span><span class="nav-label">Logout</span></a>
-      </nav>
-      <div class="sidebar-footer">
-        <div class="sidebar-user">
-          <div class="avatar avatar-sm">AS</div>
-          <div class="sidebar-user-info">
-            <div class="sidebar-user-name" id="sidebarUserName">Arjun Sharma</div>
-            <div class="sidebar-user-role">Student</div>
+      <div class="topbar-right">
+        <button class="topbar-icon-btn" id="notifBtn">
+          <i data-lucide="bell"></i>
+          <span class="notification-dot"></span>
+        </button>
+        <div class="avatar" id="avatarInitial">U</div>
+      </div>
+    </header>
+
+    <div class="page-content">
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <div class="count-badge">
+            <i data-lucide="book-open" style="width:14px;height:14px;"></i>
+            <span id="countText">Loading...</span>
           </div>
         </div>
+        <button class="btn btn-ghost" id="refreshBtn">
+          <i data-lucide="refresh-cw"></i> Refresh
+        </button>
       </div>
-    </aside>
 
-    <div class="main-content" id="mainContent">
-      <header class="topbar">
-        <div class="topbar-left">
-          <button class="hamburger" aria-label="Toggle menu">☰</button>
-          <div class="topbar-greeting">
-            <div class="greeting-title">Study Smarter, Not Harder.</div>
-            <div class="greeting-subtitle">Plan, track, and achieve your study goals.</div>
-          </div>
-        </div>
-        <div class="topbar-right">
-          <button class="topbar-icon-btn" data-notifications aria-label="Notifications">🔔<span class="notification-dot"></span></button>
-          <div class="topbar-avatar"><div class="avatar">AS</div></div>
-        </div>
-      </header>
-
-      <div class="page-content">
-        <div class="study-header">
-          <h2 style="font-family: var(--font-display);">Your Study Plans</h2>
-          <button class="btn btn-primary" id="createStudyPlanBtn">+ Create Study Plan</button>
-        </div>
-
-        <div class="study-plans-grid" id="studyPlansGrid">
-          <!-- Plans injected by JS -->
-        </div>
-      </div>
+      <div class="plans-grid" id="data-list"></div>
     </div>
   </div>
+</div>
 
-  <!-- Create Study Plan Modal -->
-  <div class="modal-overlay" id="studyPlanModal">
-    <div class="modal">
-      <div class="modal-header">
-        <h3 class="modal-title">📚 Create Study Plan</h3>
-        <button class="modal-close" data-close-modal aria-label="Close">✕</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label class="form-label" for="planSubject">Subject <span class="required">*</span></label>
-          <input type="text" id="planSubject" class="form-input" placeholder="e.g. Python" required>
-          <div class="form-error" id="planSubjectError">Subject is required.</div>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="planExamDate">Exam Date</label>
-          <input type="date" id="planExamDate" class="form-input">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="planTopics">Topics (comma separated)</label>
-          <input type="text" id="planTopics" class="form-input" placeholder="e.g. Basics, Functions, OOP">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="planDailyTime">Daily Study Time</label>
-          <input type="text" id="planDailyTime" class="form-input" placeholder="e.g. 2 hours" value="1 hour">
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-ghost" data-close-modal>Cancel</button>
-        <button class="btn btn-primary" id="saveStudyPlanBtn">Create Plan</button>
-      </div>
-    </div>
-  </div>
+<script>
+/* =========================================================
+   NOVA — Study Plans (wired to POST /api/assistant)
+   Intent: GET_STUDY_PLANS
+   Response: { success, count, study_plans: [{ id, subject, exam_date, created_at }] }
+   ========================================================= */
 
-  <script src="js/main.js"></script>
-  <script src="js/api.js"></script>
-  <script src="js/study_plans.js"></script>
+var API_BASE = "https://nova-voice-assistant-6vve.onrender.com";
+var INTENT   = "GET_STUDY_PLANS";
+var DATA_KEY = "study_plans";
+
+document.addEventListener("DOMContentLoaded", function () {
+  var name = localStorage.getItem("nova-user-name") || "User";
+  var avatar = document.getElementById("avatarInitial");
+  if (avatar) avatar.textContent = (name.charAt(0) || "U").toUpperCase();
+
+  if (window.lucide) lucide.createIcons();
+
+  var logoutBtn = document.getElementById("logoutBtn");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+      localStorage.removeItem("nova-auth-token");
+      localStorage.removeItem("nova-user-name");
+      localStorage.removeItem("nova-user-email");
+      localStorage.removeItem("nova-user-id");
+      window.location.href = "login.html";
+    });
+  }
+
+  var notifBtn = document.getElementById("notifBtn");
+  if (notifBtn) {
+    notifBtn.addEventListener("click", function () {
+      showToast("info", "🔔 Notifications", "You have 3 new notifications.");
+    });
+  }
+
+  var refreshBtn = document.getElementById("refreshBtn");
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", loadData);
+  }
+
+  loadData();
+});
+
+async function loadData() {
+  var token = localStorage.getItem("nova-auth-token");
+  if (!token) {
+    window.location.href = "login.html";
+    return;
+  }
+
+  var container = document.getElementById("data-list");
+  var countText = document.getElementById("countText");
+  if (!container) return;
+
+  container.innerHTML = '<div class="state-box loading"><div class="spinner"></div><div>Loading your study plans...</div></div>';
+  if (countText) countText.textContent = "Loading...";
+
+  try {
+    var res = await fetch(API_BASE + "/api/assistant", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+      },
+      body: JSON.stringify({ intent: INTENT, data: {} })
+    });
+
+    if (res.status === 401) {
+      localStorage.removeItem("nova-auth-token");
+      window.location.href = "login.html";
+      return;
+    }
+
+    var data = await res.json();
+
+    if (!data.success) {
+      container.innerHTML = '<div class="state-box error">⚠️ ' + (data.error || "Could not load study plans.") + '</div>';
+      if (countText) countText.textContent = "Error";
+      return;
+    }
+
+    var items = data[DATA_KEY] || [];
+
+    if (countText) {
+      countText.textContent = items.length + (items.length === 1 ? " plan" : " plans");
+    }
+
+    if (items.length === 0) {
+      container.innerHTML =
+        '<div class="state-box">' +
+          '<div class="state-icon">📚</div>' +
+          '<div>No study plans yet. Ask NOVA to create one!</div>' +
+        '</div>';
+      return;
+    }
+
+    var html = "";
+    items.forEach(function (p) {
+      html += renderRow(p);
+    });
+    container.innerHTML = html;
+
+    if (window.lucide) lucide.createIcons();
+  } catch (err) {
+    console.error("Load error:", err);
+    container.innerHTML =
+      '<div class="state-box error">' +
+        '⚠️ Could not connect to server.<br>' +
+        '<span style="font-size:0.85rem;color:#94a3b8;">If the server is cold, wait 30 seconds and click Refresh.</span>' +
+      '</div>';
+    if (countText) countText.textContent = "Offline";
+  }
+}
+
+function renderRow(p) {
+  var subject = p.subject || "(untitled subject)";
+  var examDate = p.exam_date || "";
+  var created = p.created_at || "";
+  var id = p.id || "";
+
+  // Calculate days until exam
+  var daysLeft = "";
+  if (examDate) {
+    var exam = new Date(examDate);
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    var diff = Math.ceil((exam - today) / (1000 * 60 * 60 * 24));
+    if (!isNaN(diff)) {
+      if (diff > 0) daysLeft = diff + (diff === 1 ? " day left" : " days left");
+      else if (diff === 0) daysLeft = "Exam today";
+      else daysLeft = Math.abs(diff) + " days past";
+    }
+  }
+
+  return (
+    '<div class="plan-card">' +
+      '<div class="plan-header">' +
+        '<div class="plan-icon"><i data-lucide="book-open"></i></div>' +
+        '<div class="plan-header-info">' +
+          '<div class="plan-subject">' + escapeHtml(subject) + '</div>' +
+          (id ? '<div class="plan-id">PLAN #' + escapeHtml(String(id)) + '</div>' : '') +
+        '</div>' +
+      '</div>' +
+
+      (examDate ?
+        '<div class="plan-detail">' +
+          '<i data-lucide="calendar"></i>' +
+          '<span class="plan-detail-label">Exam:</span>' +
+          '<span class="plan-detail-value">' + escapeHtml(examDate) + '</span>' +
+          (daysLeft ? '<span style="margin-left:auto;color:#22d3ee;font-weight:700;font-size:0.75rem;">' + daysLeft + '</span>' : '') +
+        '</div>' : ''
+      ) +
+
+      (created ?
+        '<div class="plan-detail">' +
+          '<i data-lucide="clock"></i>' +
+          '<span class="plan-detail-label">Created:</span>' +
+          '<span class="plan-detail-value">' + escapeHtml(created) + '</span>' +
+        '</div>' : ''
+      ) +
+    '</div>'
+  );
+}
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function showToast(type, title, message) {
+  var container = document.querySelector(".toast-container");
+  if (!container) {
+    container = document.createElement("div");
+    container.className = "toast-container";
+    container.style.cssText = "position:fixed;top:20px;right:20px;z-index:2000;display:flex;flex-direction:column;gap:8px;pointer-events:none;";
+    document.body.appendChild(container);
+  }
+  var icons = { success: "✅", error: "❌", info: "ℹ️", warning: "⚠️" };
+  var t = document.createElement("div");
+  t.style.cssText = "display:flex;align-items:center;gap:12px;padding:14px 20px;background:#0a0c1a;border:1px solid rgba(255,255,255,0.1);border-radius:12px;min-width:280px;max-width:380px;pointer-events:auto;box-shadow:0 10px 40px rgba(0,0,0,0.4);color:#f1f5f9;font-size:0.9rem;";
+  t.innerHTML =
+    '<span>' + (icons[type] || "ℹ️") + '</span>' +
+    '<div>' +
+      '<div style="font-weight:600;">' + title + '</div>' +
+      (message ? '<div style="font-size:0.8rem;color:#94a3b8;margin-top:2px;">' + message + '</div>' : '') +
+    '</div>';
+  container.appendChild(t);
+  setTimeout(function () { t.remove(); }, 4000);
+}
+</script>
 </body>
 </html>
