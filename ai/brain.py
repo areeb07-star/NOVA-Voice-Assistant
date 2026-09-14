@@ -1,39 +1,53 @@
 import os
+import sys
 import json
 import re
 import requests
+from datetime import datetime
 from groq import Groq
 from dotenv import load_dotenv
 
+sys.stdout.reconfigure(encoding='utf-8')
+
 load_dotenv()
 
-API_KEY = os.getenv("GROQ_API_KEY")
-if not API_KEY:
-    print("ERROR: GROQ_API_KEY not found in .env file!")
-    print("Please create a .env file with: GROQ_API_KEY=your_key_here")
+API_KEYS = [
+    os.getenv("GROQ_API_KEY"),
+    os.getenv("GROQ_API_KEY_2"),
+]
+API_KEYS = [k for k in API_KEYS if k]
+
+if not API_KEYS:
+    print("ERROR: No GROQ_API_KEY found in .env file!")
     exit()
 
-client = Groq(api_key=API_KEY)
+clients = [Groq(api_key=k) for k in API_KEYS]
+
+BACKEND_URL = "https://nova-voice-assistant-6vve.onrender.com"
+DEFAULT_DEVICE_ID = "azzam-laptop-001"
+
+conversation_history = {}
+HISTORY_LIMIT = 6
+
+pending_confirmations = {}
+
+MODELS = [
+    "openai/gpt-oss-20b",
+    "openai/gpt-oss-120b",
+]
+
+SIMILARITY_THRESHOLD = 0.65
 
 SYSTEM_PROMPT = """
 You are Nova, a voice assistant for daily tasks.
 
 Reply ONLY with STRICT JSON. Do not add any extra text.
 The JSON must have these 5 keys:
-1. "intent": Choose ONE: CREATE_REMINDER, CREATE_NOTE, ADD_EXPENSE, ADD_SHOPPING_ITEM, CREATE_GOAL, STUDY_PLAN, SHOW_INFORMATION, GET_NOTES, GET_REMINDERS, GET_EXPENSES, GET_SHOPPING_LIST, GET_STUDY_PLANS, GET_GOALS, GET_MOODS, TRANSLATE_TEXT, SUMMARIZE_TEXT, GENERATE_FLASHCARDS, LOG_MOOD, CREATE_MEMORY, SAVE_CONTEXT, DRAFT_EMAIL, or GENERAL_CHAT.
-2. "mood": Detect the user's emotion from the text. Choose ONE: happy, sad, stressed, excited, neutral.
+1. "intent": Choose ONE: CREATE_REMINDER, CREATE_NOTE, ADD_EXPENSE, ADD_SHOPPING_ITEM, CREATE_GOAL, STUDY_PLAN, SHOW_INFORMATION, GET_NOTES, GET_REMINDERS, GET_EXPENSES, GET_SHOPPING_LIST, GET_STUDY_PLANS, GET_GOALS, GET_MOODS, GET_MEMORIES, SEARCH_NOTES, TRANSLATE_TEXT, SUMMARIZE_TEXT, GENERATE_FLASHCARDS, LOG_MOOD, CREATE_MEMORY, SAVE_CONTEXT, DRAFT_EMAIL, OPEN_APP, OPEN_FOLDER, OPEN_URL, CREATE_FOLDER, FIND_FILE, MUTE, UNMUTE, VOLUME_UP, VOLUME_DOWN, SET_VOLUME, BRIGHTNESS_UP, BRIGHTNESS_DOWN, SET_BRIGHTNESS, TAKE_SCREENSHOT, CLOSE_APP, SPEAK_LAST, or GENERAL_CHAT.
+2. "mood": Detect emotion: happy, sad, stressed, excited, neutral.
 3. "emoji": Pick ONE emoji that matches the mood.
-   - If happy: 😊, 😄, 🥳
-   - If sad: 😞, 😢, 😭
-   - If stressed: 😫, 😩, 😖
-   - If excited: 🤩, 😃, 🎉
-   - If neutral: 😐, 🙂, 😴
-   - If the user is PROUD or ACHIEVED something: 🎉, 🏆
-   - If the user is TIRED or EXHAUSTED: 😴, 🥱
-   - If the user is CONFUSED: 🤔, 😕
-   - If the user is GRATEFUL or THANKFUL: 🙏, ❤️
 4. "data": An object with details.
-5. "reply": A natural, conversational confirmation message (10 to 20 words). Do not truncate it.
+5. "reply": A short confirmation. NEVER claim you did something you haven't done.
 
 Examples:
 User: "Remind me to call Mom at 5 PM"
@@ -42,57 +56,115 @@ Output: {"intent":"CREATE_REMINDER","mood":"neutral","emoji":"😐","data":{"tas
 User: "Save note: Buy milk"
 Output: {"intent":"CREATE_NOTE","mood":"neutral","emoji":"😐","data":{"text":"Buy milk"},"reply":"Note saved!"}
 
-User: "Spent 20 dollars on pizza"
-Output: {"intent":"ADD_EXPENSE","mood":"neutral","emoji":"😐","data":{"amount":"20","category":"food"},"reply":"Expense saved!"}
+User: "show my notes"
+Output: {"intent":"GET_NOTES","mood":"neutral","emoji":"😐","data":{"limit":5,"offset":0},"reply":"Here are your notes!"}
 
-User: "Add apples to shopping list"
-Output: {"intent":"ADD_SHOPPING_ITEM","mood":"neutral","emoji":"😐","data":{"item":"apples"},"reply":"Added apples to your list!"}
+User: "show notes about best friend"
+Output: {"intent":"SEARCH_NOTES","mood":"neutral","emoji":"😐","data":{"query":"best friend"},"reply":"Searching your notes about best friend..."}
 
-User: "I have a Python exam next Friday. Make me a study plan."
-Output: {"intent":"STUDY_PLAN","mood":"neutral","emoji":"😐","data":{"subject":"Python","exam_date":"Next Friday"},"reply":"Study plan created!"}
+User: "find notes about my project"
+Output: {"intent":"SEARCH_NOTES","mood":"neutral","emoji":"😐","data":{"query":"my project"},"reply":"Searching your notes..."}
 
-User: "Show me my notes"
-Output: {"intent":"GET_NOTES","mood":"neutral","emoji":"😐","data":{},"reply":"Here are your notes!"}
+User: "open youtube"
+Output: {"intent":"OPEN_URL","mood":"neutral","emoji":"😐","data":{"url":"https://youtube.com"},"reply":"Opening YouTube!"}
 
-User: "What are my reminders?"
-Output: {"intent":"GET_REMINDERS","mood":"neutral","emoji":"😐","data":{},"reply":"Here are your reminders!"}
+User: "open Excel"
+Output: {"intent":"OPEN_APP","mood":"neutral","emoji":"😐","data":{"app":"excel"},"reply":"Opening Excel!"}
 
-User: "I am so stressed about my exam tomorrow."
-Output: {"intent":"LOG_MOOD","mood":"stressed","emoji":"😫","data":{"text":"stressed about exam"},"reply":"I understand. Let's make a plan to tackle it!"}
+User: "open downloads folder"
+Output: {"intent":"OPEN_FOLDER","mood":"neutral","emoji":"😐","data":{"folder":"Downloads"},"reply":"Opening Downloads!"}
 
-User: "I passed my test!"
-Output: {"intent":"LOG_MOOD","mood":"happy","emoji":"🎉","data":{"text":"passed test"},"reply":"That's amazing! Great job!"}
+User: "create folder name fok"
+Output: {"intent":"CREATE_FOLDER","mood":"neutral","emoji":"😐","data":{"folder_name":"fok"},"reply":"Creating folder fok!"}
 
-User: "Translate 'Good morning' to Spanish"
-Output: {"intent":"TRANSLATE_TEXT","mood":"neutral","emoji":"😐","data":{"original":"Good morning","language":"Spanish","translation":"Buenos días"},"reply":"Translated!"}
-
-User: "Summarize the main points of the Python chapter"
-Output: {"intent":"SUMMARIZE_TEXT","mood":"neutral","emoji":"😐","data":{"topic":"Python chapter"},"reply":"Here is the summary!"}
-
-User: "Make me flashcards for Biology chapter 3"
-Output: {"intent":"GENERATE_FLASHCARDS","mood":"neutral","emoji":"😐","data":{"subject":"Biology","chapter":"3"},"reply":"Flashcards created!"}
-
-User: "Draft an email to my boss saying I am sick today"
-Output: {"intent":"DRAFT_EMAIL","mood":"neutral","emoji":"😐","data":{"recipient":"boss","subject":"Sick Leave","body":"Hi Boss, I am feeling unwell today and will be taking a sick day."},"reply":"Email drafted! Here is the text for you to review."}
-
-User: "Remember that I prefer studying at night."
-Output: {"intent":"CREATE_MEMORY","mood":"neutral","emoji":"😐","data":{"memory":"I prefer studying at night","category":"preference"},"reply":"Got it! I'll remember that you prefer studying at night."}
-
-User: "I'm currently working on my Python project."
-Output: {"intent":"SAVE_CONTEXT","mood":"neutral","emoji":"😐","data":{"context":"working on Python project","current_task":"Python project"},"reply":"Got it! Noted your current context."}
+User: "close calculator"
+Output: {"intent":"CLOSE_APP","mood":"neutral","emoji":"😐","data":{"app":"calc","requires_confirmation":true},"reply":"Are you sure you want to close Calculator?"}
 
 User: "What is Java?"
-Output: {"intent":"GENERAL_CHAT","mood":"neutral","emoji":"😐","data":{},"reply":"Java is a popular programming language used for building applications."}
+Output: {"intent":"GENERAL_CHAT","mood":"neutral","emoji":"😐","data":{},"reply":"Java is a popular programming language."}
 
-User: "What is the weather?"
-Output: {"intent":"GENERAL_CHAT","mood":"neutral","emoji":"😐","data":{},"reply":"I can help you organize your tasks, but for live weather updates, please check a weather app!"}
+CRITICAL HONESTY RULE: NEVER claim you did something you haven't.
+
+CRITICAL CLARIFICATION RULE:
+If the user's message is ambiguous, respond with a CLARIFYING QUESTION.
+
+CRITICAL SMALL TALK RULE:
+Nova is a TASK assistant, NOT a joke bot.
+If the user asks for a joke, tell one or redirect to tasks.
+NEVER say "Here are jokes!" without providing them.
+
+CRITICAL REPEAT RULE (SPEAK_LAST):
+If user asks to repeat, use SPEAK_LAST.
+
+======================================================
+CRITICAL NOTE FILTER RULE
+======================================================
+If the user asks for notes ABOUT a specific topic, use SEARCH_NOTES with the topic as the query.
+If the user asks for ALL notes (no filter), use GET_NOTES.
+
+Distinguish:
+- "show my notes" → GET_NOTES (all notes)
+- "show notes about X" → SEARCH_NOTES with query "X"
+- "find my notes about X" → SEARCH_NOTES with query "X"
+- "notes related to X" → SEARCH_NOTES with query "X"
+- "notes on X" → SEARCH_NOTES with query "X"
+
+Examples:
+User: "show notes about best friend"
+Output: {"intent":"SEARCH_NOTES","mood":"neutral","emoji":"😐","data":{"query":"best friend"},"reply":"Searching your notes about best friend..."}
+
+User: "show my notes"
+Output: {"intent":"GET_NOTES","mood":"neutral","emoji":"😐","data":{"limit":5,"offset":0},"reply":"Here are your notes!"}
+
+User: "notes related to physics"
+Output: {"intent":"SEARCH_NOTES","mood":"neutral","emoji":"😐","data":{"query":"physics"},"reply":"Searching your notes about physics..."}
+
+CRITICAL FILE SEARCH RULE (FIND_FILE):
+- "open [folder] and give/find [file]" → FIND_FILE with search_term + folder
+- "find [file] in [folder]" → FIND_FILE with search_term + folder
+- "find [file]" → FIND_FILE with search_term
+
+CRITICAL FOLDER OPENING RULE (OPEN_FOLDER):
+Use OPEN_FOLDER ONLY when there's no file to search.
+
+CRITICAL FOLDER CREATION RULE (CREATE_FOLDER):
+"create folder", "make a folder" → CREATE_FOLDER with {folder_name: X}
+
+CRITICAL WEBSITE OPENING RULE (OPEN_URL):
+youtube → https://youtube.com
+google → https://google.com
+gmail → https://mail.google.com
+github → https://github.com
+
+CRITICAL APP NAME VALIDATION RULE (OPEN_APP):
+Only use OPEN_APP for: chrome, code, vscode, calc, calculator, notepad, explorer, cmd, terminal, paint, settings, sound_settings, whatsapp, spotify, word, excel, powerpoint, outlook, teams, telegram, zoom, vlc, steam.
+
+CRITICAL FOLLOW-UP RULE:
+"name it X" / "call it X" → completes previous action with X
+"yes" → confirms previous action
+"no" → cancels previous action
+
+SAFE ACTION RULE: Safe actions execute immediately. Only CLOSE_APP needs confirmation.
 """
 
-VALID_INTENTS = {"CREATE_REMINDER", "CREATE_NOTE", "ADD_EXPENSE", "ADD_SHOPPING_ITEM", "CREATE_GOAL", "STUDY_PLAN", "SHOW_INFORMATION", "GET_NOTES", "GET_REMINDERS", "GET_EXPENSES", "GET_SHOPPING_LIST", "GET_STUDY_PLANS", "GET_GOALS", "GET_MOODS", "TRANSLATE_TEXT", "SUMMARIZE_TEXT", "GENERATE_FLASHCARDS", "LOG_MOOD", "CREATE_MEMORY", "SAVE_CONTEXT", "DRAFT_EMAIL", "GENERAL_CHAT"}
+VALID_INTENTS = {
+    "CREATE_REMINDER", "CREATE_NOTE", "ADD_EXPENSE", "ADD_SHOPPING_ITEM",
+    "CREATE_GOAL", "STUDY_PLAN", "SHOW_INFORMATION",
+    "GET_NOTES", "GET_REMINDERS", "GET_EXPENSES", "GET_SHOPPING_LIST",
+    "GET_STUDY_PLANS", "GET_GOALS", "GET_MOODS", "GET_MEMORIES", "SEARCH_NOTES",
+    "TRANSLATE_TEXT", "SUMMARIZE_TEXT", "GENERATE_FLASHCARDS",
+    "LOG_MOOD", "CREATE_MEMORY", "SAVE_CONTEXT", "DRAFT_EMAIL",
+    "OPEN_APP", "OPEN_FOLDER", "OPEN_URL", "CREATE_FOLDER",
+    "FIND_FILE", "MUTE", "UNMUTE",
+    "VOLUME_UP", "VOLUME_DOWN", "SET_VOLUME",
+    "BRIGHTNESS_UP", "BRIGHTNESS_DOWN", "SET_BRIGHTNESS",
+    "TAKE_SCREENSHOT", "CLOSE_APP",
+    "SPEAK_LAST",
+    "GENERAL_CHAT"
+}
 
 
 def normalize_result(raw_result):
-    """Ensure the reply is a valid dict with the expected keys and formats."""
     if not isinstance(raw_result, dict):
         return {"intent": "GENERAL_CHAT", "mood": "neutral", "emoji": "😐", "data": {}, "reply": "Sorry, I hit a snag!"}
 
@@ -114,7 +186,6 @@ def normalize_result(raw_result):
 
 
 def extract_json_object(raw_text):
-    """Extract the JSON object from messy model output with extra text or markdown."""
     if not raw_text:
         return "{}"
 
@@ -126,121 +197,340 @@ def extract_json_object(raw_text):
         cleaned = cleaned[start:end + 1]
 
     cleaned = re.sub(r",\s*([}\]])", r"\1", cleaned)
-
     return cleaned
 
 
-def process_user_input(user_text):
-    """Takes text, returns JSON."""
+def process_user_input(user_text, user_id="default"):
+    today = datetime.now().strftime("%B %d, %Y")
+
+    history = conversation_history.get(user_id, [])
+    history.append({"role": "user", "content": user_text})
+    history = history[-HISTORY_LIMIT:]
+
+    last_error = None
+    for client in clients:
+        for model in MODELS:
+            try:
+                print(f"[Trying model: {model}]")
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": f"Today's date is {today}.\n\n{SYSTEM_PROMPT}"},
+                        *history
+                    ],
+                    temperature=0.3
+                )
+                ai_reply = response.choices[0].message.content
+                ai_reply = extract_json_object(ai_reply)
+
+                history.append({"role": "assistant", "content": ai_reply})
+                conversation_history[user_id] = history[-HISTORY_LIMIT:]
+
+                result = json.loads(ai_reply)
+                return normalize_result(result)
+            except Exception as e:
+                err_str = str(e)
+                print(f"[Model {model} failed: {err_str[:100]}]")
+                last_error = e
+                continue
+
+    print(f"All models failed. Last error: {last_error}")
+    return {"intent": "GENERAL_CHAT", "mood": "neutral", "emoji": "😐", "data": {}, "reply": "Sorry, I hit a snag!"}
+
+
+def get_access_token(email, password):
+    url = f"{BACKEND_URL}/api/login"
     try:
-        response = client.chat.completions.create(
-            model="openai/gpt-oss-120b",
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_text}
-            ],
-            temperature=0.3
-        )
-        ai_reply = response.choices[0].message.content
-        ai_reply = extract_json_object(ai_reply)
-        
-        # ✅ Convert the string to JSON safely
-        result = json.loads(ai_reply)
-        return normalize_result(result)
+        response = requests.post(url, json={"email": email, "password": password})
+        if response.status_code == 200:
+            data = response.json()
+            print("Login successful! Access token obtained.")
+            return data.get("access_token"), data.get("user_id")
+        else:
+            print(f"Login failed: {response.text}")
+            return None, None
     except Exception as e:
-        print(f"Error: {e}")
-        return {"intent": "GENERAL_CHAT", "mood": "neutral", "emoji": "😐", "data": {}, "reply": "Sorry, I hit a snag!"}
+        print(f"Error logging in: {e}")
+        return None, None
 
 
-# This function talks to Person 2's Backend
-def send_to_backend(intent, data, user_id):
-    data["user_id"] = user_id
-    url = "http://127.0.0.1:8000/api/assistant"
+def send_to_backend(intent, data, token):
+    url = f"{BACKEND_URL}/api/assistant"
+    headers = {"Authorization": f"Bearer {token}"}
     payload = {"intent": intent, "data": data}
     try:
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, headers=headers)
         return response.json()
     except Exception as e:
         return {"error": f"Could not connect to backend: {e}"}
 
 
-# This function asks the backend for your existing data
-def fetch_from_backend(intent, user_id):
-    url = "http://127.0.0.1:8000/api/assistant"
-    payload = {"intent": intent, "data": {"user_id": user_id}}
+def fetch_from_backend(intent, data, token):
+    url = f"{BACKEND_URL}/api/assistant"
+    headers = {"Authorization": f"Bearer {token}"}
+    payload = {"intent": intent, "data": data}
     try:
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, headers=headers)
         return response.json()
     except Exception as e:
         return {"error": f"Could not fetch data: {e}"}
 
 
-# This is the function Person 2 and Person 4 will call!
-def get_ai_response(user_text, user_id):
-    """Takes text, returns clean structured data for the backend."""
-    result = process_user_input(user_text)
-    
-    # 1. SENDING DATA TO THE BACKEND
-    if result["intent"] in ["CREATE_NOTE", "CREATE_REMINDER", "ADD_EXPENSE", "ADD_SHOPPING_ITEM", "STUDY_PLAN", "CREATE_GOAL", "LOG_MOOD", "CREATE_MEMORY", "SAVE_CONTEXT", "DRAFT_EMAIL"]:
-        backend_response = send_to_backend(result["intent"], result["data"], user_id)
-        print("✅ Backend says:", backend_response)
-        
-    # 2. FETCHING DATA FROM THE BACKEND
-    elif result["intent"] in ["GET_NOTES", "GET_REMINDERS", "GET_EXPENSES", "GET_SHOPPING_LIST", "GET_STUDY_PLANS", "GET_GOALS", "GET_MOODS", "GET_MEMORIES", "GET_CONTEXT", "SHOW_INFORMATION"]:
-        fetched_data = fetch_from_backend(result["intent"], user_id)
-        print("✅ Fetched from database:", fetched_data)
-        
-        # Make Nova actually SPEAK the fetched data
+def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
+    pending = pending_confirmations.get(user_id)
+    is_confirmation = False
+
+    if pending:
+        lower = user_text.strip().lower()
+        if lower in ["yes", "yeah", "confirm", "yes please", "do it", "sure", "ok", "okay"]:
+            result = {
+                "intent": pending["intent"],
+                "mood": "neutral",
+                "emoji": "😐",
+                "data": pending["data"],
+                "reply": "Confirmed. Executing..."
+            }
+            pending_confirmations.pop(user_id, None)
+            is_confirmation = True
+        elif lower in ["no", "cancel", "nope", "stop", "don't", "dont"]:
+            pending_confirmations.pop(user_id, None)
+            return {
+                "intent": "GENERAL_CHAT",
+                "mood": "neutral",
+                "emoji": "😐",
+                "data": {},
+                "reply": "Okay, I cancelled that action."
+            }
+        else:
+            pending_confirmations.pop(user_id, None)
+            result = process_user_input(user_text, user_id)
+    else:
+        result = process_user_input(user_text, user_id)
+
+    if result["intent"] == "SPEAK_LAST":
+        history = conversation_history.get(user_id, [])
+        last_reply = None
+        for msg in reversed(history[:-1]):
+            if msg.get("role") == "assistant":
+                try:
+                    prev = json.loads(msg.get("content", "{}"))
+                    if prev.get("intent") != "SPEAK_LAST" and prev.get("reply"):
+                        last_reply = prev.get("reply")
+                        break
+                except Exception:
+                    continue
+        result["reply"] = last_reply if last_reply else "I don't have anything to repeat yet."
+        return {
+            "intent": result.get("intent"),
+            "mood": result.get("mood"),
+            "emoji": result.get("emoji"),
+            "data": result.get("data"),
+            "reply": result.get("reply")
+        }
+
+    if result["intent"] in ["CREATE_NOTE", "CREATE_REMINDER", "ADD_EXPENSE",
+                            "ADD_SHOPPING_ITEM", "STUDY_PLAN", "CREATE_GOAL",
+                            "LOG_MOOD", "CREATE_MEMORY", "SAVE_CONTEXT", "DRAFT_EMAIL"]:
+        result["data"]["user_id"] = user_id
+        backend_response = send_to_backend(result["intent"], result["data"], token)
+        print("Backend says:", backend_response)
+
+    elif result["intent"] == "FIND_FILE":
+        result["data"]["user_id"] = user_id
+        result["data"]["device_id"] = device_id
+        backend_response = send_to_backend(result["intent"], result["data"], token)
+        print("Backend says:", backend_response)
+
+        search_term = result["data"].get("search_term", user_text)
+        folder = result["data"].get("folder", "")
+
+        if isinstance(backend_response, dict):
+            files_found = backend_response.get("files_found", 0)
+            files = backend_response.get("files", [])
+
+            if not backend_response.get("success"):
+                result["reply"] = f"Sorry, I couldn't search for '{search_term}' right now."
+            elif files_found == 0:
+                if folder:
+                    result["reply"] = f"Sorry, I couldn't find '{search_term}' in your {folder} folder."
+                else:
+                    result["reply"] = f"Sorry, I couldn't find any file or folder matching '{search_term}'."
+            else:
+                file_names = [f.split("\\")[-1] for f in files[:5]]
+                if len(file_names) == 1:
+                    result["reply"] = f"Found 1 item: {file_names[0]}"
+                else:
+                    result["reply"] = f"Found {files_found} items:\n" + "\n".join(file_names)
+        else:
+            result["reply"] = f"Sorry, I couldn't find '{search_term}'."
+
+    elif result["intent"] == "CLOSE_APP":
+        if not is_confirmation:
+            pending_confirmations[user_id] = {
+                "intent": "CLOSE_APP",
+                "data": result["data"].copy()
+            }
+            app_name = result["data"].get("app", "this app")
+            result["reply"] = f"Are you sure you want to close {app_name}? Say yes to confirm."
+            result["data"]["requires_confirmation"] = True
+            return {
+                "intent": result.get("intent"),
+                "mood": result.get("mood"),
+                "emoji": result.get("emoji"),
+                "data": result.get("data"),
+                "reply": result.get("reply")
+            }
+
+        result["data"]["user_id"] = user_id
+        result["data"]["device_id"] = device_id
+        result["data"]["requires_confirmation"] = False
+        backend_response = send_to_backend(result["intent"], result["data"], token)
+        print("Backend says:", backend_response)
+
+    elif result["intent"] == "OPEN_FOLDER":
+        folder = result["data"].get("folder", "")
+
+        check_payload = {
+            "search_term": folder,
+            "user_id": user_id,
+            "device_id": device_id
+        }
+        check_response = send_to_backend("FIND_FILE", check_payload, token)
+        print("Pre-check says:", check_response)
+
+        files_found = check_response.get("files_found", 0) if isinstance(check_response, dict) else 0
+
+        if files_found == 0:
+            result["reply"] = f"Sorry, I couldn't find a folder named '{folder}' on your laptop. Want me to open a different folder?"
+        else:
+            result["data"]["user_id"] = user_id
+            result["data"]["device_id"] = device_id
+            backend_response = send_to_backend("OPEN_FOLDER", result["data"], token)
+            print("Backend says:", backend_response)
+
+            if isinstance(backend_response, dict) and backend_response.get("success"):
+                result["reply"] = f"Opening {folder} folder!"
+            else:
+                result["reply"] = f"Sorry, I couldn't open {folder}."
+
+    elif result["intent"] in ["OPEN_APP", "OPEN_URL", "CREATE_FOLDER"]:
+        result["data"]["user_id"] = user_id
+        result["data"]["device_id"] = device_id
+        backend_response = send_to_backend(result["intent"], result["data"], token)
+        print("Backend says:", backend_response)
+
+        if isinstance(backend_response, dict) and backend_response.get("success"):
+            if result["intent"] == "OPEN_APP":
+                app = result["data"].get("app", "the app")
+                result["reply"] = f"Opening {app} on your laptop..."
+            elif result["intent"] == "OPEN_URL":
+                result["reply"] = "Opening that website in your browser..."
+            elif result["intent"] == "CREATE_FOLDER":
+                folder = result["data"].get("folder_name", "the folder")
+                result["reply"] = f"Creating folder {folder} on your Desktop..."
+        else:
+            result["reply"] = "Sorry, I couldn't complete that action right now."
+
+    elif result["intent"] in ["MUTE", "UNMUTE",
+                              "VOLUME_UP", "VOLUME_DOWN", "SET_VOLUME",
+                              "BRIGHTNESS_UP", "BRIGHTNESS_DOWN", "SET_BRIGHTNESS",
+                              "TAKE_SCREENSHOT"]:
+        result["data"]["user_id"] = user_id
+        result["data"]["device_id"] = device_id
+        backend_response = send_to_backend(result["intent"], result["data"], token)
+        print("Backend says:", backend_response)
+
+    elif result["intent"] == "SEARCH_NOTES":
+        query = result["data"].get("query", user_text)
+        search_payload = {"query": query, "user_id": user_id}
+        url = f"{BACKEND_URL}/api/assistant"
+        headers = {"Authorization": f"Bearer {token}"}
+        try:
+            r = requests.post(url, json={"intent": "SEARCH_NOTES", "data": search_payload}, headers=headers)
+            fetched_data = r.json()
+            print("Semantic search result:", fetched_data)
+
+            if fetched_data.get("success"):
+                # Filter results by similarity threshold
+                results = fetched_data.get("results", [])
+                filtered = [item for item in results if item.get("similarity", 0) >= SIMILARITY_THRESHOLD]
+
+                if filtered:
+                    formatted = [f"{i+1}. {item['text']} (similarity: {round(item['similarity'], 2)})"
+                                 for i, item in enumerate(filtered)]
+                    result["reply"] = "Here are the notes I found:\n" + "\n".join(formatted)
+                else:
+                    result["reply"] = f"Sorry, I couldn't find any notes about '{query}'."
+            else:
+                result["reply"] = f"Search failed: {fetched_data.get('message', 'unknown error')}"
+        except Exception as e:
+            result["reply"] = f"Could not search: {e}"
+
+    elif result["intent"] in ["GET_NOTES", "GET_REMINDERS", "GET_EXPENSES",
+                              "GET_SHOPPING_LIST", "GET_STUDY_PLANS", "GET_GOALS",
+                              "GET_MOODS", "GET_MEMORIES", "GET_CONTEXT", "SHOW_INFORMATION"]:
+        fetch_params = result["data"].copy()
+        fetch_params["user_id"] = user_id
+        fetched_data = fetch_from_backend(result["intent"], fetch_params, token)
+        print("Fetched from database:", fetched_data)
+
         if fetched_data.get("success"):
-            if result["intent"] == "GET_NOTES":
-                notes = [note["text"] for note in fetched_data.get("notes", [])]
-                result["reply"] = f"Here are your notes: {', '.join(notes)}"
-            elif result["intent"] == "GET_REMINDERS":
-                tasks = [rem["task"] for rem in fetched_data.get("reminders", [])]
-                result["reply"] = f"Here are your reminders: {', '.join(tasks)}"
-            elif result["intent"] == "GET_EXPENSES":
-                details = [f"{exp['amount']} on {exp['category']}" for exp in fetched_data.get("expenses", [])]
-                result["reply"] = f"Here are your expenses: {', '.join(details)}"
-            elif result["intent"] == "GET_SHOPPING_LIST":
-                items = [item["item"] for item in fetched_data.get("shopping_items", [])]
-                result["reply"] = f"Here is your shopping list: {', '.join(items)}"
-            elif result["intent"] == "GET_GOALS":
-                goals = [goal["goal"] for goal in fetched_data.get("goals", [])]
-                result["reply"] = f"Here are your goals: {', '.join(goals)}"
-            elif result["intent"] == "GET_STUDY_PLANS":
-                subjects = [plan["subject"] for plan in fetched_data.get("study_plans", [])]
-                result["reply"] = f"Here are your study plans: {', '.join(subjects)}"
-            elif result["intent"] == "SHOW_INFORMATION":
-                briefing = fetched_data.get("briefing", {})
-                total_expenses = briefing.get("total_expenses", 0)
-                result["reply"] = f"Your total expenses are {total_expenses}. You have {len(briefing.get('reminders', []))} reminders today."
-        
-    # 3. INSTANT MODULES (No backend needed)
+            formatted = (fetched_data.get("formatted_notes") or
+                         fetched_data.get("formatted_reminders") or
+                         fetched_data.get("formatted_items") or
+                         fetched_data.get("formatted_expenses") or
+                         fetched_data.get("formatted_goals") or
+                         fetched_data.get("formatted_study_plans") or
+                         fetched_data.get("formatted_moods") or
+                         fetched_data.get("formatted_memories"))
+
+            if formatted:
+                if result["intent"] == "GET_NOTES":
+                    result["reply"] = "Here are your notes:\n" + "\n".join(formatted)
+                elif result["intent"] == "GET_REMINDERS":
+                    result["reply"] = "Here are your reminders:\n" + "\n".join(formatted)
+                elif result["intent"] == "GET_EXPENSES":
+                    result["reply"] = "Here are your expenses:\n" + "\n".join(formatted)
+                elif result["intent"] == "GET_SHOPPING_LIST":
+                    result["reply"] = "Here is your shopping list:\n" + "\n".join(formatted)
+                elif result["intent"] == "GET_GOALS":
+                    result["reply"] = "Here are your goals:\n" + "\n".join(formatted)
+                elif result["intent"] == "GET_STUDY_PLANS":
+                    result["reply"] = "Here are your study plans:\n" + "\n".join(formatted)
+                elif result["intent"] == "GET_MOODS":
+                    result["reply"] = "Here are your moods:\n" + "\n".join(formatted)
+                elif result["intent"] == "GET_MEMORIES":
+                    result["reply"] = "Here is what I remember:\n" + "\n".join(formatted)
+
     elif result["intent"] in ["TRANSLATE_TEXT", "SUMMARIZE_TEXT", "GENERATE_FLASHCARDS", "GENERAL_CHAT"]:
-        print("🔔 INSTANT MODULE: No backend needed. Just showing AI's answer!")
-        
-    structured_data = {
+        print("INSTANT MODULE: No backend needed. Just showing AI's answer!")
+
+    return {
         "intent": result.get("intent"),
         "mood": result.get("mood"),
         "emoji": result.get("emoji"),
         "data": result.get("data"),
         "reply": result.get("reply")
     }
-    return structured_data
 
 
-# --- Testing Area ---
 if __name__ == "__main__":
     print(">> Nova Brain is ready! Type 'exit' to quit.")
+
+    test_email = "test@test.com"
+    test_password = "TestPassword123"
+    access_token, test_user_id = get_access_token(test_email, test_password)
+
+    if not access_token:
+        print("Exiting: Could not get access token.")
+        exit()
+
     while True:
         user_input = input("\nYou: ")
         if user_input.lower() == "exit":
             break
-        
-        # NOTE: We are passing the test user_id directly for now!
-        test_user_id = '70b8f321-126c-4285-af9c-2cac962f0597'
-        
-        result = get_ai_response(user_input, test_user_id)
+
+        result = get_ai_response(user_input, access_token, test_user_id)
         print("\n>> AI Output (JSON):")
-        print(json.dumps(result, indent=2, ensure_ascii=False))  # ✅ FINAL FIX: This prints the real emoji!
+        print(json.dumps(result, indent=2, ensure_ascii=False))
         print(f"\n>> Nova says: {result['reply']}")

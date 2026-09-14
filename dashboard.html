@@ -268,6 +268,10 @@
     box-shadow: 0 4px 24px rgba(239, 68, 68, 0.4);
     animation: pulse 1.2s ease-in-out infinite;
   }
+  .mic-btn.speaking {
+    background: linear-gradient(135deg, #f59e0b, #ef4444);
+    box-shadow: 0 4px 24px rgba(245, 158, 11, 0.4);
+  }
   @keyframes pulse {
     0%,100% { transform: scale(1); }
     50%     { transform: scale(1.08); }
@@ -647,7 +651,7 @@
           <i data-lucide="bell"></i>
           <span class="notification-dot"></span>
         </button>
-        <div class="avatar">AS</div>
+        <div class="avatar" id="avatarCircle">U</div>
       </div>
     </header>
 
@@ -716,27 +720,27 @@
       <div class="dashboard-grid">
         <div class="stat-card">
           <div class="stat-icon"><i data-lucide="clock"></i></div>
-          <div class="stat-value">3</div>
+          <div class="stat-value" id="statReminders">0</div>
           <div class="stat-label">Today's Reminders</div>
         </div>
         <div class="stat-card">
           <div class="stat-icon"><i data-lucide="file-text"></i></div>
-          <div class="stat-value">12</div>
+          <div class="stat-value" id="statNotes">0</div>
           <div class="stat-label">Notes</div>
         </div>
         <div class="stat-card">
           <div class="stat-icon"><i data-lucide="shopping-cart"></i></div>
-          <div class="stat-value">5</div>
+          <div class="stat-value" id="statShopping">0</div>
           <div class="stat-label">Shopping Items</div>
         </div>
         <div class="stat-card">
           <div class="stat-icon"><i data-lucide="book-open"></i></div>
-          <div class="stat-value">4</div>
+          <div class="stat-value" id="statStudy">0</div>
           <div class="stat-label">Study Tasks</div>
         </div>
         <div class="stat-card">
           <div class="stat-icon"><i data-lucide="target"></i></div>
-          <div class="stat-value">72%</div>
+          <div class="stat-value" id="statGoals">0%</div>
           <div class="stat-label">Goal Progress</div>
         </div>
       </div>
@@ -757,6 +761,10 @@ if (greetingEl) {
   var g = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
   greetingEl.textContent = g + ", " + userName + " 👋";
 }
+
+/* ---------- Avatar initial ---------- */
+var avatarEl = document.getElementById("avatarCircle");
+if (avatarEl) avatarEl.textContent = (userName.charAt(0) || "U").toUpperCase();
 
 /* ---------- Toast ---------- */
 function showToast(type, title, message) {
@@ -866,6 +874,53 @@ if (micLabelReset) micLabelReset.textContent = "Talk to NOVA";
 
 /* ---------- Render Lucide icons ---------- */
 if (window.lucide) lucide.createIcons();
+
+/* ---------- Load real overview numbers ---------- */
+async function loadOverview() {
+  var userId = localStorage.getItem('user_id') || localStorage.getItem('nova-user-id');
+  var token = localStorage.getItem('access_token') || localStorage.getItem('nova-access-token') || localStorage.getItem('nova-auth-token');
+
+  if (!userId || !token) {
+    console.log('[Overview] No user/token — skipping');
+    return;
+  }
+
+  var BACKEND = 'https://nova-voice-assistant-6vve.onrender.com';
+  var headers = { 'Authorization': 'Bearer ' + token };
+
+  async function fetchCount(path, id) {
+    try {
+      var r = await fetch(BACKEND + path, { headers: headers });
+      var data = await r.json();
+      var arr = Array.isArray(data) ? data : (data.results || data.data || []);
+      var el = document.getElementById(id);
+      if (el) el.textContent = arr.length;
+    } catch (e) {
+      console.log('Overview fetch failed for ' + path, e);
+    }
+  }
+
+  fetchCount('/api/reminders/', 'statReminders');
+  fetchCount('/api/notes/', 'statNotes');
+  fetchCount('/api/shopping/', 'statShopping');
+  fetchCount('/api/study-plans/', 'statStudy');
+
+  try {
+    var r = await fetch(BACKEND + '/api/goals/', { headers: headers });
+    var data = await r.json();
+    var goals = Array.isArray(data) ? data : (data.results || data.data || []);
+    var el = document.getElementById('statGoals');
+    if (el) {
+      if (!goals.length) el.textContent = '0%';
+      else {
+        var avg = goals.reduce(function(s, g) { return s + (g.progress || 0); }, 0) / goals.length;
+        el.textContent = Math.round(avg) + '%';
+      }
+    }
+  } catch (e) { console.log('Goals fetch failed', e); }
+}
+
+document.addEventListener('DOMContentLoaded', loadOverview);
 </script>
 
 <!-- =========================================================

@@ -1,5 +1,6 @@
 /* ============================================
    NOVA - Auth JavaScript (FIXED)
+   Saves user_id, access_token, and name to localStorage
    ============================================ */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -9,6 +10,24 @@ document.addEventListener("DOMContentLoaded", () => {
   initPasswordToggles();
   initPasswordStrength();
 });
+
+/* =========================================================
+   HELPERS — save all keys voice.js + bridge.py need
+   ========================================================= */
+function saveUserSession(user, token) {
+  const name = (user && (user.fullName || user.name || user.username)) || "User";
+  const userId = (user && (user.id || user.user_id || user.userId)) || "";
+  const t = token || "";
+
+  localStorage.setItem("nova-user-name", name);
+  localStorage.setItem("user_id", userId);
+  localStorage.setItem("nova-user-id", userId);
+  localStorage.setItem("access_token", t);
+  localStorage.setItem("nova-access-token", t);
+  localStorage.setItem("nova-auth-token", t);
+
+  console.log("[NOVA Auth] Saved session →", { name, userId, hasToken: !!t });
+}
 
 /* =========================================================
    LOGIN
@@ -31,7 +50,6 @@ function initLoginForm() {
 
     console.log("[NOVA Auth] Login submitted");
 
-    // Reset UI
     errorBox.classList.remove("show");
     clearFieldError("loginEmail");
     clearFieldError("loginPassword");
@@ -63,17 +81,17 @@ function initLoginForm() {
       console.log("[NOVA Auth] Login result:", result);
 
       if (result && result.success) {
-        const name = (result.data && result.data.user && result.data.user.fullName) || "User";
-        setUserName(name);
-        localStorage.setItem("nova-auth-token", result.data.token);
+        const user = (result.data && result.data.user) || {};
+        const token = (result.data && result.data.token) || "";
+
+        // ⭐ Save all keys voice.js + bridge.py need
+        saveUserSession(user, token);
 
         showToast("success", "Welcome back!", "Redirecting to dashboard...");
 
-        // Redirect — with hard fallback
         console.log("[NOVA Auth] Redirecting to dashboard.html");
         window.location.href = "dashboard.html";
 
-        // Hard fallback in case href assignment is blocked
         setTimeout(() => {
           window.location.assign("dashboard.html");
         }, 300);
@@ -170,8 +188,14 @@ function initRegisterForm() {
       console.log("[NOVA Auth] Register result:", result);
 
       if (result && result.success) {
-        setUserName(fullName);
-        localStorage.setItem("nova-auth-token", result.data.token);
+        const user = (result.data && result.data.user) || {};
+        const token = (result.data && result.data.token) || "";
+
+        // ⭐ Save all keys voice.js + bridge.py need
+        saveUserSession(
+          { ...user, fullName: user.fullName || fullName },
+          token
+        );
 
         showToast("success", "Account created!", "Welcome to NOVA.");
 
