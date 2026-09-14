@@ -55,7 +55,17 @@ def create_notification(cur, user_id, title, message, icon="🔔"):
     """, (user_id, title, message, icon))
 
 app = Flask(__name__)
-CORS(app)
+CORS(
+    app,
+    origins=[
+        "http://127.0.0.1:5500",
+        "http://localhost:5500",
+        "https://nova-voice-assistant-three.vercel.app"
+    ],
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
+    supports_credentials=True
+)
 
 gemini_client = genai.Client(
     api_key=os.getenv("GEMINI_API_KEY")
