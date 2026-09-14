@@ -1,293 +1,698 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Expenses — NOVA</title>
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/components.css">
-  <link rel="stylesheet" href="css/dashboard.css">
-  <style>
-    .expense-summary {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: var(--space-lg);
-      margin-bottom: var(--space-xl);
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Expenses — NOVA</title>
+<link rel="icon" type="image/svg+xml" href="assets/images/nova-logo.svg">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #05060f;
+    color: #f1f5f9;
+    min-height: 100vh;
+  }
+  .dashboard-layout { display: flex; min-height: 100vh; }
 
-    .expense-summary-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-lg);
-      padding: var(--space-lg);
-      position: relative;
-      overflow: hidden;
-    }
+  /* SIDEBAR */
+  .sidebar {
+    width: 260px;
+    background: rgba(10,12,26,0.85);
+    border-right: 1px solid rgba(255,255,255,0.06);
+    padding: 20px 12px;
+    position: fixed;
+    top: 0; left: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .sidebar-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 12px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    margin-bottom: 12px;
+  }
+  .sidebar-logo-img {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(34,211,238,0.3);
+  }
+  .sidebar-brand {
+    font-size: 1.3rem; font-weight: 700; letter-spacing: 0.05em;
+    background: linear-gradient(135deg, #22d3ee, #8b5cf6, #ec4899);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .nav-section-label {
+    font-size: 0.7rem; font-weight: 700; color: #475569;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    padding: 16px 12px 6px;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 10px;
+    color: #64748b; text-decoration: none;
+    font-size: 0.9rem; font-weight: 500;
+    transition: all 0.2s ease; position: relative;
+    margin-bottom: 2px;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.04); color: #f1f5f9; }
+  .nav-item.active {
+    background: rgba(34,211,238,0.08); color: #22d3ee; font-weight: 600;
+  }
+  .nav-item.active::before {
+    content: ''; position: absolute;
+    left: 0; top: 50%; transform: translateY(-50%);
+    width: 3px; height: 60%;
+    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
+    border-radius: 0 4px 4px 0;
+    box-shadow: 0 0 12px rgba(34,211,238,0.5);
+  }
+  .nav-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; flex-shrink: 0;
+  }
+  .nav-icon svg { width: 18px; height: 18px; stroke-width: 1.8; }
+  .nav-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 12px; }
 
-    .expense-summary-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 3px;
-      background: var(--gradient-primary);
-    }
+  /* MAIN */
+  .main-content { flex: 1; margin-left: 260px; min-height: 100vh; }
+  .topbar {
+    height: 72px; display: flex; align-items: center; justify-content: space-between;
+    padding: 0 32px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    background: rgba(10,12,26,0.6);
+    backdrop-filter: blur(20px);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .greeting-title { font-size: 1.1rem; font-weight: 700; color: #f1f5f9; }
+  .greeting-subtitle { font-size: 0.8rem; color: #94a3b8; }
+  .topbar-right { display: flex; align-items: center; gap: 16px; }
+  .topbar-icon-btn {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: transparent; border: 0; color: #94a3b8;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    position: relative; transition: all 0.2s ease;
+  }
+  .topbar-icon-btn:hover { background: rgba(255,255,255,0.05); color: #f1f5f9; }
+  .topbar-icon-btn svg { width: 20px; height: 20px; stroke-width: 1.8; }
+  .notification-dot {
+    position: absolute; top: 8px; right: 8px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #22d3ee; box-shadow: 0 0 8px rgba(34,211,238,0.6);
+  }
+  .avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.9rem; color: #fff;
+  }
 
-    .expense-summary-label {
-      font-size: 0.75rem;
-      font-weight: 700;
-      color: var(--text-dim);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-bottom: var(--space-sm);
-    }
+  .page-content { padding: 32px; }
 
-    .expense-summary-value {
-      font-family: var(--font-display);
-      font-size: 1.8rem;
-      font-weight: 700;
-      color: var(--text-primary);
-    }
+  /* TOOLBAR */
+  .toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; margin-bottom: 24px; flex-wrap: wrap;
+  }
+  .toolbar-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .count-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px;
+    background: rgba(34,211,238,0.08);
+    border: 1px solid rgba(34,211,238,0.2);
+    border-radius: 9999px;
+    font-size: 0.8rem; font-weight: 600;
+    color: #22d3ee;
+  }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 8px; padding: 10px 22px;
+    font-size: 0.9rem; font-weight: 600;
+    border-radius: 9999px; border: 0; cursor: pointer;
+    font-family: inherit; transition: all 0.2s ease;
+  }
+  .btn-ghost {
+    background: rgba(255,255,255,0.04);
+    color: #94a3b8;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .btn-ghost:hover {
+    background: rgba(255,255,255,0.07);
+    color: #f1f5f9;
+    border-color: rgba(34,211,238,0.3);
+  }
+  .btn-ghost svg { width: 16px; height: 16px; stroke-width: 2; }
 
-    .expense-categories {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-      gap: var(--space-md);
-      margin-bottom: var(--space-xl);
-    }
+  /* SUMMARY CARDS */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .summary-card {
+    background: rgba(18,21,45,0.65);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 16px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+  .summary-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
+  }
+  .summary-card.green::before { background: linear-gradient(135deg,#10b981,#22d3ee); }
+  .summary-card.violet::before { background: linear-gradient(135deg,#8b5cf6,#ec4899); }
+  .summary-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(255,255,255,0.1);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  }
+  .summary-label {
+    font-size: 0.7rem; font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .summary-label svg { width: 14px; height: 14px; stroke-width: 2; }
+  .summary-value {
+    font-size: 2rem; font-weight: 800;
+    color: #f1f5f9;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .summary-sub {
+    font-size: 0.78rem;
+    color: #64748b;
+  }
 
-    .expense-category-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      padding: var(--space-md);
-      text-align: center;
-      transition: all var(--transition-base);
-    }
+  /* CATEGORY BREAKDOWN */
+  .category-section {
+    margin-bottom: 32px;
+  }
+  .category-title {
+    font-size: 1rem; font-weight: 700;
+    margin-bottom: 16px;
+    color: #f1f5f9;
+  }
+  .category-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+  }
+  .category-card {
+    background: rgba(18,21,45,0.65);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    transition: all 0.3s ease;
+  }
+  .category-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(255,255,255,0.1);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+  }
+  .category-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: rgba(34,211,238,0.08);
+    border: 1px solid rgba(34,211,238,0.15);
+    display: flex; align-items: center; justify-content: center;
+    color: #22d3ee;
+    margin: 0 auto 10px;
+  }
+  .category-icon svg { width: 18px; height: 18px; stroke-width: 1.8; }
+  .category-name {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-bottom: 6px;
+    text-transform: capitalize;
+  }
+  .category-amount {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #f1f5f9;
+  }
 
-    .expense-category-card:hover {
-      border-color: var(--border-glass);
-      transform: translateY(-3px);
-    }
+  /* EXPENSE LIST */
+  .list-section-title {
+    font-size: 1rem; font-weight: 700;
+    margin-bottom: 16px;
+    color: #f1f5f9;
+  }
+  .expense-list {
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .expense-item {
+    display: flex; align-items: center; gap: 16px;
+    padding: 16px 20px;
+    background: rgba(18,21,45,0.65);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    transition: all 0.3s ease;
+  }
+  .expense-item:hover {
+    border-color: rgba(255,255,255,0.1);
+    transform: translateX(4px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  }
+  .expense-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    background: rgba(34,211,238,0.08);
+    border: 1px solid rgba(34,211,238,0.15);
+    display: flex; align-items: center; justify-content: center;
+    color: #22d3ee;
+    flex-shrink: 0;
+  }
+  .expense-icon svg { width: 20px; height: 20px; stroke-width: 1.8; }
 
-    .expense-category-icon {
-      font-size: 1.5rem;
-      margin-bottom: var(--space-sm);
-    }
+  .expense-content { flex: 1; min-width: 0; }
+  .expense-category-name {
+    font-size: 0.95rem; font-weight: 600;
+    color: #f1f5f9; margin-bottom: 4px;
+    text-transform: capitalize;
+  }
+  .expense-date {
+    font-size: 0.78rem;
+    color: #64748b;
+  }
+  .expense-amount {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #f1f5f9;
+    white-space: nowrap;
+  }
+  .expense-amount::before { content: "₹"; opacity: 0.7; margin-right: 2px; }
 
-    .expense-category-name {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      margin-bottom: 4px;
-    }
+  /* STATES */
+  .state-box {
+    padding: 48px 32px;
+    text-align: center;
+    color: #64748b;
+    font-size: 0.95rem;
+  }
+  .state-box .state-icon {
+    font-size: 3rem; opacity: 0.5;
+    margin-bottom: 16px;
+  }
+  .state-box.error { color: #ef4444; }
+  .state-box.loading {
+    display: flex; flex-direction: column; align-items: center; gap: 16px;
+  }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid rgba(255,255,255,0.08);
+    border-top-color: #22d3ee;
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
-    .expense-category-amount {
-      font-family: var(--font-display);
-      font-size: 1.1rem;
-      font-weight: 700;
-      color: var(--text-primary);
-    }
-
-    .expense-list {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-sm);
-    }
-
-    .expense-item {
-      display: flex;
-      align-items: center;
-      gap: var(--space-md);
-      padding: var(--space-md) var(--space-lg);
-      background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      transition: all var(--transition-base);
-    }
-
-    .expense-item:hover {
-      border-color: var(--border-glass);
-      transform: translateX(4px);
-    }
-
-    .expense-item-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: var(--radius-sm);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.1rem;
-      background: var(--bg-glass);
-      border: 1px solid var(--border-subtle);
-      flex-shrink: 0;
-    }
-
-    .expense-item-content {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .expense-item-title {
-      font-size: 0.9rem;
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-
-    .expense-item-meta {
-      font-size: 0.75rem;
-      color: var(--text-dim);
-      margin-top: 2px;
-    }
-
-    .expense-item-amount {
-      font-family: var(--font-display);
-      font-size: 1rem;
-      font-weight: 700;
-      color: var(--text-primary);
-      white-space: nowrap;
-    }
-
-    .expense-item-actions {
-      display: flex;
-      gap: var(--space-xs);
-      opacity: 0;
-      transition: opacity var(--transition-fast);
-    }
-
-    .expense-item:hover .expense-item-actions {
-      opacity: 1;
-    }
-
-    @media (max-width: 768px) {
-      .expense-summary {
-        grid-template-columns: 1fr;
-      }
-
-      .expense-item-actions {
-        opacity: 1;
-      }
-    }
-  </style>
+  /* RESPONSIVE */
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); }
+    .main-content { margin-left: 0; }
+    .page-content { padding: 20px 16px; }
+    .toolbar { flex-direction: column; align-items: stretch; }
+    .toolbar-left { flex-direction: column; align-items: stretch; }
+    .summary-value { font-size: 1.6rem; }
+  }
+</style>
 </head>
 <body>
 
-  <div class="dashboard-layout">
-    <aside class="sidebar" id="sidebar">
-      <div class="sidebar-header">
-        <div class="sidebar-logo">N</div>
-        <div class="sidebar-brand">NOVA</div>
+<div class="dashboard-layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <img src="assets/images/nova-logo.svg" alt="NOVA" class="sidebar-logo-img">
+      <div class="sidebar-brand">NOVA</div>
+    </div>
+    <nav>
+      <div class="nav-section-label">Main</div>
+      <a href="dashboard.html" class="nav-item">
+        <i data-lucide="layout-dashboard" class="nav-icon"></i><span>Dashboard</span>
+      </a>
+      <a href="#" class="nav-item">
+        <i data-lucide="sparkles" class="nav-icon"></i><span>Assistant</span>
+      </a>
+      <div class="nav-section-label">Organize</div>
+      <a href="reminders.html" class="nav-item">
+        <i data-lucide="clock" class="nav-icon"></i><span>Reminders</span>
+      </a>
+      <a href="notes.html" class="nav-item">
+        <i data-lucide="file-text" class="nav-icon"></i><span>Notes</span>
+      </a>
+      <a href="shopping.html" class="nav-item">
+        <i data-lucide="shopping-cart" class="nav-icon"></i><span>Shopping</span>
+      </a>
+      <a href="expenses.html" class="nav-item active">
+        <i data-lucide="wallet" class="nav-icon"></i><span>Expenses</span>
+      </a>
+      <a href="study_plans.html" class="nav-item">
+        <i data-lucide="book-open" class="nav-icon"></i><span>Study Plans</span>
+      </a>
+      <a href="goals.html" class="nav-item">
+        <i data-lucide="target" class="nav-icon"></i><span>Goals</span>
+      </a>
+      <div class="nav-divider"></div>
+      <a href="profile.html" class="nav-item">
+        <i data-lucide="settings" class="nav-icon"></i><span>Profile</span>
+      </a>
+      <a href="login.html" class="nav-item" id="logoutBtn">
+        <i data-lucide="log-out" class="nav-icon"></i><span>Logout</span>
+      </a>
+    </nav>
+  </aside>
+
+  <div class="main-content">
+    <header class="topbar">
+      <div>
+        <div class="greeting-title">Expenses</div>
+        <div class="greeting-subtitle">Understand your spending.</div>
       </div>
-      <nav class="sidebar-nav">
-        <div class="nav-section-label">Main</div>
-        <a href="dashboard.html" class="nav-item"><span class="nav-icon">⌂</span><span class="nav-label">Dashboard</span></a>
-        <div class="nav-section-label">Organize</div>
-        <a href="reminders.html" class="nav-item"><span class="nav-icon">⏰</span><span class="nav-label">Reminders</span></a>
-        <a href="notes.html" class="nav-item"><span class="nav-icon">📝</span><span class="nav-label">Notes</span></a>
-        <a href="shopping.html" class="nav-item"><span class="nav-icon">🛒</span><span class="nav-label">Shopping</span></a>
-        <a href="expenses.html" class="nav-item active"><span class="nav-icon">💰</span><span class="nav-label">Expenses</span></a>
-        <a href="study_plans.html" class="nav-item"><span class="nav-icon">📚</span><span class="nav-label">Study Plans</span></a>
-        <a href="goals.html" class="nav-item"><span class="nav-icon">🎯</span><span class="nav-label">Goals</span></a>
-        <div class="nav-divider"></div>
-        <a href="profile.html" class="nav-item"><span class="nav-icon">⚙</span><span class="nav-label">Profile</span></a>
-        <a href="login.html" class="nav-item"><span class="nav-icon">↪</span><span class="nav-label">Logout</span></a>
-      </nav>
-      <div class="sidebar-footer">
-        <div class="sidebar-user">
-          <div class="avatar avatar-sm">AS</div>
-          <div class="sidebar-user-info">
-            <div class="sidebar-user-name" id="sidebarUserName">Arjun Sharma</div>
-            <div class="sidebar-user-role">Student</div>
+      <div class="topbar-right">
+        <button class="topbar-icon-btn" id="notifBtn">
+          <i data-lucide="bell"></i>
+          <span class="notification-dot"></span>
+        </button>
+        <div class="avatar" id="avatarInitial">U</div>
+      </div>
+    </header>
+
+    <div class="page-content">
+
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <div class="count-badge">
+            <i data-lucide="wallet" style="width:14px;height:14px;"></i>
+            <span id="countText">Loading...</span>
           </div>
+        </div>
+        <button class="btn btn-ghost" id="refreshBtn">
+          <i data-lucide="refresh-cw"></i> Refresh
+        </button>
+      </div>
+
+      <!-- Summary cards -->
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="summary-label">
+            <i data-lucide="trending-up"></i> Total Spent
+          </div>
+          <div class="summary-value" id="totalSpent">₹0</div>
+          <div class="summary-sub" id="totalCount">0 transactions</div>
+        </div>
+        <div class="summary-card green">
+          <div class="summary-label">
+            <i data-lucide="calendar"></i> This Month
+          </div>
+          <div class="summary-value" id="monthSpent">₹0</div>
+          <div class="summary-sub">Current month</div>
+        </div>
+        <div class="summary-card violet">
+          <div class="summary-label">
+            <i data-lucide="clock"></i> Today
+          </div>
+          <div class="summary-value" id="todaySpent">₹0</div>
+          <div class="summary-sub">Today's total</div>
         </div>
       </div>
-    </aside>
 
-    <div class="main-content" id="mainContent">
-      <header class="topbar">
-        <div class="topbar-left">
-          <button class="hamburger" aria-label="Toggle menu">☰</button>
-          <div class="topbar-greeting">
-            <div class="greeting-title">Expenses</div>
-            <div class="greeting-subtitle">Understand your spending.</div>
-          </div>
-        </div>
-        <div class="topbar-right">
-          <button class="topbar-icon-btn" data-notifications aria-label="Notifications">🔔<span class="notification-dot"></span></button>
-          <div class="topbar-avatar"><div class="avatar">AS</div></div>
-        </div>
-      </header>
-
-      <div class="page-content">
-        <div class="flex-between mb-xl" style="flex-wrap: wrap; gap: var(--space-md);">
-          <h2 style="font-family: var(--font-display);">Expense Dashboard</h2>
-          <button class="btn btn-primary" id="addExpenseBtn">+ Add Expense</button>
-        </div>
-
-        <div class="expense-summary" id="expenseSummary">
-          <div class="expense-summary-card">
-            <div class="expense-summary-label">Total Spent</div>
-            <div class="expense-summary-value" id="totalSpent">₹0</div>
-          </div>
-          <div class="expense-summary-card">
-            <div class="expense-summary-label">This Month</div>
-            <div class="expense-summary-value" id="monthSpent">₹0</div>
-          </div>
-          <div class="expense-summary-card">
-            <div class="expense-summary-label">Today</div>
-            <div class="expense-summary-value" id="todaySpent">₹0</div>
-          </div>
-        </div>
-
-        <h3 style="margin-bottom: var(--space-md); font-family: var(--font-display); font-size: 1.1rem;">By Category</h3>
-        <div class="expense-categories" id="expenseCategories"></div>
-
-        <h3 style="margin-bottom: var(--space-md); font-family: var(--font-display); font-size: 1.1rem;">Recent Expenses</h3>
-        <div class="expense-list" id="expenseList"></div>
+      <!-- Category breakdown -->
+      <div class="category-section" id="categorySection" style="display:none;">
+        <div class="category-title">By Category</div>
+        <div class="category-grid" id="categoryGrid"></div>
       </div>
+
+      <!-- Expense list -->
+      <div class="list-section-title">Recent Expenses</div>
+      <div class="expense-list" id="data-list"></div>
+
     </div>
   </div>
+</div>
 
-  <!-- Add Expense Modal -->
-  <div class="modal-overlay" id="expenseModal">
-    <div class="modal">
-      <div class="modal-header">
-        <h3 class="modal-title">💰 Add Expense</h3>
-        <button class="modal-close" data-close-modal aria-label="Close">✕</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label class="form-label" for="expenseTitle">Title <span class="required">*</span></label>
-          <input type="text" id="expenseTitle" class="form-input" placeholder="e.g. Lunch" required>
-          <div class="form-error" id="expenseTitleError">Title is required.</div>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="expenseAmount">Amount (₹) <span class="required">*</span></label>
-          <input type="number" id="expenseAmount" class="form-input" placeholder="0" min="1" required>
-          <div class="form-error" id="expenseAmountError">Please enter a valid amount.</div>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="expenseCategory">Category</label>
-          <select id="expenseCategory" class="form-select">
-            <option value="Food">Food</option>
-            <option value="Travel">Travel</option>
-            <option value="Education">Education</option>
-            <option value="Shopping">Shopping</option>
-            <option value="Bills">Bills</option>
-            <option value="Other" selected>Other</option>
-          </select>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-ghost" data-close-modal>Cancel</button>
-        <button class="btn btn-primary" id="saveExpenseBtn">Add Expense</button>
-      </div>
-    </div>
-  </div>
+<script>
+/* =========================================================
+   NOVA — Expenses (wired to POST /api/assistant)
+   Intent: GET_EXPENSES
+   Response: { success, count, expenses: [{ id, amount, category, created_at }] }
+   ========================================================= */
 
-  <script src="js/main.js"></script>
-  <script src="js/api.js"></script>
-  <script src="js/expenses.js"></script>
+var API_BASE = "https://nova-voice-assistant-6vve.onrender.com";
+var INTENT   = "GET_EXPENSES";
+var DATA_KEY = "expenses";
+
+document.addEventListener("DOMContentLoaded", function () {
+  var name = localStorage.getItem("nova-user-name") || "User";
+  var avatar = document.getElementById("avatarInitial");
+  if (avatar) avatar.textContent = (name.charAt(0) || "U").toUpperCase();
+
+  if (window.lucide) lucide.createIcons();
+
+  var logoutBtn = document.getElementById("logoutBtn");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+      localStorage.removeItem("nova-auth-token");
+      localStorage.removeItem("nova-user-name");
+      localStorage.removeItem("nova-user-email");
+      localStorage.removeItem("nova-user-id");
+      window.location.href = "login.html";
+    });
+  }
+
+  var notifBtn = document.getElementById("notifBtn");
+  if (notifBtn) {
+    notifBtn.addEventListener("click", function () {
+      showToast("info", "🔔 Notifications", "You have 3 new notifications.");
+    });
+  }
+
+  var refreshBtn = document.getElementById("refreshBtn");
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", loadData);
+  }
+
+  loadData();
+});
+
+async function loadData() {
+  var token = localStorage.getItem("nova-auth-token");
+  if (!token) {
+    window.location.href = "login.html";
+    return;
+  }
+
+  var container = document.getElementById("data-list");
+  var countText = document.getElementById("countText");
+  if (!container) return;
+
+  container.innerHTML = '<div class="state-box loading"><div class="spinner"></div><div>Loading your expenses...</div></div>';
+  if (countText) countText.textContent = "Loading...";
+
+  try {
+    var res = await fetch(API_BASE + "/api/assistant", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+      },
+      body: JSON.stringify({ intent: INTENT, data: {} })
+    });
+
+    if (res.status === 401) {
+      localStorage.removeItem("nova-auth-token");
+      window.location.href = "login.html";
+      return;
+    }
+
+    var data = await res.json();
+
+    if (!data.success) {
+      container.innerHTML = '<div class="state-box error">⚠️ ' + (data.error || "Could not load expenses.") + '</div>';
+      if (countText) countText.textContent = "Error";
+      return;
+    }
+
+    var items = data[DATA_KEY] || [];
+
+    if (countText) {
+      countText.textContent = items.length + (items.length === 1 ? " expense" : " expenses");
+    }
+
+    // Compute summaries
+    updateSummaries(items);
+
+    if (items.length === 0) {
+      container.innerHTML =
+        '<div class="state-box">' +
+          '<div class="state-icon">💰</div>' +
+          '<div>No expenses yet. Ask NOVA to log one!</div>' +
+        '</div>';
+      var catSec = document.getElementById("categorySection");
+      if (catSec) catSec.style.display = "none";
+      return;
+    }
+
+    // Render categories
+    renderCategories(items);
+
+    // Render list
+    var html = "";
+    items.forEach(function (e) {
+      html += renderRow(e);
+    });
+    container.innerHTML = html;
+
+    if (window.lucide) lucide.createIcons();
+  } catch (err) {
+    console.error("Load error:", err);
+    container.innerHTML =
+      '<div class="state-box error">' +
+        '⚠️ Could not connect to server.<br>' +
+        '<span style="font-size:0.85rem;color:#94a3b8;">If the server is cold, wait 30 seconds and click Refresh.</span>' +
+      '</div>';
+    if (countText) countText.textContent = "Offline";
+  }
+}
+
+/* ---------- Summaries ---------- */
+function updateSummaries(items) {
+  var total = 0;
+  var monthTotal = 0;
+  var todayTotal = 0;
+
+  var now = new Date();
+  var thisMonthPrefix = now.getFullYear() + "-" +
+                        String(now.getMonth() + 1).padStart(2, "0");
+  var todayPrefix = now.getFullYear() + "-" +
+                    String(now.getMonth() + 1).padStart(2, "0") + "-" +
+                    String(now.getDate()).padStart(2, "0");
+
+  items.forEach(function (e) {
+    var amt = Number(e.amount) || 0;
+    total += amt;
+
+    var created = e.created_at || "";
+    if (created.indexOf(thisMonthPrefix) === 0) monthTotal += amt;
+    if (created.indexOf(todayPrefix) === 0) todayTotal += amt;
+  });
+
+  document.getElementById("totalSpent").textContent = "₹" + formatNumber(total);
+  document.getElementById("monthSpent").textContent = "₹" + formatNumber(monthTotal);
+  document.getElementById("todaySpent").textContent = "₹" + formatNumber(todayTotal);
+  document.getElementById("totalCount").textContent =
+    items.length + (items.length === 1 ? " transaction" : " transactions");
+}
+
+function formatNumber(n) {
+  return Number(n).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+}
+
+/* ---------- Category breakdown ---------- */
+function renderCategories(items) {
+  var section = document.getElementById("categorySection");
+  var grid = document.getElementById("categoryGrid");
+  if (!section || !grid) return;
+
+  var byCat = {};
+  items.forEach(function (e) {
+    var cat = (e.category || "Other").trim();
+    byCat[cat] = (byCat[cat] || 0) + (Number(e.amount) || 0);
+  });
+
+  var cats = Object.keys(byCat);
+  if (cats.length === 0) {
+    section.style.display = "none";
+    return;
+  }
+
+  var iconMap = {
+    "Food": "utensils", "Travel": "bus", "Education": "graduation-cap",
+    "Shopping": "shopping-bag", "Bills": "receipt", "Other": "package"
+  };
+
+  var html = "";
+  cats.forEach(function (cat) {
+    var icon = iconMap[cat] || "package";
+    html +=
+      '<div class="category-card">' +
+        '<div class="category-icon"><i data-lucide="' + icon + '"></i></div>' +
+        '<div class="category-name">' + escapeHtml(cat) + '</div>' +
+        '<div class="category-amount">₹' + formatNumber(byCat[cat]) + '</div>' +
+      '</div>';
+  });
+  grid.innerHTML = html;
+  section.style.display = "block";
+}
+
+/* ---------- Row template ---------- */
+function renderRow(e) {
+  var amount = Number(e.amount) || 0;
+  var category = e.category || "Other";
+  var created = e.created_at || "";
+
+  var iconMap = {
+    "Food": "utensils", "Travel": "bus", "Education": "graduation-cap",
+    "Shopping": "shopping-bag", "Bills": "receipt", "Other": "package"
+  };
+  var icon = iconMap[category] || "package";
+
+  return (
+    '<div class="expense-item">' +
+      '<div class="expense-icon"><i data-lucide="' + icon + '"></i></div>' +
+      '<div class="expense-content">' +
+        '<div class="expense-category-name">' + escapeHtml(category) + '</div>' +
+        (created ? '<div class="expense-date">' + escapeHtml(created) + '</div>' : '') +
+      '</div>' +
+      '<div class="expense-amount">' + formatNumber(amount) + '</div>' +
+    '</div>'
+  );
+}
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function showToast(type, title, message) {
+  var container = document.querySelector(".toast-container");
+  if (!container) {
+    container = document.createElement("div");
+    container.className = "toast-container";
+    container.style.cssText = "position:fixed;top:20px;right:20px;z-index:2000;display:flex;flex-direction:column;gap:8px;pointer-events:none;";
+    document.body.appendChild(container);
+  }
+  var icons = { success: "✅", error: "❌", info: "ℹ️", warning: "⚠️" };
+  var t = document.createElement("div");
+  t.style.cssText = "display:flex;align-items:center;gap:12px;padding:14px 20px;background:#0a0c1a;border:1px solid rgba(255,255,255,0.1);border-radius:12px;min-width:280px;max-width:380px;pointer-events:auto;box-shadow:0 10px 40px rgba(0,0,0,0.4);color:#f1f5f9;font-size:0.9rem;";
+  t.innerHTML =
+    '<span>' + (icons[type] || "ℹ️") + '</span>' +
+    '<div>' +
+      '<div style="font-weight:600;">' + title + '</div>' +
+      (message ? '<div style="font-size:0.8rem;color:#94a3b8;margin-top:2px;">' + message + '</div>' : '') +
+    '</div>';
+  container.appendChild(t);
+  setTimeout(function () { t.remove(); }, 4000);
+}
+</script>
 </body>
 </html>
