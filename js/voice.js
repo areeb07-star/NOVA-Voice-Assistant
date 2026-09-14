@@ -1,7 +1,8 @@
 /* ============================================
-   NOVA - Voice Module (Person 4)
-   Speech Recognition + TTS + AI Brain
-   Auto-detects device_id from local agent
+   NOVA - Voice Module (Person 4) — Final
+   Mic button: 1st click stops Nova, 2nd click starts listening
+   Bug 5 fix: reliable TTS stop (pause + cancel + ttsId guard)
+   Multi-user: sends user_id + access_token to bridge.py
    ============================================ */
 
 const CONFIG = {
@@ -23,45 +24,50 @@ let isStartingUp = false;
 let lastStopTime = 0;
 let recognition = null;
 let currentUtterance = null;
-let cachedDeviceId = null;
+
+// TTS guards
+let ttsId = 0;
+let isSpeaking = false;
+let isPaused = false;
 
 // ============================================================
-// AUTO-DETECT DEVICE ID FROM LOCAL AGENT
+// AUTO-DETECT DEVICE ID
 // ============================================================
 async function autoDetectDeviceId() {
-  if (cachedDeviceId) return cachedDeviceId;
-
-  // 1. Try localStorage first (fast)
-  const stored = localStorage.getItem('nova-device-id');
-  if (stored) {
-    cachedDeviceId = stored;
-    console.log('[NOVA] Device from cache:', stored);
-    return stored;
-  }
-
-  // 2. Try local agent on port 5050
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 1500);
+    const timeout = setTimeout(() => controller.abort(), 2000);
 
     const res = await fetch(CONFIG.LOCAL_AGENT_URL + '/device_id', {
-      signal: controller.signal
+      signal: controller.signal,
+      cache: 'no-store'
     });
     clearTimeout(timeout);
 
-    const data = await res.json();
-    cachedDeviceId = data.device_id;
-    localStorage.setItem('nova-device-id', data.device_id);
-    console.log('[NOVA] ✅ Auto-detected device:', data.device_id);
-    return data.device_id;
+    if (res.ok) {
+      const data = await res.json();
+      if (data.device_id) {
+        localStorage.setItem('nova-device-id', data.device_id);
+        console.log('[NOVA] ✅ Device from agent:', data.device_id);
+        return data.device_id;
+      }
+    }
   } catch (e) {
-    console.log('[NOVA] No local agent detected (browser-only mode)');
-    return null;
+    console.log('[NOVA] ⚠️ Local agent not reachable:', e.message);
   }
+
+  const stored = localStorage.getItem('nova-device-id');
+  if (stored) {
+    console.log('[NOVA] Using cached device:', stored);
+    return stored;
+  }
+
+  console.log('[NOVA] ❌ No device ID — running in browser-only mode');
+  return null;
 }
 
 function getDeviceId() {
-  return cachedDeviceId || localStorage.getItem('nova-device-id') || null;
+  return localStorage.getItem('nova-device-id') || null;
 }
 
 // ============================================================
@@ -129,7 +135,7 @@ function startListening() {
 
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
-    console.warn('[NOVA] Use Chrome browser for voice.');
+    console.warn('[NOVA] Use Chrome browser.');
     return;
   }
 
@@ -208,7 +214,63 @@ function stopListening() {
 }
 
 // ============================================================
-// MAIN HANDLER — sends device_id to bridge
+// STOP SPEAKING — kills Nova mid-sentence
+// ============================================================
+function stopSpeaking() {
+  if (!window.speechSynthesis) return;
+
+  ttsId++;
+
+  try { window.speechSynthesis.pause(); } catch (e) {}
+  try { window.speechSynthesis.cancel(); } catch (e) {}
+
+  setTimeout(function() {
+    try { window.speechSynthesis.cancel(); } catch (e) {}
+  }, 50);
+
+  isSpeaking = false;
+  isPaused = false;
+  currentUtterance = null;
+  updateVoiceStatus(VOICE_STATES.IDLE);
+  console.log('[NOVA] 🛑 Speech stopped.');
+}
+
+function pauseSpeaking() {
+  if (!window.speechSynthesis) return;
+  try { window.speechSynthesis.pause(); isPaused = true; } catch (e) {}
+}
+
+function resumeSpeaking() {
+  if (!window.speechSynthesis) return;
+  try { window.speechSynthesis.resume(); isPaused = false; } catch (e) {}
+}
+
+// ============================================================
+// SMART MIC HANDLER
+//   If speaking  → stop ONLY (no auto-listen)
+//   If listening → stop
+//   Else         → start listening
+// ============================================================
+function handleMicClick() {
+  const speaking = window.speechSynthesis &&
+                   (window.speechSynthesis.speaking || window.speechSynthesis.pending);
+
+  if (speaking || isSpeaking || currentVoiceState === VOICE_STATES.SPEAKING) {
+    console.log('[NOVA] 🎤 Mic pressed while speaking → stop only');
+    stopSpeaking();
+    return;
+  }
+
+  if (isListening || isStartingUp) {
+    stopListening();
+    return;
+  }
+
+  startListening();
+}
+
+// ============================================================
+// MAIN HANDLER
 // ============================================================
 async function handleVoiceInput(transcript) {
   if (!transcript) return;
@@ -225,17 +287,27 @@ async function handleVoiceInput(transcript) {
   updateVoiceStatus(VOICE_STATES.THINKING);
 
   try {
-    // Auto-detect device_id (from local agent)
     const deviceId = await autoDetectDeviceId();
     console.log('[NOVA] Using device_id:', deviceId || '(none)');
 
+    // ⭐ Multi-user: read real user_id + access_token from browser storage
+    const loggedInUserId =
+      localStorage.getItem('nova-user-id') ||
+      localStorage.getItem('user_id') ||
+      localStorage.getItem('nova_user_id') ||
+      'nova_user';
+
+    const accessToken =
+      localStorage.getItem('nova-access-token') ||
+      localStorage.getItem('access_token') ||
+      '';
+
     const payload = {
       text: transcript,
-      user_id: 'nova_user'
+      user_id: loggedInUserId,
+      access_token: accessToken
     };
-    if (deviceId) {
-      payload.device_id = deviceId;
-    }
+    if (deviceId) payload.device_id = deviceId;
 
     const response = await fetch(CONFIG.AI_URL, {
       method: 'POST',
@@ -287,17 +359,35 @@ async function handleVoiceInput(transcript) {
 // ============================================================
 function speakResponse(text) {
   if (!text) return;
-  updateVoiceStatus(VOICE_STATES.SPEAKING);
 
-  window.speechSynthesis.cancel();
+  ttsId++;
+  const myId = ttsId;
+
+  try { window.speechSynthesis.cancel(); } catch (e) {}
+
+  updateVoiceStatus(VOICE_STATES.SPEAKING);
+  isSpeaking = true;
+
   const u = new SpeechSynthesisUtterance(text);
   const lang = detectLanguage(text);
   const voice = getBestVoiceForLanguage(lang);
   if (voice) { u.voice = voice; u.lang = voice.lang; } else { u.lang = lang; }
   u.rate = 0.9;
   u.pitch = 1.1;
-  u.onend = function() { updateVoiceStatus(VOICE_STATES.IDLE); };
-  u.onerror = function() { updateVoiceStatus(VOICE_STATES.IDLE); };
+
+  u.onend = function() {
+    if (myId === ttsId) {
+      isSpeaking = false;
+      updateVoiceStatus(VOICE_STATES.IDLE);
+    }
+  };
+  u.onerror = function() {
+    if (myId === ttsId) {
+      isSpeaking = false;
+      updateVoiceStatus(VOICE_STATES.IDLE);
+    }
+  };
+
   currentUtterance = u;
   window.speechSynthesis.speak(u);
 }
@@ -319,30 +409,33 @@ function updateVoiceStatus(state) {
 
   if (orbStatusText) {
     switch (state) {
-      case VOICE_STATES.IDLE:
-        orbStatusText.textContent = "Ready when you are.";
-        break;
-      case VOICE_STATES.LISTENING:
-        orbStatusText.textContent = "🎤 I'm listening...";
-        break;
-      case VOICE_STATES.THINKING:
-        orbStatusText.textContent = "NOVA is thinking...";
-        break;
-      case VOICE_STATES.SPEAKING:
-        orbStatusText.textContent = "NOVA is speaking...";
-        break;
+      case VOICE_STATES.IDLE: orbStatusText.textContent = "Ready when you are."; break;
+      case VOICE_STATES.LISTENING: orbStatusText.textContent = "🎤 I'm listening..."; break;
+      case VOICE_STATES.THINKING: orbStatusText.textContent = "NOVA is thinking..."; break;
+      case VOICE_STATES.SPEAKING: orbStatusText.textContent = "NOVA is speaking..."; break;
     }
   }
 
-  if (micBtn) micBtn.classList.toggle("listening", state === VOICE_STATES.LISTENING);
+  if (micBtn) {
+    micBtn.classList.toggle("listening", state === VOICE_STATES.LISTENING);
+    micBtn.classList.toggle("speaking", state === VOICE_STATES.SPEAKING);
+  }
+
   if (micLabel) {
-    micLabel.textContent = state === VOICE_STATES.LISTENING ? "Listening..." : "Talk to NOVA";
+    if (state === VOICE_STATES.LISTENING) {
+      micLabel.textContent = "Listening...";
+    } else if (state === VOICE_STATES.SPEAKING) {
+      micLabel.textContent = "Tap to interrupt";
+    } else if (state === VOICE_STATES.THINKING) {
+      micLabel.textContent = "Thinking...";
+    } else {
+      micLabel.textContent = "Talk to NOVA";
+    }
   }
 }
 
 function toggleMicrophone() {
-  if (isListening) stopListening();
-  else startListening();
+  handleMicClick();
 }
 
 // ============================================================
@@ -412,9 +505,18 @@ function wireUp() {
     micBtn.dataset.wired = 'true';
     micBtn.addEventListener('click', function(e) {
       e.preventDefault();
-      toggleMicrophone();
+      handleMicClick();
     });
-    console.log('[NOVA] Mic wired');
+  }
+
+  const stopBtn = document.getElementById("stopBtn");
+  if (stopBtn && !stopBtn.dataset.wired) {
+    stopBtn.dataset.wired = 'true';
+    stopBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      stopSpeaking();
+      stopListening();
+    });
   }
 
   const input = document.getElementById("assistantInput");
@@ -466,9 +568,8 @@ window.addEventListener('DOMContentLoaded', function() {
   setTimeout(wireUp, 500);
   setTimeout(wireUp, 1500);
 
-  // Auto-detect device on page load
   autoDetectDeviceId().then(id => {
-    if (id) console.log('[NOVA] Device ready:', id);
+    if (id) console.log('[NOVA] ✅ Device ready:', id);
   });
 
   if (window.speechSynthesis) {
@@ -481,22 +582,27 @@ window.addEventListener('DOMContentLoaded', function() {
   document.addEventListener('keydown', function(e) {
     if (e.code === 'Space' && !e.target.matches('input, textarea, button, select')) {
       e.preventDefault();
-      toggleMicrophone();
+      if (window.speechSynthesis && window.speechSynthesis.speaking) {
+        stopSpeaking();
+      } else {
+        handleMicClick();
+      }
     }
   });
 
   console.log('[NOVA] Ready');
 });
 
-// ============================================================
-// PUBLIC API
-// ============================================================
 window.NOVA_VOICE = {
   startListening,
   stopListening,
+  handleMicClick,
   handleVoiceInput,
   updateVoiceStatus,
   toggleMicrophone,
+  stopSpeaking,
+  pauseSpeaking,
+  resumeSpeaking,
   getDeviceId,
   autoDetectDeviceId,
   VOICE_STATES
