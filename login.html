@@ -93,8 +93,7 @@
     position: relative;
   }
   .auth-card::before {
-    content: '';
-    position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
     background: linear-gradient(90deg, transparent, rgba(34,211,238,0.4), transparent);
   }
   .auth-card-header { text-align: center; margin-bottom: 2rem; }
@@ -296,6 +295,10 @@
 <script>
 /* =========================================================
    NOVA — Login (wired to backend)
+   Stores BOTH key conventions:
+     - nova-auth-token  (used by assistant.html, dashboard.html)
+     - access_token     (used by Person 4's voice.js / dashboards)
+     - nova-user-id, user_id, nova-user-name, nova-user-email
    ========================================================= */
 var API_BASE = "https://nova-voice-assistant-6vve.onrender.com";
 
@@ -344,8 +347,35 @@ document.getElementById("login-form").addEventListener("submit", async function 
     var data = await res.json();
 
     if (res.ok && data.success) {
-      localStorage.setItem("nova-auth-token", data.access_token);
-      localStorage.setItem("nova-user-name", data.user && data.user.name ? data.user.name : "User");
+      /* ---------- Save token (both key conventions) ---------- */
+      if (data.access_token) {
+        localStorage.setItem("nova-auth-token", data.access_token);
+        localStorage.setItem("access_token",     data.access_token);
+      }
+
+      /* ---------- Save user info (both key conventions) ---------- */
+      var user = data.user || {};
+      var name  = user.name  || data.name  || "User";
+      var email2 = user.email || data.email || email;
+      var userId = user.id   || user.user_id || data.user_id || "";
+
+      localStorage.setItem("nova-user-name",  name);
+      localStorage.setItem("nova-user-email", email2);
+
+      if (userId) {
+        localStorage.setItem("nova-user-id", String(userId));
+        localStorage.setItem("user_id",      String(userId));
+      }
+
+      /* ---------- Optional: remember me ---------- */
+      var rememberMe = document.getElementById("rememberMe");
+      if (rememberMe && rememberMe.checked) {
+        localStorage.setItem("nova-remember", "true");
+      } else {
+        localStorage.removeItem("nova-remember");
+      }
+
+      /* ---------- Redirect ---------- */
       window.location.href = "dashboard.html";
     } else {
       throw new Error(data.error || "Invalid credentials");
