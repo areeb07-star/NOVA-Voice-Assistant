@@ -1,5 +1,5 @@
 # bridge.py — Connects frontend to brain.py
-# Multi-user + CORS-ready + Render-ready
+# Permanent CORS fix + Render-ready + Multi-user
 
 import os
 from flask import Flask, request, jsonify
@@ -12,8 +12,9 @@ load_dotenv()
 
 app = Flask(__name__)
 
+
 # ============================================================
-# CORS — allows local + any Vercel URL
+# CORS — Layer 1: Flask-CORS
 # ============================================================
 CORS(
     app,
@@ -28,6 +29,39 @@ CORS(
     allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
     methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 )
+
+
+# ============================================================
+# CORS — Layer 2: Force headers on EVERY response
+# This is the permanent fix. Works even when Layer 1 fails.
+# ============================================================
+@app.after_request
+def force_cors_headers(response):
+    origin = request.headers.get('Origin', '')
+    if origin and ('vercel.app' in origin or '127.0.0.1' in origin or 'localhost' in origin):
+        response.headers['Access-Control-Allow-Origin'] = origin
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With, Accept, Origin, User-Agent'
+        response.headers['Access-Control-Max-Age'] = '3600'
+    return response
+
+
+# ============================================================
+# CORS — Layer 3: Handle OPTIONS preflight globally
+# ============================================================
+@app.before_request
+def handle_preflight():
+    if request.method == 'OPTIONS':
+        response = app.make_default_options_response()
+        origin = request.headers.get('Origin', '')
+        if origin and ('vercel.app' in origin or '127.0.0.1' in origin or 'localhost' in origin):
+            response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With, Accept, Origin, User-Agent'
+            response.headers['Access-Control-Max-Age'] = '3600'
+        return response
 
 
 # ============================================================
