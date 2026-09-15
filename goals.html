@@ -88,7 +88,7 @@
   }
   .greeting-title { font-size: 1.1rem; font-weight: 700; color: #f1f5f9; }
   .greeting-subtitle { font-size: 0.8rem; color: #94a3b8; }
-  .topbar-right { display: flex; align-items: center; gap: 16px; }
+  .topbar-right { display: flex; align-items: center; gap: 16px; position: relative; }
   .topbar-icon-btn {
     width: 40px; height: 40px; border-radius: 10px;
     background: transparent; border: 0; color: #94a3b8;
@@ -107,7 +107,47 @@
     background: linear-gradient(135deg,#22d3ee,#8b5cf6);
     display: flex; align-items: center; justify-content: center;
     font-weight: 700; font-size: 0.9rem; color: #fff;
+    cursor: pointer; transition: transform 0.2s ease;
+    user-select: none;
   }
+  .avatar:hover { transform: scale(1.05); }
+
+  /* PROFILE MENU */
+  .profile-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 200px;
+    background: rgba(18,21,45,0.95);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 6px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    z-index: 100;
+    animation: menuFadeIn 0.15s ease;
+  }
+  .profile-menu[hidden] { display: none; }
+  @keyframes menuFadeIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .profile-menu-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 8px;
+    color: #cbd5e1; text-decoration: none;
+    font-size: 0.88rem; font-weight: 500;
+    cursor: pointer; transition: background 0.15s ease;
+    border: 0; background: transparent;
+    width: 100%; text-align: left; font-family: inherit;
+  }
+  .profile-menu-item:hover { background: rgba(255,255,255,0.06); color: #f1f5f9; }
+  .profile-menu-item svg { width: 16px; height: 16px; stroke-width: 2; color: #94a3b8; }
+  .profile-menu-item:hover svg { color: #22d3ee; }
+  .profile-menu-item.danger { color: #f87171; }
+  .profile-menu-item.danger svg { color: #f87171; }
+  .profile-menu-item.danger:hover { background: rgba(239,68,68,0.1); color: #ef4444; }
+  .profile-menu hr { border: 0; height: 1px; background: rgba(255,255,255,0.08); margin: 6px 4px; }
 
   .page-content { padding: 32px; }
 
@@ -204,7 +244,6 @@
     letter-spacing: 0.05em;
   }
 
-  /* Detail rows */
   .goal-detail {
     display: flex; align-items: center; gap: 8px;
     padding: 10px 14px;
@@ -287,7 +326,7 @@
       <a href="dashboard.html" class="nav-item">
         <i data-lucide="layout-dashboard" class="nav-icon"></i><span>Dashboard</span>
       </a>
-      <a href="#" class="nav-item">
+      <a href="assistant.html" class="nav-item">
         <i data-lucide="sparkles" class="nav-icon"></i><span>Assistant</span>
       </a>
       <div class="nav-section-label">Organize</div>
@@ -313,7 +352,7 @@
       <a href="profile.html" class="nav-item">
         <i data-lucide="settings" class="nav-icon"></i><span>Profile</span>
       </a>
-      <a href="login.html" class="nav-item" id="logoutBtn">
+      <a href="login.html" class="nav-item" id="sidebarLogout">
         <i data-lucide="log-out" class="nav-icon"></i><span>Logout</span>
       </a>
     </nav>
@@ -331,6 +370,19 @@
           <span class="notification-dot"></span>
         </button>
         <div class="avatar" id="avatarInitial">U</div>
+
+        <div class="profile-menu" id="profileMenu" hidden>
+          <a href="profile.html" class="profile-menu-item">
+            <i data-lucide="user"></i> Profile
+          </a>
+          <a href="profile.html#settings" class="profile-menu-item">
+            <i data-lucide="settings"></i> Settings
+          </a>
+          <hr>
+          <button class="profile-menu-item danger" id="logoutMenuBtn" type="button">
+            <i data-lucide="log-out"></i> Logout
+          </button>
+        </div>
       </div>
     </header>
 
@@ -370,17 +422,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
   if (window.lucide) lucide.createIcons();
 
-  var logoutBtn = document.getElementById("logoutBtn");
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", function (e) {
-      e.preventDefault();
-      localStorage.removeItem("nova-auth-token");
-      localStorage.removeItem("nova-user-name");
-      localStorage.removeItem("nova-user-email");
-      localStorage.removeItem("nova-user-id");
-      window.location.href = "login.html";
-    });
-  }
+  initLogout();
+  initProfileMenu();
 
   var notifBtn = document.getElementById("notifBtn");
   if (notifBtn) {
@@ -398,7 +441,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 async function loadData() {
-  var token = localStorage.getItem("nova-auth-token");
+  var token = localStorage.getItem("nova-auth-token") || localStorage.getItem("access_token");
   if (!token) {
     window.location.href = "login.html";
     return;
@@ -423,6 +466,7 @@ async function loadData() {
 
     if (res.status === 401) {
       localStorage.removeItem("nova-auth-token");
+      localStorage.removeItem("access_token");
       window.location.href = "login.html";
       return;
     }
@@ -474,11 +518,9 @@ function renderRow(g, idx) {
   var created = g.created_at || "";
   var id = g.id || "";
 
-  // Cycle colors for variety
   var colors = ["cyan", "violet", "pink", "green"];
   var color = colors[idx % colors.length];
 
-  // Days until target
   var daysLeft = "";
   var daysClass = "";
   if (targetDate) {
@@ -561,6 +603,54 @@ function showToast(type, title, message) {
     '</div>';
   container.appendChild(t);
   setTimeout(function () { t.remove(); }, 4000);
+}
+
+/* ---------- Logout ---------- */
+function initLogout() {
+  function doLogout() {
+    localStorage.removeItem("nova-auth-token");
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("nova-user-name");
+    localStorage.removeItem("nova-user-email");
+    localStorage.removeItem("nova-user-id");
+    localStorage.removeItem("user_id");
+    window.location.href = "login.html";
+  }
+
+  var sidebarLogout = document.getElementById("sidebarLogout");
+  if (sidebarLogout) {
+    sidebarLogout.addEventListener("click", function (e) {
+      e.preventDefault();
+      doLogout();
+    });
+  }
+
+  var logoutMenuBtn = document.getElementById("logoutMenuBtn");
+  if (logoutMenuBtn) {
+    logoutMenuBtn.addEventListener("click", doLogout);
+  }
+}
+
+/* ---------- Profile menu ---------- */
+function initProfileMenu() {
+  var avatarCircle = document.getElementById("avatarInitial");
+  var profileMenu = document.getElementById("profileMenu");
+  if (!avatarCircle || !profileMenu) return;
+
+  avatarCircle.addEventListener("click", function (e) {
+    e.stopPropagation();
+    profileMenu.hidden = !profileMenu.hidden;
+  });
+
+  document.addEventListener("click", function (e) {
+    if (!profileMenu.hidden && !profileMenu.contains(e.target) && e.target !== avatarCircle) {
+      profileMenu.hidden = true;
+    }
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") profileMenu.hidden = true;
+  });
 }
 </script>
 </body>
