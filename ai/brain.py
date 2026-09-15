@@ -75,7 +75,7 @@ User: "update expense 2 to 30 dollars food"
 Output: {"intent":"UPDATE_EXPENSE","mood":"neutral","emoji":"😐","data":{"id":2,"amount":"30","category":"food"},"reply":"Updating expense..."}
 
 User: "edit shopping item 4 to eggs"
-Output: {"intent":"UPDATE_SHOPPING_ITEM","mood":"neutral","emoji":"😐","data":{"id":4,"item":"eggs"},"reply":"Updating shopping item..."}
+Output: {"intent":"UPDATE_SHOPPING_ITEM","mood":"neutral","emoji":"😐","data":{"id":4,"items":["eggs"]},"reply":"Updating shopping item..."}
 
 User: "update goal 1 to read 20 books this year"
 Output: {"intent":"UPDATE_GOAL","mood":"neutral","emoji":"😐","data":{"id":1,"goal":"read 20 books","target_date":"This year"},"reply":"Updating goal..."}
@@ -119,12 +119,12 @@ For DRAFT_EMAIL, include recipient, subject, body.
 
 CRITICAL UPDATE RULE:
 When the user says "update", "change", "edit", "modify", or "rename" + a module + an ID, use the matching UPDATE_* intent.
-Always use "id" as the identifier key — NOT note_id, reminder_id, etc.
+ALWAYS use "id" as the ONLY identifier key. NEVER use note_id, reminder_id, expense_id, goal_id, plan_id, study_plan_id, or shopping_id.
 
 Examples:
 - "update note 5 to X" → UPDATE_NOTE with {id: 5, text: X}
 - "edit expense 2 to 30 food" → UPDATE_EXPENSE with {id: 2, amount: 30, category: food}
-- "edit shopping item 4 to eggs" → UPDATE_SHOPPING_ITEM with {id: 4, item: eggs}
+- "edit shopping item 4 to eggs" → UPDATE_SHOPPING_ITEM with {id: 4, items: ["eggs"]}
 
 NOTE: UPDATE_MOOD is NOT available. Use LOG_MOOD for new mood entries.
 
@@ -166,6 +166,8 @@ CRITICAL FOLLOW-UP RULE:
 "name it X" completes previous action with X.
 
 SAFE ACTION RULE: Only CLOSE_APP needs confirmation.
+
+GET intents support optional fields: "search", "limit", "offset", "date_from", "date_to".
 """
 
 VALID_INTENTS = {
@@ -186,13 +188,36 @@ VALID_INTENTS = {
     "GENERAL_CHAT"
 }
 
+INTENT_ALIASES = {
+    "CREATE_STUDY_PLAN": "STUDY_PLAN",
+    "ADD_STUDY_PLAN": "STUDY_PLAN",
+    "MAKE_STUDY_PLAN": "STUDY_PLAN",
+    "NEW_STUDY_PLAN": "STUDY_PLAN",
+    "UPDATE_MOOD": "LOG_MOOD",
+}
+
+UPDATE_ID_KEY_ALIASES = {
+    "note_id": "id",
+    "reminder_id": "id",
+    "expense_id": "id",
+    "goal_id": "id",
+    "plan_id": "id",
+    "study_plan_id": "id",
+    "studyplan_id": "id",
+    "shopping_id": "id",
+    "item_id": "id",
+}
+
 
 def normalize_result(raw_result):
     if not isinstance(raw_result, dict):
         return {"intent": "GENERAL_CHAT", "mood": "neutral", "emoji": "😐", "data": {}, "reply": "Sorry, I hit a snag!"}
 
+    intent = raw_result.get("intent", "GENERAL_CHAT")
+    intent = INTENT_ALIASES.get(intent, intent)
+
     normalized = {
-        "intent": raw_result.get("intent", "GENERAL_CHAT"),
+        "intent": intent,
         "mood": raw_result.get("mood", "neutral"),
         "emoji": raw_result.get("emoji", "😐"),
         "data": raw_result.get("data", {}) if isinstance(raw_result.get("data"), dict) else {},
@@ -201,6 +226,26 @@ def normalize_result(raw_result):
 
     if normalized["intent"] not in VALID_INTENTS:
         normalized["intent"] = "GENERAL_CHAT"
+
+    # Shopping: ensure "items" is always a list
+    if normalized["intent"] == "ADD_SHOPPING_ITEM":
+        d = normalized["data"]
+        if "item" in d and "items" not in d:
+            d["items"] = [d.pop("item")]
+        elif "items" in d and isinstance(d["items"], str):
+            d["items"] = [d["items"]]
+        elif "items" not in d:
+            d["items"] = []
+
+    # UPDATE_*: force "id"
+    if normalized["intent"].startswith("UPDATE_"):
+        d = normalized["data"]
+        for bad_key, good_key in UPDATE_ID_KEY_ALIASES.items():
+            if bad_key in d and good_key not in d:
+                d[good_key] = d.pop(bad_key)
+        if "id" not in d:
+            normalized["intent"] = "GENERAL_CHAT"
+            normalized["reply"] = "I need the ID of the item you want to update."
 
     if not isinstance(normalized["reply"], str):
         normalized["reply"] = "Done!"
@@ -323,7 +368,6 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
     if pending:
         lower = user_text.strip().lower().rstrip(".!?,")
         if lower in ["yes", "yeah", "yep", "confirm", "yes please", "do it", "sure", "ok", "okay", "go ahead"]:
-            # Directly execute — do NOT call AI again
             result = {
                 "intent": pending["intent"],
                 "mood": "neutral",
