@@ -6,13 +6,20 @@ import smtplib
 import uuid
 import hashlib
 import secrets
+import json
+import google.genai as genai
+from google.genai import types
+from pgvector import Vector
+from pgvector.psycopg import register_vector
 
 from datetime import datetime, timedelta, timezone
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
 
 from dotenv import load_dotenv
-from google import genai
+
 from werkzeug.security import generate_password_hash, check_password_hash
 
 
@@ -22,20 +29,90 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 load_dotenv()
 
+DEVICE_ACTION_INTENTS = [
+ "OPEN_APP",
+ "OPEN_FOLDER",
+ "CREATE_FOLDER",
+ "FIND_FILE",
+ "OPEN_URL",
+ "MUTE",
+ "UNMUTE",
+ "VOLUME_UP",
+ "VOLUME_DOWN",
+ "SET_VOLUME",
+ "BRIGHTNESS_UP",
+ "BRIGHTNESS_DOWN",
+ "SET_BRIGHTNESS",
+ "TAKE_SCREENSHOT",
+ "CLOSE_APP"
+ ]
+
+def create_notification(cur, user_id, title, message, icon="🔔"):
+    cur.execute("""
+        INSERT INTO notifications
+        (user_id, title, message, icon)
+        VALUES (%s, %s, %s, %s)
+    """, (user_id, title, message, icon))
+
 app = Flask(__name__)
-CORS(app)
+CORS(
+    app,
+    origins=[
+        "http://127.0.0.1:5500",
+        "http://localhost:5500",
+        "https://nova-voice-assistant-three.vercel.app"
+    ],
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
+    supports_credentials=True
+)
 
 gemini_client = genai.Client(
     api_key=os.getenv("GEMINI_API_KEY")
 )
 
+EMBEDDING_MODEL = "gemini-embedding-001"
+EMBEDDING_DIMENSION = 768
+
+
+def generate_embedding(text, task_type="RETRIEVAL_DOCUMENT"):
+    text = str(text).strip()
+
+    if not text:
+        raise ValueError("Text cannot be empty")
+
+    result = gemini_client.models.embed_content(
+        model=EMBEDDING_MODEL,
+        contents=text,
+        config=types.EmbedContentConfig(
+            task_type=task_type,
+            output_dimensionality=EMBEDDING_DIMENSION
+        )
+    )
+
+    if not result.embeddings:
+        raise ValueError("No embedding returned from Gemini")
+
+    embedding = result.embeddings[0]
+    values = getattr(embedding, "values", None)
+
+    if values is None:
+        raise ValueError("Embedding values were not returned")
+
+    if len(values) != EMBEDDING_DIMENSION:
+        raise ValueError(
+            f"Expected {EMBEDDING_DIMENSION} dimensions, "
+            f"but received {len(values)}"
+        )
+
+    return values
 
 # ============================================================
 # DATABASE CONNECTION
 # ============================================================
 
 def get_connection():
-    return psycopg.connect(
+    conn = psycopg.connect(
         host=os.getenv("DB_HOST"),
         port=os.getenv("DB_PORT"),
         dbname=os.getenv("DB_NAME"),
@@ -43,27 +120,135 @@ def get_connection():
         password=os.getenv("DB_PASSWORD")
     )
 
+    register_vector(conn)
+
+    return conn
+
 
 # ============================================================
 # EMAIL
 # ============================================================
 
 def send_email(recipient, subject, body):
+    resend_api_key = os.getenv("RESEND_API_KEY")
 
-    sender = os.getenv("EMAIL_ADDRESS")
-    password = os.getenv("EMAIL_APP_PASSWORD")
+    if not resend_api_key:
+        raise Exception("RESEND_API_KEY is not configured")
 
-    msg = MIMEMultipart()
-    msg["From"] = sender
-    msg["To"] = recipient
-    msg["Subject"] = subject
+    payload = {
+        "from": "NOVA <onboarding@resend.dev>",
+        "to": [recipient],
+        "subject": subject,
+        "text": body
+    }
 
-    msg.attach(MIMEText(body, "plain"))
+    data = json.dumps(payload).encode("utf-8")
 
-    with smtplib.SMTP("smtp.gmail.com", 587) as server:
-        server.starttls()
-        server.login(sender, password)
-        server.send_message(msg)
+    req = Request(
+        "https://api.resend.com/emails",
+        data=data,
+        headers={
+            "Authorization": f"Bearer {resend_api_key}",
+            "Content-Type": "application/json",
+            "User-Agent":"NOVA-Voice-Assistant/1.0"
+        },
+        method="POST"
+    )
+
+    try:
+        with urlopen(req, timeout=15) as response:
+            response_data = response.read().decode("utf-8")
+            return json.loads(response_data)
+
+    except HTTPError as e:
+        error_body = e.read().decode("utf-8")
+        raise Exception(f"Resend API error: {error_body}")
+
+    except URLError as e:
+        raise Exception(f"Email connection error: {e}")
+
+
+
+# ============================================================
+# SMART RETRIEVAL HELPERS
+# ============================================================
+
+def get_retrieval_params(details):
+    limit = details.get("limit", 5)
+    offset = details.get("offset", 0)
+    search = details.get("search")
+    date_from = details.get("date_from")
+    date_to = details.get("date_to")
+
+    try:
+        limit = int(limit)
+    except (TypeError, ValueError):
+        limit = 5
+
+    if limit < 1:
+        limit = 5
+
+    if limit > 100:
+        limit = 100
+
+    try:
+        offset = int(offset)
+    except (TypeError, ValueError):
+        offset = 0
+
+    if offset < 0:
+        offset = 0
+
+    if search is not None:
+        search = str(search).strip()
+        if search == "":
+            search = None
+
+    if date_from is not None:
+        date_from = str(date_from).strip()
+        if date_from == "":
+            date_from = None
+
+    if date_to is not None:
+        date_to = str(date_to).strip()
+        if date_to == "":
+            date_to = None
+
+    return limit, offset, search, date_from, date_to
+
+
+def build_retrieval_filter(
+    user_id,
+    search=None,
+    date_from=None,
+    date_to=None,
+    search_columns=None
+):
+    conditions = ["user_id = %s"]
+    params = [user_id]
+
+    if search and search_columns:
+        search_conditions = []
+
+        for column in search_columns:
+            search_conditions.append(f"{column} ILIKE %s")
+            params.append(f"%{search}%")
+
+        conditions.append(
+            "(" + " OR ".join(search_conditions) + ")"
+        )
+
+    if date_from:
+        conditions.append("created_at >= %s::timestamptz")
+        params.append(date_from)
+
+    if date_to:
+        conditions.append(
+            "created_at < (%s::date + INTERVAL '1 day')"
+        )
+        params.append(date_to)
+
+    return " AND ".join(conditions), params
 
 
 # ============================================================
@@ -114,8 +299,182 @@ def create_session(user_id):
         conn.close()
 
     return token
+#=========================================================
+#get_user_from _token
+#==========================================================
+def get_user_from_token(token):
+    if not token:
+        return None
+
+    token_hash = hash_token(token)
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        SELECT user_id
+        FROM auth_sessions
+        WHERE token_hash = %s
+        AND expires_at > NOW()
+        """,
+        (token_hash,)
+    )
+
+    row = cur.fetchone()
+
+    cur.close()
+    conn.close()
+
+    if row:
+        return row[0]
+
+    return None
+
+# ============================================================
+# CHAT HISTORY
+# ============================================================
+
+@app.route("/api/chat-history/save", methods=["POST"])
+def save_chat():
+    data = request.get_json() or {}
+
+    # Authentication
+    auth_header = request.headers.get("Authorization", "")
+
+    if not auth_header.startswith("Bearer "):
+        return jsonify({
+            "success": False,
+            "message": "Authorization token is required"
+        }), 401
+
+    token = auth_header.split(" ", 1)[1].strip()
+    authenticated_user_id = get_user_from_token(token)
+
+    if not authenticated_user_id:
+        return jsonify({
+            "success": False,
+            "message": "Invalid or expired authorization token"
+        }), 401
+
+    role = str(data.get("role", "")).strip()
+    content = str(data.get("content", "")).strip()
+
+    if not role or not content:
+        return jsonify({
+            "success": False,
+            "message": "role and content are required"
+        }), 400
+
+    if role not in ["user", "assistant"]:
+        return jsonify({
+            "success": False,
+            "message": "role must be 'user' or 'assistant'"
+        }), 400
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            INSERT INTO chat_history
+            (user_id, role, content)
+            VALUES (%s, %s, %s)
+        """, (
+            authenticated_user_id,
+            role,
+            content
+        ))
+
+        conn.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "Chat message saved"
+        })
+
+    except Exception as e:
+        conn.rollback()
+
+        print("CHAT HISTORY SAVE ERROR:", e)
+
+        return jsonify({
+            "success": False,
+            "message": "Failed to save chat message"
+        }), 500
+
+    finally:
+        cur.close()
+        conn.close()
 
 
+@app.route("/api/chat-history/get", methods=["POST"])
+def get_chat():
+    data = request.get_json() or {}
+
+    # Authentication
+    auth_header = request.headers.get("Authorization", "")
+
+    if not auth_header.startswith("Bearer "):
+        return jsonify({
+            "success": False,
+            "message": "Authorization token is required"
+        }), 401
+
+    token = auth_header.split(" ", 1)[1].strip()
+    authenticated_user_id = get_user_from_token(token)
+
+    if not authenticated_user_id:
+        return jsonify({
+            "success": False,
+            "message": "Invalid or expired authorization token"
+        }), 401
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            SELECT role, content, created_at
+            FROM chat_history
+            WHERE user_id = %s
+            ORDER BY created_at DESC
+            LIMIT 50
+        """, (authenticated_user_id,))
+
+        rows = cur.fetchall()
+
+        # Reverse so oldest → newest appears in chat UI
+        rows.reverse()
+
+        messages = [
+            {
+                "role": row[0],
+                "content": row[1],
+                "created_at": str(row[2])
+            }
+            for row in rows
+        ]
+
+        return jsonify({
+            "success": True,
+            "messages": messages,
+            "count": len(messages)
+        })
+
+    except Exception as e:
+
+        print("CHAT HISTORY GET ERROR:", e)
+
+        return jsonify({
+            "success": False,
+            "message": "Failed to fetch chat history"
+        }), 500
+
+    finally:
+        cur.close()
+        conn.close()
+        
 # ============================================================
 # HOME / HEALTH CHECK
 # ============================================================
@@ -377,6 +736,157 @@ def logout():
         cur.close()
         conn.close()
 
+# ============================================================
+# SEMANTIC NOTE SEARCH
+# ============================================================
+
+@app.route("/api/notes/semantic-search", methods=["POST"])
+def semantic_note_search():
+
+    data = request.get_json() or {}
+
+    # --------------------------------------------------------
+    # AUTHENTICATION
+    # --------------------------------------------------------
+
+    auth_header = request.headers.get("Authorization", "")
+
+    if not auth_header.startswith("Bearer "):
+        return jsonify({
+            "success": False,
+            "message": "Authorization token is required"
+        }), 401
+
+    token = auth_header.split(" ", 1)[1].strip()
+
+    authenticated_user_id = get_user_from_token(token)
+
+    if not authenticated_user_id:
+        return jsonify({
+            "success": False,
+            "message": "Invalid or expired authorization token"
+        }), 401
+
+    # --------------------------------------------------------
+    # GET SEARCH QUERY
+    # --------------------------------------------------------
+
+    query = str(data.get("query", "")).strip()
+
+    if not query:
+        return jsonify({
+            "success": False,
+            "message": "Search query is required"
+        }), 400
+
+    # --------------------------------------------------------
+    # RESULT LIMIT
+    # --------------------------------------------------------
+
+    try:
+        limit = int(data.get("limit", 5))
+    except (TypeError, ValueError):
+        limit = 5
+
+    # Keep the limit within a safe range
+    limit = max(1, min(limit, 20))
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    try:
+
+        # ----------------------------------------------------
+        # GENERATE QUERY EMBEDDING
+        # ----------------------------------------------------
+
+        query_embedding = generate_embedding(
+            query,
+            task_type="RETRIEVAL_QUERY"
+        )
+
+        query_vector = Vector(query_embedding)
+
+        # ----------------------------------------------------
+        # SEMANTIC SIMILARITY SEARCH
+        # ----------------------------------------------------
+
+        cur.execute(
+            """
+            SELECT
+                id,
+                text,
+                created_at,
+                1 - (embedding <=> %s) AS similarity
+            FROM notes
+            WHERE user_id = %s
+              AND embedding IS NOT NULL
+            ORDER BY embedding <=> %s
+            LIMIT %s
+            """,
+            (
+                query_vector,
+                authenticated_user_id,
+                query_vector,
+                limit
+            )
+        )
+
+        rows = cur.fetchall()
+
+        # ----------------------------------------------------
+        # FORMAT RESULTS
+        # ----------------------------------------------------
+
+        results = []
+        formatted_results = []
+
+        for row in rows:
+
+            note_id = row[0]
+            note_text = row[1]
+            created_at = row[2]
+            similarity = float(row[3])
+
+            results.append({
+                "id": note_id,
+                "text": note_text,
+                "created_at": created_at.isoformat()
+                    if created_at else None,
+                "similarity": round(similarity, 4)
+            })
+
+            formatted_results.append(
+                f"{len(formatted_results) + 1}. "
+                f"{note_text} "
+                f"(similarity: {similarity:.2f})"
+            )
+
+        # ----------------------------------------------------
+        # RETURN SEARCH RESULTS
+        # ----------------------------------------------------
+
+        return jsonify({
+            "success": True,
+            "query": query,
+            "results": results,
+            "formatted_results": formatted_results,
+            "count": len(results)
+        })
+
+    except Exception as e:
+
+        print("SEMANTIC SEARCH ERROR:", e)
+
+        return jsonify({
+            "success": False,
+            "message": f"Semantic search failed: {str(e)}"
+        }), 500
+
+    finally:
+
+        cur.close()
+        conn.close()
 
 # ============================================================
 # MAIN ASSISTANT API
@@ -386,7 +896,22 @@ def logout():
 def assistant():
 
     data = request.get_json() or {}
+    auth_header = request.headers.get("Authorization", "")
 
+    if not auth_header.startswith("Bearer "):
+        return jsonify({
+            "success": False,
+            "message": "Authorization token is required"
+        }), 401
+
+    token = auth_header.split(" ", 1)[1]
+    authenticated_user_id = get_user_from_token(token)
+
+    if not authenticated_user_id:
+        return jsonify({
+            "success": False,
+            "message": "Invalid or expired authorization token"
+        }), 401
     intent = data.get("intent")
     details = data.get("data", {})
 
@@ -461,9 +986,7 @@ def assistant():
 
     try:
 
-        user_id = str(
-            details.get("user_id", "")
-        ).strip()
+        user_id = authenticated_user_id
 
 
         # ====================================================
@@ -471,44 +994,166 @@ def assistant():
         # ====================================================
 
         if intent == "CREATE_NOTE":
+          text = str(details.get("text", "")).strip()
 
-            text = str(
-                details.get("text", "")
-            ).strip()
-
-            if not user_id:
-
-                return jsonify({
-                    "success": False,
-                    "message": "User ID is required"
-                }), 400
-
-            if not text:
-
-                return jsonify({
-                    "success": False,
-                    "message": "Note text is required"
-                }), 400
-
-            cur.execute(
-                """
-                INSERT INTO notes
-                (user_id, text)
-                VALUES (%s, %s)
-                """,
-                (
-                    user_id,
-                    text
-                )
-            )
-
-            conn.commit()
-
+          if not text:
             return jsonify({
+            "success": False,
+            "message": "Note text is required"
+           }), 400
+
+          conn = get_connection()
+          cur = conn.cursor()
+
+          try:
+              
+             # Generate semantic embedding for the note
+              embedding_values = generate_embedding(
+              text,
+              task_type="RETRIEVAL_DOCUMENT"
+              )
+
+             # Save note + embedding
+              cur.execute("""
+               INSERT INTO notes (user_id, text, embedding)
+               VALUES (%s, %s, %s)
+               RETURNING id
+               """, (
+               user_id,
+               text,
+               Vector(embedding_values)
+             ))
+
+              note_id = cur.fetchone()[0]
+
+             # Create notification
+              create_notification(
+                cur,
+                user_id,
+                "Note Saved",
+                "Your note has been saved successfully.",
+                "📝"
+               )
+
+              conn.commit()
+
+              return jsonify({
                 "success": True,
                 "message": "Note saved successfully",
-                "user_id": user_id
-            })
+                "note_id": note_id,
+                "embedding_created": True
+             })
+
+          except Exception as e:
+             conn.rollback()
+
+             return jsonify({
+              "success": False,
+              "message": f"Failed to save note: {str(e)}"
+             }), 500
+
+          finally:
+             cur.close()
+             conn.close()
+
+        # ====================================================
+        # SEARCH NOTES - SEMANTIC SEARCH
+        # ====================================================
+
+        elif intent == "SEARCH_NOTES":
+
+            query = str(
+                details.get("query", "")
+            ).strip()
+
+            if not query:
+                return jsonify({
+                    "success": False,
+                    "message": "Search query is required"
+                }), 400
+
+            try:
+                # Generate embedding for the user's search query
+                query_embedding = generate_embedding(
+                    query,
+                    task_type="RETRIEVAL_QUERY"
+                )
+
+                query_vector = Vector(query_embedding)
+
+                # Search only this authenticated user's notes
+                cur.execute(
+                    """
+                    SELECT
+                        id,
+                        text,
+                        created_at,
+                        1 - (embedding <=> %s) AS similarity
+                    FROM notes
+                    WHERE user_id = %s
+                      AND embedding IS NOT NULL
+                    ORDER BY embedding <=> %s
+                    LIMIT 5
+                    """,
+                    (
+                        query_vector,
+                        user_id,
+                        query_vector
+                    )
+                )
+
+                rows = cur.fetchall()
+
+                results = []
+                formatted_results = []
+
+                for row in rows:
+
+                    note_id = row[0]
+                    note_text = row[1]
+                    created_at = row[2]
+                    similarity = float(row[3])
+
+                    results.append({
+                        "id": note_id,
+                        "text": note_text,
+                        "created_at": (
+                            created_at.isoformat()
+                            if created_at else None
+                        ),
+                        "similarity": round(
+                            similarity,
+                            4
+                        )
+                    })
+
+                    formatted_results.append(
+                        f"{len(formatted_results) + 1}. "
+                        f"{note_text} "
+                        f"(similarity: {similarity:.2f})"
+                    )
+
+                return jsonify({
+                    "success": True,
+                    "query": query,
+                    "results": results,
+                    "formatted_results": formatted_results,
+                    "count": len(results)
+                })
+
+            except Exception as e:
+
+                print(
+                    "SEARCH NOTES ERROR:",
+                    e
+                )
+
+                return jsonify({
+                    "success": False,
+                    "message": (
+                        f"Semantic note search failed: {str(e)}"
+                    )
+                }), 500
 
 
         # ====================================================
@@ -550,6 +1195,14 @@ def assistant():
                 )
             )
 
+            create_notification(
+               cur,
+               user_id,
+               "Reminder Set",
+               f"Reminder set for: {task}",
+               "⏰"
+            )
+            
             conn.commit()
 
             return jsonify({
@@ -1080,110 +1733,6 @@ def assistant():
                     "total_expenses": float(total_expenses)
                 }
             })
-
-
-        # ====================================================
-        # SUMMARIZE TEXT
-        # ====================================================
-
-        elif intent == "SUMMARIZE_TEXT":
-
-            text = str(
-                details.get("text", "")
-            ).strip()
-
-            if not text:
-
-                return jsonify({
-                    "success": False,
-                    "message": "Text is required for summarization"
-                }), 400
-
-            prompt = f"""
-Summarize the following text clearly and concisely.
-
-Requirements:
-- Keep the important facts and main ideas.
-- Do not add information that is not present.
-- Make the summary easy to understand.
-
-Text:
-
-{text}
-"""
-
-            response = gemini_client.models.generate_content(
-                model="gemini-3.7-flash",
-                contents=prompt
-            )
-
-            summary = (
-                response.text or ""
-            ).strip()
-
-            return jsonify({
-                "success": True,
-                "summary": summary
-            })
-
-
-        # ====================================================
-        # TRANSLATE
-        # ====================================================
-
-        elif intent == "TRANSLATE":
-
-            text = str(
-                details.get("text", "")
-            ).strip()
-
-            target_language = str(
-                details.get("target_language", "")
-            ).strip()
-
-            if not text:
-
-                return jsonify({
-                    "success": False,
-                    "message": "Text is required for translation"
-                }), 400
-
-            if not target_language:
-
-                return jsonify({
-                    "success": False,
-                    "message": "Target language is required"
-                }), 400
-
-            prompt = f"""
-Translate the following text into {target_language}.
-
-Requirements:
-- Preserve the original meaning.
-- Do not add extra information.
-- Return only the translated text.
-- Keep names, numbers and important details accurate.
-
-Text:
-
-{text}
-"""
-
-            response = gemini_client.models.generate_content(
-                model="gemini-3.7-flash",
-                contents=prompt
-            )
-
-            translation = (
-                response.text or ""
-            ).strip()
-
-            return jsonify({
-                "success": True,
-                "target_language": target_language,
-                "translation": translation
-            })
-
 
         # ====================================================
         # CREATE MEMORY
@@ -1750,27 +2299,523 @@ DOCUMENT:
             })
 
 
-        # ====================================================
+        # ============================================================
+        # UPDATE NOTE
+        # ============================================================
+
+        elif intent == "UPDATE_NOTE":
+
+            note_id = details.get("id")
+            text = str(details.get("text", "")).strip()
+
+            if not note_id:
+                return jsonify({
+                    "success": False,
+                    "message": "Note ID is required"
+                }), 400
+
+            if not text:
+                return jsonify({
+                    "success": False,
+                    "message": "Note text is required"
+                }), 400
+
+            conn = get_connection()
+            cur = conn.cursor()
+
+            try:
+                # Generate new embedding for updated note
+                embedding_values = generate_embedding(
+                    text,
+                    task_type="RETRIEVAL_DOCUMENT"
+                )
+
+                embedding_vector = Vector(embedding_values)
+
+                cur.execute("""
+                    UPDATE notes
+                    SET text = %s,
+                        embedding = %s
+                    WHERE id = %s
+                      AND user_id = %s
+                """, (
+                    text,
+                    embedding_vector,
+                    note_id,
+                    user_id
+                ))
+
+                if cur.rowcount == 0:
+                    conn.rollback()
+
+                    return jsonify({
+                        "success": False,
+                        "message": "Note not found"
+                    }), 404
+
+                conn.commit()
+
+                return jsonify({
+                    "success": True,
+                    "message": "Note updated successfully",
+                    "id": note_id,
+                    "text": text
+                })
+
+            except Exception as e:
+                conn.rollback()
+
+                print("UPDATE NOTE ERROR:", e)
+
+                return jsonify({
+                    "success": False,
+                    "message": "Failed to update note"
+                }), 500
+
+            finally:
+                cur.close()
+                conn.close()
+
+
+        # ============================================================
+        # UPDATE REMINDER
+        # ============================================================
+
+        elif intent == "UPDATE_REMINDER":
+
+            reminder_id = details.get("id")
+            task = str(details.get("task", "")).strip()
+            reminder_time = details.get("time")
+
+            if not reminder_id:
+                return jsonify({
+                    "success": False,
+                    "message": "Reminder ID is required"
+                }), 400
+
+            if not task:
+                return jsonify({
+                    "success": False,
+                    "message": "Reminder task is required"
+                }), 400
+
+            if not reminder_time:
+                return jsonify({
+                    "success": False,
+                    "message": "Reminder time is required"
+                }), 400
+
+            conn = get_connection()
+            cur = conn.cursor()
+
+            try:
+                cur.execute("""
+                    UPDATE reminders
+                    SET task = %s,
+                        time = %s
+                    WHERE id = %s
+                      AND user_id = %s
+                """, (
+                    task,
+                    reminder_time,
+                    reminder_id,
+                    user_id
+                ))
+
+                if cur.rowcount == 0:
+                    conn.rollback()
+
+                    return jsonify({
+                        "success": False,
+                        "message": "Reminder not found"
+                    }), 404
+
+                conn.commit()
+
+                return jsonify({
+                    "success": True,
+                    "message": "Reminder updated successfully",
+                    "id": reminder_id,
+                    "task": task,
+                    "time": str(reminder_time)
+                })
+
+            except Exception as e:
+                conn.rollback()
+
+                print("UPDATE REMINDER ERROR:", e)
+
+                return jsonify({
+                    "success": False,
+                    "message": "Failed to update reminder"
+                }), 500
+
+            finally:
+                cur.close()
+                conn.close()
+
+
+        # ============================================================
+        # UPDATE EXPENSE
+        # ============================================================
+
+        elif intent == "UPDATE_EXPENSE":
+
+            expense_id = details.get("id")
+            amount = details.get("amount")
+            category = str(details.get("category", "")).strip()
+
+            if not expense_id:
+                return jsonify({
+                    "success": False,
+                    "message": "Expense ID is required"
+                }), 400
+
+            if amount is None:
+                return jsonify({
+                    "success": False,
+                    "message": "Expense amount is required"
+                }), 400
+
+            if not category:
+                return jsonify({
+                    "success": False,
+                    "message": "Expense category is required"
+                }), 400
+
+            try:
+                amount = float(amount)
+
+                if amount < 0:
+                    return jsonify({
+                        "success": False,
+                        "message": "Expense amount cannot be negative"
+                    }), 400
+
+            except (TypeError, ValueError):
+                return jsonify({
+                    "success": False,
+                    "message": "Invalid expense amount"
+                }), 400
+
+            conn = get_connection()
+            cur = conn.cursor()
+
+            try:
+                cur.execute("""
+                    UPDATE expenses
+                    SET amount = %s,
+                        category = %s
+                    WHERE id = %s
+                      AND user_id = %s
+                """, (
+                    amount,
+                    category,
+                    expense_id,
+                    user_id
+                ))
+
+                if cur.rowcount == 0:
+                    conn.rollback()
+
+                    return jsonify({
+                        "success": False,
+                        "message": "Expense not found"
+                    }), 404
+
+                conn.commit()
+
+                return jsonify({
+                    "success": True,
+                    "message": "Expense updated successfully",
+                    "id": expense_id,
+                    "amount": amount,
+                    "category": category
+                })
+
+            except Exception as e:
+                conn.rollback()
+
+                print("UPDATE EXPENSE ERROR:", e)
+
+                return jsonify({
+                    "success": False,
+                    "message": "Failed to update expense"
+                }), 500
+
+            finally:
+                cur.close()
+                conn.close()
+
+
+        # ============================================================
+        # UPDATE SHOPPING ITEM
+        # ============================================================
+
+        elif intent == "UPDATE_SHOPPING_ITEM":
+
+            item_id = details.get("id")
+            item = str(details.get("item", "")).strip()
+
+            if not item_id:
+                return jsonify({
+                    "success": False,
+                    "message": "Shopping item ID is required"
+                }), 400
+
+            if not item:
+                return jsonify({
+                    "success": False,
+                    "message": "Shopping item is required"
+                }), 400
+
+            conn = get_connection()
+            cur = conn.cursor()
+
+            try:
+                cur.execute("""
+                    UPDATE shopping_items
+                    SET item = %s
+                    WHERE id = %s
+                      AND user_id = %s
+                """, (
+                    item,
+                    item_id,
+                    user_id
+                ))
+
+                if cur.rowcount == 0:
+                    conn.rollback()
+
+                    return jsonify({
+                        "success": False,
+                        "message": "Shopping item not found"
+                    }), 404
+
+                conn.commit()
+
+                return jsonify({
+                    "success": True,
+                    "message": "Shopping item updated successfully",
+                    "id": item_id,
+                    "item": item
+                })
+
+            except Exception as e:
+                conn.rollback()
+
+                print("UPDATE SHOPPING ITEM ERROR:", e)
+
+                return jsonify({
+                    "success": False,
+                    "message": "Failed to update shopping item"
+                }), 500
+
+            finally:
+                cur.close()
+                conn.close()
+
+
+        # ============================================================
+        # UPDATE STUDY PLAN
+        # ============================================================
+
+        elif intent == "UPDATE_STUDY_PLAN":
+
+            study_plan_id = details.get("id")
+            subject = str(details.get("subject", "")).strip()
+            exam_date = details.get("exam_date")
+
+            if not study_plan_id:
+                return jsonify({
+                    "success": False,
+                    "message": "Study plan ID is required"
+                }), 400
+
+            if not subject:
+                return jsonify({
+                    "success": False,
+                    "message": "Subject is required"
+                }), 400
+
+            if not exam_date:
+                return jsonify({
+                    "success": False,
+                    "message": "Exam date is required"
+                }), 400
+
+            conn = get_connection()
+            cur = conn.cursor()
+
+            try:
+                cur.execute("""
+                    UPDATE study_plans
+                    SET subject = %s,
+                        exam_date = %s
+                    WHERE id = %s
+                      AND user_id = %s
+                """, (
+                    subject,
+                    exam_date,
+                    study_plan_id,
+                    user_id
+                ))
+
+                if cur.rowcount == 0:
+                    conn.rollback()
+
+                    return jsonify({
+                        "success": False,
+                        "message": "Study plan not found"
+                    }), 404
+
+                conn.commit()
+
+                return jsonify({
+                    "success": True,
+                    "message": "Study plan updated successfully",
+                    "id": study_plan_id,
+                    "subject": subject,
+                    "exam_date": str(exam_date)
+                })
+
+            except Exception as e:
+                conn.rollback()
+
+                print("UPDATE STUDY PLAN ERROR:", e)
+
+                return jsonify({
+                    "success": False,
+                    "message": "Failed to update study plan"
+                }), 500
+
+            finally:
+                cur.close()
+                conn.close()
+
+
+        # ============================================================
+        # UPDATE GOAL
+        # ============================================================
+
+        elif intent == "UPDATE_GOAL":
+
+            goal_id = details.get("id")
+            goal = str(details.get("goal", "")).strip()
+            target_date = details.get("target_date")
+
+            if not goal_id:
+                return jsonify({
+                    "success": False,
+                    "message": "Goal ID is required"
+                }), 400
+
+            if not goal:
+                return jsonify({
+                    "success": False,
+                    "message": "Goal is required"
+                }), 400
+
+            if not target_date:
+                return jsonify({
+                    "success": False,
+                    "message": "Target date is required"
+                }), 400
+
+            conn = get_connection()
+            cur = conn.cursor()
+
+            try:
+                cur.execute("""
+                    UPDATE goals
+                    SET goal = %s,
+                        target_date = %s
+                    WHERE id = %s
+                      AND user_id = %s
+                """, (
+                    goal,
+                    target_date,
+                    goal_id,
+                    user_id
+                ))
+
+                if cur.rowcount == 0:
+                    conn.rollback()
+
+                    return jsonify({
+                        "success": False,
+                        "message": "Goal not found"
+                    }), 404
+
+                conn.commit()
+
+                return jsonify({
+                    "success": True,
+                    "message": "Goal updated successfully",
+                    "id": goal_id,
+                    "goal": goal,
+                    "target_date": str(target_date)
+                })
+
+            except Exception as e:
+                conn.rollback()
+
+                print("UPDATE GOAL ERROR:", e)
+
+                return jsonify({
+                    "success": False,
+                    "message": "Failed to update goal"
+                }), 500
+
+            finally:
+                cur.close()
+                conn.close()
+
+
+        # =========================================
         # GET NOTES
-        # ====================================================
+        # =========================================
 
         elif intent == "GET_NOTES":
 
             if not user_id:
-
                 return jsonify({
                     "success": False,
                     "message": "User ID is required"
                 }), 400
 
+            limit, offset, search, date_from, date_to = (
+                get_retrieval_params(details)
+            )
+
+            where_clause, params = build_retrieval_filter(
+                user_id=user_id,
+                search=search,
+                date_from=date_from,
+                date_to=date_to,
+                search_columns=["text"]
+            )
+
             cur.execute(
-                """
+                f"""
+                SELECT COUNT(*)
+                FROM notes
+                WHERE {where_clause}
+                """,
+                tuple(params)
+            )
+
+            total = cur.fetchone()[0]
+
+            cur.execute(
+                f"""
                 SELECT id, text, created_at
                 FROM notes
-                WHERE user_id = %s
-                ORDER BY created_at DESC
+                WHERE {where_clause}
+                ORDER BY created_at DESC, id DESC
+                LIMIT %s OFFSET %s
                 """,
-                (user_id,)
+                tuple(params + [limit, offset])
             )
 
             rows = cur.fetchall()
@@ -1784,34 +2829,74 @@ DOCUMENT:
                 for row in rows
             ]
 
+            formatted_notes = [
+                f"{index}. {note['text']}"
+                for index, note in enumerate(
+                    notes,
+                    start=offset + 1
+                )
+            ]
+
             return jsonify({
                 "success": True,
                 "user_id": user_id,
-                "notes": notes
+                "count": len(notes),
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "search": search,
+                "date_from": date_from,
+                "date_to": date_to,
+                "has_next": offset + len(notes) < total,
+                "has_previous": offset > 0,
+                "notes": notes,
+                "formatted_notes": formatted_notes
             })
 
-
-        # ====================================================
+        # ============================================================
         # GET REMINDERS
-        # ====================================================
+        # ============================================================
 
         elif intent == "GET_REMINDERS":
 
             if not user_id:
-
                 return jsonify({
                     "success": False,
                     "message": "User ID is required"
                 }), 400
 
+            limit, offset, search, date_from, date_to = (
+                get_retrieval_params(details)
+            )
+
+            where_clause, params = build_retrieval_filter(
+                user_id=user_id,
+                search=search,
+                date_from=date_from,
+                date_to=date_to,
+                search_columns=["task"]
+            )
+
             cur.execute(
-                """
+                f"""
+                SELECT COUNT(*)
+                FROM reminders
+                WHERE {where_clause}
+                """,
+                tuple(params)
+            )
+
+            total = cur.fetchone()[0]
+
+            cur.execute(
+                f"""
                 SELECT id, task, time, created_at
                 FROM reminders
-                WHERE user_id = %s
-                ORDER BY created_at DESC
+                WHERE {where_clause}
+                ORDER BY created_at DESC, id DESC
+                LIMIT %s OFFSET %s
                 """,
-                (user_id,)
+                tuple(params + [limit, offset])
             )
 
             rows = cur.fetchall()
@@ -1826,34 +2911,76 @@ DOCUMENT:
                 for row in rows
             ]
 
+            formatted_reminders = [
+                f"{index}. {reminder['task']} "
+                f"(Time: {reminder['time']}, "
+                f"Created: {reminder['created_at']})"
+                for index, reminder in enumerate(
+                    reminders,
+                    start=offset + 1
+                )
+            ]
+
             return jsonify({
                 "success": True,
                 "user_id": user_id,
-                "reminders": reminders
+                "count": len(reminders),
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "search": search,
+                "date_from": date_from,
+                "date_to": date_to,
+                "has_next": offset + len(reminders) < total,
+                "has_previous": offset > 0,
+                "reminders": reminders,
+                "formatted_reminders": formatted_reminders
             })
 
-
-        # ====================================================
+        # ============================================================
         # GET EXPENSES
-        # ====================================================
+        # ============================================================
 
         elif intent == "GET_EXPENSES":
 
             if not user_id:
-
                 return jsonify({
                     "success": False,
                     "message": "User ID is required"
                 }), 400
 
+            limit, offset, search, date_from, date_to = (
+                get_retrieval_params(details)
+            )
+
+            where_clause, params = build_retrieval_filter(
+                user_id=user_id,
+                search=search,
+                date_from=date_from,
+                date_to=date_to,
+                search_columns=["category"]
+            )
+
             cur.execute(
-                """
+                f"""
+                SELECT COUNT(*)
+                FROM expenses
+                WHERE {where_clause}
+                """,
+                tuple(params)
+            )
+
+            total = cur.fetchone()[0]
+
+            cur.execute(
+                f"""
                 SELECT id, amount, category, created_at
                 FROM expenses
-                WHERE user_id = %s
-                ORDER BY created_at DESC
+                WHERE {where_clause}
+                ORDER BY created_at DESC, id DESC
+                LIMIT %s OFFSET %s
                 """,
-                (user_id,)
+                tuple(params + [limit, offset])
             )
 
             rows = cur.fetchall()
@@ -1868,34 +2995,75 @@ DOCUMENT:
                 for row in rows
             ]
 
+            formatted_expenses = [
+                f"{index}. ₹{expense['amount']} - "
+                f"{expense['category']}"
+                for index, expense in enumerate(
+                    expenses,
+                    start=offset + 1
+                )
+            ]
+
             return jsonify({
                 "success": True,
                 "user_id": user_id,
-                "expenses": expenses
+                "count": len(expenses),
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "search": search,
+                "date_from": date_from,
+                "date_to": date_to,
+                "has_next": offset + len(expenses) < total,
+                "has_previous": offset > 0,
+                "expenses": expenses,
+                "formatted_expenses": formatted_expenses
             })
 
-
-        # ====================================================
+        # ============================================================
         # GET SHOPPING LIST
-        # ====================================================
+        # ============================================================
 
         elif intent == "GET_SHOPPING_LIST":
 
             if not user_id:
-
                 return jsonify({
                     "success": False,
                     "message": "User ID is required"
                 }), 400
 
+            limit, offset, search, date_from, date_to = (
+                get_retrieval_params(details)
+            )
+
+            where_clause, params = build_retrieval_filter(
+                user_id=user_id,
+                search=search,
+                date_from=date_from,
+                date_to=date_to,
+                search_columns=["item"]
+            )
+
             cur.execute(
-                """
+                f"""
+                SELECT COUNT(*)
+                FROM shopping_items
+                WHERE {where_clause}
+                """,
+                tuple(params)
+            )
+
+            total = cur.fetchone()[0]
+
+            cur.execute(
+                f"""
                 SELECT id, item, created_at
                 FROM shopping_items
-                WHERE user_id = %s
-                ORDER BY created_at DESC
+                WHERE {where_clause}
+                ORDER BY created_at DESC, id DESC
+                LIMIT %s OFFSET %s
                 """,
-                (user_id,)
+                tuple(params + [limit, offset])
             )
 
             rows = cur.fetchall()
@@ -1909,34 +3077,74 @@ DOCUMENT:
                 for row in rows
             ]
 
+            formatted_shopping_items = [
+                f"{index}. {item['item']}"
+                for index, item in enumerate(
+                    shopping_items,
+                    start=offset + 1
+                )
+            ]
+
             return jsonify({
                 "success": True,
                 "user_id": user_id,
-                "shopping_items": shopping_items
+                "count": len(shopping_items),
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "search": search,
+                "date_from": date_from,
+                "date_to": date_to,
+                "has_next": offset + len(shopping_items) < total,
+                "has_previous": offset > 0,
+                "shopping_items": shopping_items,
+                "formatted_shopping_items": formatted_shopping_items
             })
 
-
-        # ====================================================
+        # ============================================================
         # GET STUDY PLANS
-        # ====================================================
+        # ============================================================
 
         elif intent == "GET_STUDY_PLANS":
 
             if not user_id:
-
                 return jsonify({
                     "success": False,
                     "message": "User ID is required"
                 }), 400
 
+            limit, offset, search, date_from, date_to = (
+                get_retrieval_params(details)
+            )
+
+            where_clause, params = build_retrieval_filter(
+                user_id=user_id,
+                search=search,
+                date_from=date_from,
+                date_to=date_to,
+                search_columns=["subject"]
+            )
+
             cur.execute(
-                """
+                f"""
+                SELECT COUNT(*)
+                FROM study_plans
+                WHERE {where_clause}
+                """,
+                tuple(params)
+            )
+
+            total = cur.fetchone()[0]
+
+            cur.execute(
+                f"""
                 SELECT id, subject, exam_date, created_at
                 FROM study_plans
-                WHERE user_id = %s
-                ORDER BY exam_date ASC
+                WHERE {where_clause}
+                ORDER BY exam_date ASC, id ASC
+                LIMIT %s OFFSET %s
                 """,
-                (user_id,)
+                tuple(params + [limit, offset])
             )
 
             rows = cur.fetchall()
@@ -1951,34 +3159,75 @@ DOCUMENT:
                 for row in rows
             ]
 
+            formatted_study_plans = [
+                f"{index}. {plan['subject']} - "
+                f"Exam date: {plan['exam_date']}"
+                for index, plan in enumerate(
+                    study_plans,
+                    start=offset + 1
+                )
+            ]
+
             return jsonify({
                 "success": True,
                 "user_id": user_id,
-                "study_plans": study_plans
+                "count": len(study_plans),
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "search": search,
+                "date_from": date_from,
+                "date_to": date_to,
+                "has_next": offset + len(study_plans) < total,
+                "has_previous": offset > 0,
+                "study_plans": study_plans,
+                "formatted_study_plans": formatted_study_plans
             })
 
-
-        # ====================================================
+        # ============================================================
         # GET GOALS
-        # ====================================================
+        # ============================================================
 
         elif intent == "GET_GOALS":
 
             if not user_id:
-
                 return jsonify({
                     "success": False,
                     "message": "User ID is required"
                 }), 400
 
+            limit, offset, search, date_from, date_to = (
+                get_retrieval_params(details)
+            )
+
+            where_clause, params = build_retrieval_filter(
+                user_id=user_id,
+                search=search,
+                date_from=date_from,
+                date_to=date_to,
+                search_columns=["goal"]
+            )
+
             cur.execute(
-                """
+                f"""
+                SELECT COUNT(*)
+                FROM goals
+                WHERE {where_clause}
+                """,
+                tuple(params)
+            )
+
+            total = cur.fetchone()[0]
+
+            cur.execute(
+                f"""
                 SELECT id, goal, target_date, created_at
                 FROM goals
-                WHERE user_id = %s
-                ORDER BY target_date ASC
+                WHERE {where_clause}
+                ORDER BY target_date ASC, id ASC
+                LIMIT %s OFFSET %s
                 """,
-                (user_id,)
+                tuple(params + [limit, offset])
             )
 
             rows = cur.fetchall()
@@ -1993,34 +3242,75 @@ DOCUMENT:
                 for row in rows
             ]
 
+            formatted_goals = [
+                f"{index}. {goal['goal']} - "
+                f"Target date: {goal['target_date']}"
+                for index, goal in enumerate(
+                    goals,
+                    start=offset + 1
+                )
+            ]
+
             return jsonify({
                 "success": True,
                 "user_id": user_id,
-                "goals": goals
+                "count": len(goals),
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "search": search,
+                "date_from": date_from,
+                "date_to": date_to,
+                "has_next": offset + len(goals) < total,
+                "has_previous": offset > 0,
+                "goals": goals,
+                "formatted_goals": formatted_goals
             })
 
-
-        # ====================================================
+        # ============================================================
         # GET MOODS
-        # ====================================================
+        # ============================================================
 
         elif intent == "GET_MOODS":
 
             if not user_id:
-
                 return jsonify({
                     "success": False,
                     "message": "User ID is required"
                 }), 400
 
+            limit, offset, search, date_from, date_to = (
+                get_retrieval_params(details)
+            )
+
+            where_clause, params = build_retrieval_filter(
+                user_id=user_id,
+                search=search,
+                date_from=date_from,
+                date_to=date_to,
+                search_columns=["mood", "text"]
+            )
+
             cur.execute(
-                """
+                f"""
+                SELECT COUNT(*)
+                FROM moods
+                WHERE {where_clause}
+                """,
+                tuple(params)
+            )
+
+            total = cur.fetchone()[0]
+
+            cur.execute(
+                f"""
                 SELECT id, mood, emoji, text, created_at
                 FROM moods
-                WHERE user_id = %s
-                ORDER BY created_at DESC
+                WHERE {where_clause}
+                ORDER BY created_at DESC, id DESC
+                LIMIT %s OFFSET %s
                 """,
-                (user_id,)
+                tuple(params + [limit, offset])
             )
 
             rows = cur.fetchall()
@@ -2036,34 +3326,83 @@ DOCUMENT:
                 for row in rows
             ]
 
+            formatted_moods = []
+
+            for index, mood in enumerate(
+                moods,
+                start=offset + 1
+            ):
+                mood_text = mood["text"] or ""
+
+                formatted_moods.append(
+                    f"{index}. {mood['emoji']} "
+                    f"{mood['mood']} - {mood_text}"
+                )
+
             return jsonify({
                 "success": True,
                 "user_id": user_id,
-                "moods": moods
+                "count": len(moods),
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "search": search,
+                "date_from": date_from,
+                "date_to": date_to,
+                "has_next": offset + len(moods) < total,
+                "has_previous": offset > 0,
+                "moods": moods,
+                "formatted_moods": formatted_moods
             })
 
-
-        # ====================================================
+        # ============================================================
         # GET EMAILS
-        # ====================================================
+        # ============================================================
 
         elif intent == "GET_EMAILS":
 
             if not user_id:
-
                 return jsonify({
                     "success": False,
                     "message": "User ID is required"
                 }), 400
 
+            limit, offset, search, date_from, date_to = (
+                get_retrieval_params(details)
+            )
+
+            where_clause, params = build_retrieval_filter(
+                user_id=user_id,
+                search=search,
+                date_from=date_from,
+                date_to=date_to,
+                search_columns=[
+                    "recipient",
+                    "subject",
+                    "body"
+                ]
+            )
+
             cur.execute(
-                """
+                f"""
+                SELECT COUNT(*)
+                FROM emails
+                WHERE {where_clause}
+                """,
+                tuple(params)
+            )
+
+            total = cur.fetchone()[0]
+
+            cur.execute(
+                f"""
                 SELECT id, recipient, subject, body, created_at
                 FROM emails
-                WHERE user_id = %s
-                ORDER BY created_at DESC
+                WHERE {where_clause}
+                ORDER BY created_at DESC, id DESC
+                LIMIT %s OFFSET %s
                 """,
-                (user_id,)
+                tuple(params + [limit, offset])
             )
 
             rows = cur.fetchall()
@@ -2079,34 +3418,79 @@ DOCUMENT:
                 for row in rows
             ]
 
+            formatted_emails = [
+                f"{index}. To: {email['recipient']} | "
+                f"Subject: {email['subject']} | "
+                f"Body: {email['body']}"
+                for index, email in enumerate(
+                    emails,
+                    start=offset + 1
+                )
+            ]
+
             return jsonify({
                 "success": True,
                 "user_id": user_id,
-                "emails": emails
+                "count": len(emails),
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "search": search,
+                "date_from": date_from,
+                "date_to": date_to,
+                "has_next": offset + len(emails) < total,
+                "has_previous": offset > 0,
+                "emails": emails,
+                "formatted_emails": formatted_emails
             })
 
-
-        # ====================================================
+        # ============================================================
         # GET MEMORIES
-        # ====================================================
+        # ============================================================
 
         elif intent == "GET_MEMORIES":
 
             if not user_id:
-
                 return jsonify({
                     "success": False,
                     "message": "User ID is required"
                 }), 400
 
+            limit, offset, search, date_from, date_to = (
+                get_retrieval_params(details)
+            )
+
+            where_clause, params = build_retrieval_filter(
+                user_id=user_id,
+                search=search,
+                date_from=date_from,
+                date_to=date_to,
+                search_columns=[
+                    "memory",
+                    "category"
+                ]
+            )
+
             cur.execute(
-                """
+                f"""
+                SELECT COUNT(*)
+                FROM memories
+                WHERE {where_clause}
+                """,
+                tuple(params)
+            )
+
+            total = cur.fetchone()[0]
+
+            cur.execute(
+                f"""
                 SELECT id, memory, category, created_at
                 FROM memories
-                WHERE user_id = %s
-                ORDER BY created_at DESC
+                WHERE {where_clause}
+                ORDER BY created_at DESC, id DESC
+                LIMIT %s OFFSET %s
                 """,
-                (user_id,)
+                tuple(params + [limit, offset])
             )
 
             rows = cur.fetchall()
@@ -2121,35 +3505,85 @@ DOCUMENT:
                 for row in rows
             ]
 
+            formatted_memories = []
+
+            for index, memory in enumerate(
+                memories,
+                start=offset + 1
+            ):
+                if memory["category"]:
+                    formatted_memories.append(
+                        f"{index}. {memory['memory']} "
+                        f"(Category: {memory['category']})"
+                    )
+                else:
+                    formatted_memories.append(
+                        f"{index}. {memory['memory']}"
+                    )
+
             return jsonify({
                 "success": True,
                 "user_id": user_id,
-                "memories": memories
+                "count": len(memories),
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "search": search,
+                "date_from": date_from,
+                "date_to": date_to,
+                "has_next": offset + len(memories) < total,
+                "has_previous": offset > 0,
+                "memories": memories,
+                "formatted_memories": formatted_memories
             })
 
-
-        # ====================================================
+        # ============================================================
         # GET CONTEXT
-        # ====================================================
+        # ============================================================
 
         elif intent == "GET_CONTEXT":
 
             if not user_id:
-
                 return jsonify({
                     "success": False,
                     "message": "User ID is required"
                 }), 400
 
+            limit, offset, search, date_from, date_to = (
+                get_retrieval_params(details)
+            )
+
+            where_clause, params = build_retrieval_filter(
+                user_id=user_id,
+                search=search,
+                date_from=date_from,
+                date_to=date_to,
+                search_columns=[
+                    "context",
+                    "current_task"
+                ]
+            )
+
             cur.execute(
-                """
+                f"""
+                SELECT COUNT(*)
+                FROM user_context
+                WHERE {where_clause}
+                """,
+                tuple(params)
+            )
+
+            total = cur.fetchone()[0]
+
+            cur.execute(
+                f"""
                 SELECT id, context, current_task, created_at
                 FROM user_context
-                WHERE user_id = %s
-                ORDER BY created_at DESC
-                LIMIT 10
+                WHERE {where_clause}
+                ORDER BY created_at DESC, id DESC
+                LIMIT %s OFFSET %s
                 """,
-                (user_id,)
+                tuple(params + [limit, offset])
             )
 
             rows = cur.fetchall()
@@ -2164,24 +3598,93 @@ DOCUMENT:
                 for row in rows
             ]
 
+            formatted_contexts = []
+
+            for index, context in enumerate(
+                contexts,
+                start=offset + 1
+            ):
+                if context["current_task"]:
+                    formatted_contexts.append(
+                        f"{index}. {context['context']} "
+                        f"(Current task: "
+                        f"{context['current_task']})"
+                    )
+                else:
+                    formatted_contexts.append(
+                        f"{index}. {context['context']}"
+                    )
+
             return jsonify({
                 "success": True,
                 "user_id": user_id,
-                "contexts": contexts
+                "count": len(contexts),
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "search": search,
+                "date_from": date_from,
+                "date_to": date_to,
+                "has_next": offset + len(contexts) < total,
+                "has_previous": offset > 0,
+                "contexts": contexts,
+                "formatted_contexts": formatted_contexts
             })
+        # =========================================================
+        # DEVICE ACTIONS
+        # =========================================================
 
+        elif intent in DEVICE_ACTION_INTENTS:
+         device_id = details.get(
+            "device_id",
+            "azzam-laptop-001"
+         )
 
-        # ====================================================
-        # UNKNOWN INTENT
-        # ====================================================
+         cur.execute("""
+            INSERT INTO agent_queue
+            (device_id, user_id, action, data)
+            VALUES (%s, %s, %s, %s)
+            RETURNING id
+          """, (
+           device_id,
+           user_id,
+           intent,
+         psycopg.types.json.Json(details)
+         ))
+
+         queue_id = cur.fetchone()[0]
+
+         create_notification(
+             cur,
+             user_id,
+             "Laptop Action",
+             f"{intent.replace('_', ' ').title()} has been queued.",
+             "💻"
+            )
+         
+         conn.commit()
+
+         return jsonify({
+          "success": True,
+          "reply": "Executing on your laptop...",
+          "device_action": {
+            "action": intent,
+            "data": details,
+            "queue_id": queue_id
+           }
+        })
+
+     # =========================================================
+     # UNKNOWN INTENT
+     # =========================================================
 
         else:
 
             return jsonify({
-                "success": False,
-                "message": "Unknown intent"
-            }), 400
-
+          "success": False,
+         "message": "Unknown intent"
+        }), 400
+         
 
     # ========================================================
     # ERROR HANDLING
@@ -2204,7 +3707,270 @@ DOCUMENT:
         cur.close()
         conn.close()
 
+# ========================================
+# get_notification
+# ========================================
+@app.route("/api/notifications", methods=["GET"])
+def get_notifications():
 
+    conn = get_connection()
+    cur = conn.cursor()
+
+    try:
+        user_id = request.args.get("user_id")
+
+        if not user_id:
+            return jsonify({
+                "success": False,
+                "message": "user_id required"
+            }), 400
+
+        cur.execute("""
+            SELECT id, title, message, icon, read, created_at
+            FROM notifications
+            WHERE user_id = %s
+            ORDER BY created_at DESC
+        """, (user_id,))
+
+        rows = cur.fetchall()
+
+        notifications = []
+
+        for row in rows:
+            notifications.append({
+                "id": row[0],
+                "title": row[1],
+                "message": row[2],
+                "icon": row[3],
+                "read": row[4],
+                "created_at": row[5].isoformat() if row[5] else None
+            })
+
+        return jsonify({
+            "success": True,
+            "notifications": notifications
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "message": str(e)
+        }), 500
+
+    finally:
+        cur.close()
+        conn.close()
+
+# ==============================================
+# agent_poll
+# ==============================================
+@app.route("/api/agent/poll", methods=["POST"])
+def agent_poll():
+    data = request.get_json() or {}
+    device_id = data.get("device_id")
+
+    if not device_id:
+        return jsonify({
+            "success": False,
+            "message": "device_id required"
+        }), 400
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            SELECT id, action, data
+            FROM agent_queue
+            WHERE device_id = %s
+              AND status = 'pending'
+            ORDER BY created_at ASC
+            LIMIT 1
+        """, (device_id,))
+
+        row = cur.fetchone()
+
+        if not row:
+            return jsonify({
+                "success": True,
+                "action": None
+            })
+
+        queue_id, action, action_data = row
+
+        # Mark action as processing
+        cur.execute("""
+            UPDATE agent_queue
+            SET status = 'processing'
+            WHERE id = %s
+        """, (queue_id,))
+
+        conn.commit()
+
+        return jsonify({
+            "success": True,
+            "action": action,
+            "data": action_data,
+            "queue_id": queue_id
+        })
+
+    except Exception as e:
+        conn.rollback()
+
+        return jsonify({
+            "success": False,
+            "message": str(e)
+        }), 500
+
+    finally:
+        cur.close()
+        conn.close()
+
+# =========================================================
+# AGENT RESULT
+# =========================================================
+
+@app.route("/api/agent/result", methods=["POST"])
+def agent_result():
+    data = request.get_json() or {}
+
+    device_id = data.get("device_id")
+    action = data.get("action")
+    success = data.get("success")
+    message = data.get("message")
+    user_id = data.get("user_id")
+    action_data = data.get("data", {})
+
+    if not device_id or not action:
+        return jsonify({
+            "success": False,
+            "message": "device_id and action are required"
+        }), 400
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    try:
+        # Mark the processing action as completed
+        cur.execute("""
+            UPDATE agent_queue
+            SET status = %s
+            WHERE device_id = %s
+              AND action = %s
+              AND status = 'processing'
+        """, (
+            "done" if success else "failed",
+            device_id,
+            action
+        ))
+
+        # Save the action in the audit log
+        cur.execute("""
+            INSERT INTO action_logs
+            (user_id, action, target, status, message)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (
+            user_id,
+            action,
+            str(action_data),
+            "success" if success else "failed",
+            message
+        ))
+        # Create notification for completed/failed action
+        notification_title = "Action Completed" if success else "Action Failed"
+
+        notification_message = (
+            message
+            if message
+            else f"{action.replace('_', ' ').title()} completed successfully."
+            if success
+            else f"{action.replace('_', ' ').title()} failed."
+        )
+
+        create_notification(
+           cur,
+           user_id,
+           notification_title,
+           notification_message,
+           "💻" if success else "⚠️"
+        )
+        
+        conn.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "Agent result recorded"
+        })
+
+    except Exception as e:
+        conn.rollback()
+
+        return jsonify({
+            "success": False,
+            "message": str(e)
+        }), 500
+
+    finally:
+        cur.close()
+        conn.close()
+
+# =========================================================
+# AGENT QUEUE ACTION
+# =========================================================
+
+@app.route("/api/agent/queue", methods=["POST"])
+def agent_queue_action():
+    data = request.get_json() or {}
+
+    user_id = data.get("user_id")
+    device_id = data.get("device_id", "azzam-laptop-001")
+    action = data.get("action")
+    action_data = data.get("data", {})
+
+    if not user_id or not action:
+        return jsonify({
+            "success": False,
+            "message": "user_id and action are required"
+        }), 400
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            INSERT INTO agent_queue
+            (device_id, user_id, action, data)
+            VALUES (%s, %s, %s, %s)
+            RETURNING id
+        """, (
+            device_id,
+            user_id,
+            action,
+            psycopg.types.json.Json(action_data)
+        ))
+
+        queue_id = cur.fetchone()[0]
+
+        conn.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "Action queued successfully",
+            "queue_id": queue_id
+        })
+
+    except Exception as e:
+        conn.rollback()
+
+        return jsonify({
+            "success": False,
+            "message": str(e)
+        }), 500
+
+    finally:
+        cur.close()
+        conn.close()
+                
 # ============================================================
 # START APPLICATION
 # ============================================================

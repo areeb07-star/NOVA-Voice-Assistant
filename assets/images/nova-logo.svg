@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="novaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22d3ee"/>
+      <stop offset="50%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#ec4899"/>
+    </linearGradient>
+    <radialGradient id="novaGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="32" cy="32" r="30" fill="url(#novaGlow)"/>
+  <circle cx="32" cy="32" r="26" fill="url(#novaGrad)"/>
+  <circle cx="24" cy="24" r="10" fill="white" opacity="0.18"/>
+  <text x="32" y="42" font-family="Inter, -apple-system, sans-serif"
+        font-size="26" font-weight="800" fill="#ffffff"
+        text-anchor="middle" letter-spacing="-1">N</text>
+  <ellipse cx="32" cy="32" rx="30" ry="12" fill="none"
+           stroke="#22d3ee" stroke-width="1" opacity="0.35"
+           transform="rotate(-30 32 32)"/>
+</svg>

@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — NOVA</title>
+<link rel="icon" type="image/svg+xml" href="assets/images/nova-logo.svg">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #05060f;
+    color: #f1f5f9;
+    min-height: 100vh;
+  }
+  .dashboard-layout { display: flex; min-height: 100vh; }
+
+  /* ============ SIDEBAR ============ */
+  .sidebar {
+    width: 260px;
+    background: rgba(10,12,26,0.85);
+    border-right: 1px solid rgba(255,255,255,0.06);
+    padding: 20px 12px;
+    position: fixed;
+    top: 0; left: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .sidebar-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 12px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    margin-bottom: 12px;
+  }
+  .sidebar-logo-img {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(34,211,238,0.3);
+  }
+  .sidebar-brand {
+    font-size: 1.3rem; font-weight: 700; letter-spacing: 0.05em;
+    background: linear-gradient(135deg, #22d3ee, #8b5cf6, #ec4899);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .nav-section-label {
+    font-size: 0.7rem; font-weight: 700; color: #475569;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    padding: 16px 12px 6px;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 10px;
+    color: #64748b; text-decoration: none;
+    font-size: 0.9rem; font-weight: 500;
+    transition: all 0.2s ease; position: relative;
+    margin-bottom: 2px;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.04); color: #f1f5f9; }
+  .nav-item.active {
+    background: rgba(34,211,238,0.08); color: #22d3ee; font-weight: 600;
+  }
+  .nav-item.active::before {
+    content: ''; position: absolute;
+    left: 0; top: 50%; transform: translateY(-50%);
+    width: 3px; height: 60%;
+    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
+    border-radius: 0 4px 4px 0;
+    box-shadow: 0 0 12px rgba(34,211,238,0.5);
+  }
+  .nav-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; flex-shrink: 0;
+  }
+  .nav-icon svg { width: 18px; height: 18px; stroke-width: 1.8; }
+  .nav-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 12px; }
+
+  /* ============ MAIN ============ */
+  .main-content { flex: 1; margin-left: 260px; min-height: 100vh; }
+  .topbar {
+    height: 72px; display: flex; align-items: center; justify-content: space-between;
+    padding: 0 32px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    background: rgba(10,12,26,0.6);
+    backdrop-filter: blur(20px);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .greeting-title { font-size: 1.1rem; font-weight: 700; color: #f1f5f9; }
+  .greeting-subtitle { font-size: 0.8rem; color: #94a3b8; }
+  .topbar-right { display: flex; align-items: center; gap: 16px; position: relative; }
+  .topbar-icon-btn {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: transparent; border: 0; color: #94a3b8;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    position: relative; transition: all 0.2s ease;
+  }
+  .topbar-icon-btn:hover { background: rgba(255,255,255,0.05); color: #f1f5f9; }
+  .topbar-icon-btn svg { width: 20px; height: 20px; stroke-width: 1.8; }
+  .notification-dot {
+    position: absolute; top: 8px; right: 8px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #22d3ee; box-shadow: 0 0 8px rgba(34,211,238,0.6);
+  }
+  .avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.9rem; color: #fff;
+    cursor: pointer; transition: transform 0.2s ease;
+    user-select: none;
+  }
+  .avatar:hover { transform: scale(1.05); }
+
+  /* ============ PROFILE DROPDOWN ============ */
+  .profile-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 200px;
+    background: rgba(18,21,45,0.95);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 6px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    z-index: 100;
+    animation: menuFadeIn 0.15s ease;
+  }
+  .profile-menu[hidden] { display: none; }
+  @keyframes menuFadeIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .profile-menu-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    color: #cbd5e1;
+    text-decoration: none;
+    font-size: 0.88rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    border: 0;
+    background: transparent;
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+  }
+  .profile-menu-item:hover {
+    background: rgba(255,255,255,0.06);
+    color: #f1f5f9;
+  }
+  .profile-menu-item svg {
+    width: 16px; height: 16px; stroke-width: 2;
+    color: #94a3b8;
+  }
+  .profile-menu-item:hover svg { color: #22d3ee; }
+  .profile-menu-item.danger { color: #f87171; }
+  .profile-menu-item.danger svg { color: #f87171; }
+  .profile-menu-item.danger:hover {
+    background: rgba(239,68,68,0.1);
+    color: #ef4444;
+  }
+  .profile-menu hr {
+    border: 0;
+    height: 1px;
+    background: rgba(255,255,255,0.08);
+    margin: 6px 4px;
+  }
+
+  .page-content { padding: 32px; }
+
+  .welcome-banner {
+    background: linear-gradient(135deg, rgba(34,211,238,0.08), rgba(139,92,246,0.08));
+    border: 1px solid rgba(34,211,238,0.15);
+    border-radius: 18px;
+    padding: 28px 32px;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .welcome-text h2 {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #f1f5f9;
+    margin-bottom: 6px;
+    background: linear-gradient(135deg,#22d3ee,#8b5cf6,#ec4899);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .welcome-text p { color: #94a3b8; font-size: 0.9rem; }
+  .welcome-cta {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 24px;
+    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
+    color: #fff;
+    border-radius: 9999px;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    box-shadow: 0 4px 20px rgba(34,211,238,0.25);
+    transition: all 0.2s ease;
+  }
+  .welcome-cta:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 30px rgba(34,211,238,0.4);
+  }
+  .welcome-cta svg { width: 16px; height: 16px; stroke-width: 2.5; }
+
+  /* ============ OVERVIEW ============ */
+  .overview-title {
+    font-size: 1.1rem; font-weight: 700;
+    margin-bottom: 16px;
+    color: #f1f5f9;
+  }
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+  }
+  .stat-card {
+    background: rgba(18,21,45,0.65);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 16px;
+    padding: 22px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .stat-card:hover::before { opacity: 1; }
+  .stat-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(255,255,255,0.1);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  }
+  .stat-icon {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+    display: flex; align-items: center; justify-content: center;
+    color: #22d3ee;
+    margin-bottom: 14px;
+  }
+  .stat-icon svg { width: 22px; height: 22px; stroke-width: 1.8; }
+  .stat-value {
+    font-size: 2.2rem; font-weight: 800;
+    color: #f1f5f9;
+    line-height: 1;
+    margin-bottom: 6px;
+    transition: opacity 0.3s ease;
+  }
+  .stat-value.loading { opacity: 0.3; }
+  .stat-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* ============ TOAST ============ */
+  .toast-container {
+    position: fixed; top: 20px; right: 20px;
+    z-index: 2000;
+    display: flex; flex-direction: column; gap: 8px;
+    pointer-events: none;
+  }
+  .toast {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 20px;
+    background: #0a0c1a;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    min-width: 280px; max-width: 380px;
+    pointer-events: auto;
+    animation: slideInRight 0.4s ease;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+    position: relative; overflow: hidden;
+  }
+  .toast::before {
+    content: ''; position: absolute;
+    left: 0; top: 0; bottom: 0; width: 3px;
+  }
+  .toast-success::before { background: #10b981; }
+  .toast-error::before   { background: #ef4444; }
+  .toast-info::before    { background: #22d3ee; }
+  .toast-warning::before { background: #f59e0b; }
+  .toast-title { font-size: 0.9rem; font-weight: 600; color: #f1f5f9; }
+  .toast-message { font-size: 0.8rem; color: #94a3b8; margin-top: 2px; }
+  @keyframes slideInRight {
+    from { transform: translateX(30px); opacity: 0; }
+    to   { transform: translateX(0); opacity: 1; }
+  }
+
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); }
+    .main-content { margin-left: 0; }
+    .page-content { padding: 20px 16px; }
+    .welcome-banner { padding: 20px; }
+    .welcome-text h2 { font-size: 1.2rem; }
+    .stat-value { font-size: 1.8rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="dashboard-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <img src="assets/images/nova-logo.svg" alt="NOVA" class="sidebar-logo-img">
+      <div class="sidebar-brand">NOVA</div>
+    </div>
+    <nav>
+      <div class="nav-section-label">Main</div>
+      <a href="dashboard.html" class="nav-item active">
+        <i data-lucide="layout-dashboard" class="nav-icon"></i><span>Dashboard</span>
+      </a>
+      <a href="assistant.html" class="nav-item">
+        <i data-lucide="sparkles" class="nav-icon"></i><span>Assistant</span>
+      </a>
+      <div class="nav-section-label">Organize</div>
+      <a href="reminders.html" class="nav-item">
+        <i data-lucide="clock" class="nav-icon"></i><span>Reminders</span>
+      </a>
+      <a href="notes.html" class="nav-item">
+        <i data-lucide="file-text" class="nav-icon"></i><span>Notes</span>
+      </a>
+      <a href="shopping.html" class="nav-item">
+        <i data-lucide="shopping-cart" class="nav-icon"></i><span>Shopping</span>
+      </a>
+      <a href="expenses.html" class="nav-item">
+        <i data-lucide="wallet" class="nav-icon"></i><span>Expenses</span>
+      </a>
+      <a href="study_plans.html" class="nav-item">
+        <i data-lucide="book-open" class="nav-icon"></i><span>Study Plans</span>
+      </a>
+      <a href="goals.html" class="nav-item">
+        <i data-lucide="target" class="nav-icon"></i><span>Goals</span>
+      </a>
+      <div class="nav-divider"></div>
+      <a href="profile.html" class="nav-item">
+        <i data-lucide="settings" class="nav-icon"></i><span>Profile</span>
+      </a>
+      <a href="login.html" class="nav-item" id="sidebarLogout">
+        <i data-lucide="log-out" class="nav-icon"></i><span>Logout</span>
+      </a>
+    </nav>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main-content">
+    <header class="topbar">
+      <div>
+        <div class="greeting-title" id="greetingTitle">Good evening 👋</div>
+        <div class="greeting-subtitle">Here's your overview.</div>
+      </div>
+      <div class="topbar-right">
+        <button class="topbar-icon-btn" id="notifBtn">
+          <i data-lucide="bell"></i>
+          <span class="notification-dot"></span>
+        </button>
+        <div class="avatar" id="avatarCircle">U</div>
+
+        <!-- Profile dropdown -->
+        <div class="profile-menu" id="profileMenu" hidden>
+          <a href="profile.html" class="profile-menu-item">
+            <i data-lucide="user"></i> Profile
+          </a>
+          <a href="profile.html#settings" class="profile-menu-item">
+            <i data-lucide="settings"></i> Settings
+          </a>
+          <hr>
+          <button class="profile-menu-item danger" id="logoutMenuBtn" type="button">
+            <i data-lucide="log-out"></i> Logout
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <div class="page-content">
+
+      <!-- WELCOME -->
+      <div class="welcome-banner">
+        <div class="welcome-text">
+          <h2 id="welcomeName">Welcome back!</h2>
+          <p>Here's a snapshot of everything NOVA is tracking for you.</p>
+        </div>
+        <a href="assistant.html" class="welcome-cta">
+          <i data-lucide="sparkles"></i> Talk to NOVA
+        </a>
+      </div>
+
+      <!-- OVERVIEW -->
+      <h3 class="overview-title">Overview</h3>
+      <div class="dashboard-grid">
+        <a href="reminders.html" class="stat-card">
+          <div class="stat-icon"><i data-lucide="clock"></i></div>
+          <div class="stat-value loading" id="statReminders">—</div>
+          <div class="stat-label">Reminders</div>
+        </a>
+        <a href="notes.html" class="stat-card">
+          <div class="stat-icon"><i data-lucide="file-text"></i></div>
+          <div class="stat-value loading" id="statNotes">—</div>
+          <div class="stat-label">Notes</div>
+        </a>
+        <a href="shopping.html" class="stat-card">
+          <div class="stat-icon"><i data-lucide="shopping-cart"></i></div>
+          <div class="stat-value loading" id="statShopping">—</div>
+          <div class="stat-label">Shopping Items</div>
+        </a>
+        <a href="study_plans.html" class="stat-card">
+          <div class="stat-icon"><i data-lucide="book-open"></i></div>
+          <div class="stat-value loading" id="statStudy">—</div>
+          <div class="stat-label">Study Plans</div>
+        </a>
+        <a href="goals.html" class="stat-card">
+          <div class="stat-icon"><i data-lucide="target"></i></div>
+          <div class="stat-value loading" id="statGoals">—</div>
+          <div class="stat-label">Goals</div>
+        </a>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   NOVA — Dashboard (Overview only)
+   ========================================================= */
+
+var userName = localStorage.getItem("nova-user-name") || "User";
+var firstName = userName.split(" ")[0];
+
+/* Greeting */
+var greetingEl = document.getElementById("greetingTitle");
+if (greetingEl) {
+  var h = new Date().getHours();
+  var g = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+  greetingEl.textContent = g + ", " + firstName + " 👋";
+}
+
+/* Welcome name */
+var welcomeEl = document.getElementById("welcomeName");
+if (welcomeEl) welcomeEl.textContent = "Welcome back, " + firstName + "!";
+
+/* Avatar initial */
+var avatarEl = document.getElementById("avatarCircle");
+if (avatarEl) avatarEl.textContent = (firstName.charAt(0) || "U").toUpperCase();
+
+/* ---------- Toast ---------- */
+function showToast(type, title, message) {
+  var container = document.querySelector(".toast-container");
+  if (!container) {
+    container = document.createElement("div");
+    container.className = "toast-container";
+    document.body.appendChild(container);
+  }
+  var icons = { success: "✅", error: "❌", info: "ℹ️", warning: "⚠️" };
+  var t = document.createElement("div");
+  t.className = "toast toast-" + type;
+  t.innerHTML =
+    '<span>' + (icons[type] || "ℹ️") + '</span>' +
+    '<div>' +
+      '<div class="toast-title">' + title + '</div>' +
+      (message ? '<div class="toast-message">' + message + '</div>' : '') +
+    '</div>';
+  container.appendChild(t);
+  setTimeout(function () { t.remove(); }, 4000);
+}
+
+/* ---------- Notifications ---------- */
+document.getElementById("notifBtn").addEventListener("click", function () {
+  showToast("info", "🔔 Notifications", "You have 3 new notifications.");
+});
+
+/* ---------- Profile menu ---------- */
+var avatarCircle = document.getElementById("avatarCircle");
+var profileMenu = document.getElementById("profileMenu");
+
+if (avatarCircle && profileMenu) {
+  avatarCircle.addEventListener("click", function (e) {
+    e.stopPropagation();
+    profileMenu.hidden = !profileMenu.hidden;
+  });
+
+  // Close on outside click
+  document.addEventListener("click", function (e) {
+    if (!profileMenu.hidden && !profileMenu.contains(e.target) && e.target !== avatarCircle) {
+      profileMenu.hidden = true;
+    }
+  });
+
+  // Close on Escape
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") profileMenu.hidden = true;
+  });
+}
+
+/* ---------- Logout ---------- */
+function doLogout() {
+  localStorage.removeItem("nova-auth-token");
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("nova-user-name");
+  localStorage.removeItem("nova-user-email");
+  localStorage.removeItem("nova-user-id");
+  localStorage.removeItem("user_id");
+  window.location.href = "login.html";
+}
+
+var logoutMenuBtn = document.getElementById("logoutMenuBtn");
+if (logoutMenuBtn) logoutMenuBtn.addEventListener("click", doLogout);
+
+var sidebarLogout = document.getElementById("sidebarLogout");
+if (sidebarLogout) {
+  sidebarLogout.addEventListener("click", function (e) {
+    e.preventDefault();
+    doLogout();
+  });
+}
+
+/* ---------- Overview ---------- */
+var BACKEND = "https://nova-voice-assistant-6vve.onrender.com";
+
+async function loadOverview() {
+  var token = localStorage.getItem("nova-auth-token")
+           || localStorage.getItem("access_token");
+
+  if (!token) {
+    console.log("[Overview] No token — skipping");
+    ["statReminders","statNotes","statShopping","statStudy","statGoals"].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) { el.textContent = "—"; el.classList.remove("loading"); }
+    });
+    return;
+  }
+
+  var STATS = [
+    { intent: "GET_REMINDERS",     elId: "statReminders", dataKey: "reminders" },
+    { intent: "GET_NOTES",         elId: "statNotes",     dataKey: "notes" },
+    { intent: "GET_SHOPPING_LIST", elId: "statShopping",  dataKey: "shopping_items" },
+    { intent: "GET_STUDY_PLANS",   elId: "statStudy",     dataKey: "study_plans" },
+    { intent: "GET_GOALS",         elId: "statGoals",     dataKey: "goals" }
+  ];
+
+  async function fetchCount(intent, dataKey) {
+    try {
+      var res = await fetch(BACKEND + "/api/assistant", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({ intent: intent, data: {} })
+      });
+
+      if (res.status === 401) {
+        console.log("[Overview] 401 — token invalid");
+        return 0;
+      }
+
+      var data = await res.json();
+      if (!data.success) return 0;
+      var arr = data[dataKey] || [];
+      return arr.length;
+    } catch (e) {
+      console.log("[Overview] Failed for " + intent, e);
+      return 0;
+    }
+  }
+
+  var results = await Promise.all(
+    STATS.map(function (s) { return fetchCount(s.intent, s.dataKey); })
+  );
+
+  STATS.forEach(function (s, i) {
+    var el = document.getElementById(s.elId);
+    if (el) {
+      el.textContent = results[i];
+      el.classList.remove("loading");
+    }
+  });
+}
+
+document.addEventListener("DOMContentLoaded", loadOverview);
+
+/* ---------- Render Lucide icons ---------- */
+if (window.lucide) lucide.createIcons();
+</script>
+
+</body>
+</html>

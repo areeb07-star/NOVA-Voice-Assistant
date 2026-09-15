@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="NOVA - Next-Gen Optimized Virtual Assistant. Your intelligent companion for everyday life.">
+  <title>NOVA — Next-Gen Optimized Virtual Assistant</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <style>
+    /* Landing page specific styles */
+    .landing-nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: var(--space-md) 0;
+      transition: all var(--transition-base);
+    }
+
+    .landing-nav.scrolled {
+      background: rgba(5, 6, 15, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: var(--space-sm) 0;
+    }
+
+    .landing-nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .landing-logo {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .landing-logo-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-md);
+      background: var(--gradient-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1rem;
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(34, 211, 238, 0.3);
+    }
+
+    .landing-logo-text {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      background: var(--gradient-text);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .landing-nav-links {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xl);
+    }
+
+    .landing-nav-link {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      transition: color var(--transition-fast);
+      position: relative;
+    }
+
+    .landing-nav-link::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: var(--gradient-primary);
+      border-radius: var(--radius-full);
+      transition: width var(--transition-base);
+    }
+
+    .landing-nav-link:hover {
+      color: var(--text-primary);
+    }
+
+    .landing-nav-link:hover::after {
+      width: 100%;
+    }
+
+    .landing-nav-actions {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+    }
+
+    .landing-mobile-toggle {
+      display: none;
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-md);
+      align-items: center;
+      justify-content: center;
+      color: var(--text-secondary);
+      font-size: 1.3rem;
+    }
+
+    /* Hero */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      padding: calc(var(--topbar-height) + var(--space-2xl)) 0 var(--space-4xl);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-3xl);
+      align-items: center;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: 0.4rem 1rem;
+      background: rgba(34, 211, 238, 0.08);
+      border: 1px solid rgba(34, 211, 238, 0.2);
+      border-radius: var(--radius-full);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--accent-cyan);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: var(--space-lg);
+      animation: fadeInUp 0.6s ease;
+    }
+
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(2.5rem, 5.5vw, 4.5rem);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      margin-bottom: var(--space-lg);
+      animation: fadeInUp 0.7s ease 0.1s both;
+    }
+
+    .hero-title .text-gradient {
+      display: block;
+    }
+
+    .hero-subtitle {
+      font-size: clamp(1rem, 2vw, 1.2rem);
+      color: var(--text-secondary);
+      max-width: 480px;
+      margin-bottom: var(--space-xl);
+      line-height: 1.7;
+      animation: fadeInUp 0.7s ease 0.2s both;
+    }
+
+    .hero-tagline {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: var(--space-xl);
+      animation: fadeInUp 0.7s ease 0.25s both;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-md);
+      animation: fadeInUp 0.7s ease 0.3s both;
+    }
+
+    /* Hero Visual */
+    .hero-visual {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 500px;
+      animation: fadeInScale 0.8s ease 0.3s both;
+    }
+
+    .hero-orb-wrapper {
+      position: relative;
+      width: 320px;
+      height: 320px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .hero-orb {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #22d3ee, #3b82f6 30%, #8b5cf6 65%, #1e1b4b 100%);
+      position: relative;
+      z-index: 2;
+      box-shadow:
+        0 0 80px rgba(34, 211, 238, 0.4),
+        0 0 160px rgba(139, 92, 246, 0.3),
+        inset 0 0 50px rgba(255, 255, 255, 0.1);
+      animation: breathe 5s ease-in-out infinite;
+    }
+
+    .hero-orb::before {
+      content: '';
+      position: absolute;
+      inset: 15px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.5), transparent 60%);
+      opacity: 0.5;
+    }
+
+    .hero-orb::after {
+      content: '';
+      position: absolute;
+      inset: -25px;
+      border-radius: 50%;
+      border: 1px solid rgba(34, 211, 238, 0.15);
+      animation: ringExpand 4s ease-out infinite;
+    }
+
+    .hero-ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid rgba(139, 92, 246, 0.1);
+      pointer-events: none;
+    }
+
+    .hero-ring-1 {
+      width: 240px;
+      height: 240px;
+      animation: orbRotate 25s linear infinite;
+    }
+
+    .hero-ring-2 {
+      width: 300px;
+      height: 300px;
+      animation: orbRotate 35s linear infinite reverse;
+    }
+
+    .hero-ring-3 {
+      width: 380px;
+      height: 380px;
+      border-style: dashed;
+      border-color: rgba(34, 211, 238, 0.06);
+      animation: orbRotate 50s linear infinite;
+    }
+
+    /* Floating Cards */
+    .hero-float-card {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: var(--space-sm) var(--space-md);
+      background: rgba(18, 21, 45, 0.7);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-md);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      z-index: 3;
+      box-shadow: var(--shadow-md);
+      animation: float 6s ease-in-out infinite;
+    }
+
+    .hero-float-card .fc-icon {
+      font-size: 1rem;
+    }
+
+    .hero-float-card .fc-label {
+      font-weight: 600;
+      color: var(--text-primary);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .hero-float-card .fc-value {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .hero-float-card-1 { top: 8%; left: -5%; animation-delay: 0s; }
+    .hero-float-card-2 { top: 22%; right: -8%; animation-delay: 1.5s; }
+    .hero-float-card-3 { bottom: 20%; left: -8%; animation-delay: 3s; }
+    .hero-float-card-4 { bottom: 6%; right: -3%; animation-delay: 4.5s; }
+
+    /* Sections */
+    .section {
+      padding: var(--space-4xl) 0;
+      position: relative;
+    }
+
+    .section-header {
+      text-align: center;
+      max-width: 640px;
+      margin: 0 auto var(--space-3xl);
+    }
+
+    .section-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: 0.35rem 1rem;
+      background: rgba(139, 92, 246, 0.08);
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--accent-violet);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: var(--space-lg);
+    }
+
+    .section-title {
+      font-family: var(--font-display);
+      font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+      font-weight: 700;
+      margin-bottom: var(--space-md);
+    }
+
+    .section-subtitle {
+      font-size: 1.05rem;
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+
+    /* Features Grid */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-lg);
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: var(--space-xl);
+      transition: all var(--transition-base);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+      opacity: 0;
+      transition: opacity var(--transition-base);
+    }
+
+    .feature-card:hover::before {
+      opacity: 1;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-6px);
+      border-color: var(--border-glass);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .feature-card:hover .feature-icon {
+      transform: scale(1.1) rotate(-5deg);
+      box-shadow: 0 8px 30px rgba(34, 211, 238, 0.25);
+    }
+
+    .feature-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: var(--radius-lg);
+      background: var(--bg-glass);
+      border: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      margin-bottom: var(--space-lg);
+      transition: all var(--transition-base);
+    }
+
+    .feature-title {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: var(--space-sm);
+    }
+
+    .feature-desc {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .feature-glow {
+      position: absolute;
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0;
+      transition: opacity var(--transition-slow);
+      pointer-events: none;
+    }
+
+    .feature-card:hover .feature-glow {
+      opacity: 0.15;
+    }
+
+    .feature-glow-cyan { background: var(--accent-cyan); top: -60px; right: -60px; }
+    .feature-glow-violet { background: var(--accent-violet); bottom: -60px; left: -60px; }
+    .feature-glow-blue { background: var(--accent-blue); top: -60px; left: -60px; }
+    .feature-glow-pink { background: var(--accent-pink); bottom: -60px; right: -60px; }
+    .feature-glow-green { background: var(--accent-green); top: -60px; right: -60px; }
+    .feature-glow-amber { background: var(--accent-amber); bottom: -60px; left: -60px; }
+
+    /* How It Works */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-xl);
+      position: relative;
+    }
+
+    .steps-grid::before {
+      content: '';
+      position: absolute;
+      top: 48px;
+      left: 16%;
+      right: 16%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border-glass), transparent);
+      z-index: 0;
+    }
+
+    .step-card {
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .step-number {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--gradient-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: #fff;
+      margin: 0 auto var(--space-lg);
+      box-shadow: 0 0 30px rgba(34, 211, 238, 0.3);
+      position: relative;
+    }
+
+    .step-number::after {
+      content: '';
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      border: 1px solid rgba(34, 211, 238, 0.2);
+      animation: breathe 3s ease-in-out infinite;
+    }
+
+    .step-title {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: var(--space-sm);
+    }
+
+    .step-desc {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+      max-width: 280px;
+      margin: 0 auto;
+    }
+
+    /* CTA */
+    .cta-section {
+      padding: var(--space-4xl) 0;
+    }
+
+    .cta-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-2xl);
+      padding: var(--space-3xl);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta-card::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle at 50% 50%, rgba(34, 211, 238, 0.06), transparent 60%);
+      pointer-events: none;
+    }
+
+    .cta-title {
+      font-family: var(--font-display);
+      font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+      font-weight: 700;
+      margin-bottom: var(--space-md);
+      position: relative;
+    }
+
+    .cta-subtitle {
+      font-size: 1.05rem;
+      color: var(--text-muted);
+      margin-bottom: var(--space-xl);
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+      position: relative;
+    }
+
+    .cta-actions {
+      display: flex;
+      justify-content: center;
+      gap: var(--space-md);
+      flex-wrap: wrap;
+      position: relative;
+    }
+
+    /* Footer */
+    .footer {
+      border-top: 1px solid var(--border-subtle);
+      padding: var(--space-2xl) 0;
+      margin-top: var(--space-4xl);
+    }
+
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: var(--space-lg);
+    }
+
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      font-size: 0.85rem;
+      color: var(--text-dim);
+    }
+
+    .footer-links {
+      display: flex;
+      gap: var(--space-xl);
+    }
+
+    .footer-link {
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      transition: color var(--transition-fast);
+    }
+
+    .footer-link:hover {
+      color: var(--accent-cyan);
+    }
+
+    .footer-copy {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .hero-grid {
+        grid-template-columns: 1fr;
+        text-align: center;
+      }
+
+      .hero-subtitle {
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      .hero-actions {
+        justify-content: center;
+      }
+
+      .hero-visual {
+        order: -1;
+        min-height: 400px;
+      }
+
+      .hero-orb-wrapper {
+        width: 260px;
+        height: 260px;
+      }
+
+      .hero-orb {
+        width: 140px;
+        height: 140px;
+      }
+
+      .hero-ring-1 { width: 200px; height: 200px; }
+      .hero-ring-2 { width: 250px; height: 250px; }
+      .hero-ring-3 { width: 310px; height: 310px; }
+
+      .features-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .steps-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--space-lg);
+      }
+
+      .steps-grid::before {
+        display: none;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .landing-nav-links {
+        display: none;
+      }
+
+      .landing-mobile-toggle {
+        display: flex;
+      }
+
+      .landing-nav-actions .btn-secondary {
+        display: none;
+      }
+
+      .hero {
+        padding-top: calc(var(--topbar-height) + var(--space-xl));
+      }
+
+      .hero-float-card {
+        font-size: 0.7rem;
+        padding: 0.4rem 0.7rem;
+      }
+
+      .hero-float-card-1 { top: 2%; left: -2%; }
+      .hero-float-card-2 { top: 18%; right: -2%; }
+      .hero-float-card-3 { bottom: 16%; left: -2%; }
+      .hero-float-card-4 { bottom: 2%; right: -2%; }
+
+      .features-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .steps-grid {
+        grid-template-columns: 1fr;
+        gap: var(--space-xl);
+      }
+
+      .cta-card {
+        padding: var(--space-xl);
+      }
+
+      .footer-inner {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .footer-links {
+        gap: var(--space-lg);
+      }
+    }
+
+    @media (max-width: 480px) {
+      .hero-orb-wrapper {
+        width: 200px;
+        height: 200px;
+      }
+
+      .hero-orb {
+        width: 110px;
+        height: 110px;
+      }
+
+      .hero-ring-1 { width: 155px; height: 155px; }
+      .hero-ring-2 { width: 195px; height: 195px; }
+      .hero-ring-3 { width: 240px; height: 240px; }
+
+      .hero-float-card-1,
+      .hero-float-card-3 {
+        left: -10px;
+      }
+
+      .hero-float-card-2,
+      .hero-float-card-4 {
+        right: -10px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav class="landing-nav" id="landingNav">
+    <div class="container landing-nav-inner">
+      <a href="index.html" class="landing-logo">
+        <div class="landing-logo-icon">N</div>
+        <div class="landing-logo-text">NOVA</div>
+      </a>
+
+      <div class="landing-nav-links">
+        <a href="#hero" class="landing-nav-link">Home</a>
+        <a href="#features" class="landing-nav-link">Features</a>
+        <a href="#how-it-works" class="landing-nav-link">How it works</a>
+      </div>
+
+      <div class="landing-nav-actions">
+        <a href="login.html" class="btn btn-secondary btn-sm">Login</a>
+        <a href="register.html" class="btn btn-primary btn-sm">Get Started</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero" id="hero">
+    <div class="container">
+      <div class="hero-grid">
+        <div class="hero-content">
+          <div class="hero-badge">✦ AI-Powered Personal Assistant</div>
+          <h1 class="hero-title">
+            Meet NOVA.
+            <span class="text-gradient">Your life, intelligently organized.</span>
+          </h1>
+          <p class="hero-tagline">Talk. Plan. Remember. Achieve.</p>
+          <p class="hero-subtitle">
+            NOVA is your intelligent companion for everyday life. Manage reminders, notes, expenses, study plans, and goals — all through natural conversation.
+          </p>
+          <div class="hero-actions">
+            <a href="register.html" class="btn btn-primary btn-lg">Get Started</a>
+            <a href="#features" class="btn btn-secondary btn-lg">Explore NOVA</a>
+          </div>
+        </div>
+
+        <div class="hero-visual">
+          <div class="hero-orb-wrapper">
+            <div class="hero-ring hero-ring-1"></div>
+            <div class="hero-ring hero-ring-2"></div>
+            <div class="hero-ring hero-ring-3"></div>
+            <div class="hero-orb"></div>
+
+            <div class="hero-float-card hero-float-card-1">
+              <span class="fc-icon">⏰</span>
+              <div>
+                <div class="fc-label">Reminder</div>
+                <div class="fc-value">Python study at 7:00 PM</div>
+              </div>
+            </div>
+
+            <div class="hero-float-card hero-float-card-2">
+              <span class="fc-icon">📚</span>
+              <div>
+                <div class="fc-label">Study Plan</div>
+                <div class="fc-value">3 tasks completed</div>
+              </div>
+            </div>
+
+            <div class="hero-float-card hero-float-card-3">
+              <span class="fc-icon">📝</span>
+              <div>
+                <div class="fc-label">Smart Note</div>
+                <div class="fc-value">Saved successfully</div>
+              </div>
+            </div>
+
+            <div class="hero-float-card hero-float-card-4">
+              <span class="fc-icon">🎯</span>
+              <div>
+                <div class="fc-label">Goal</div>
+                <div class="fc-value">72% completed</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="section" id="features">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-badge">✦ Features</div>
+        <h2 class="section-title">Everything you need,<br><span class="text-gradient">all in one place.</span></h2>
+        <p class="section-subtitle">NOVA brings together all the tools you need to stay organized, productive, and focused.</p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-glow feature-glow-cyan"></div>
+          <div class="feature-icon">🎙️</div>
+          <h3 class="feature-title">Voice Intelligence</h3>
+          <p class="feature-desc">Talk naturally with NOVA. Just speak and let your assistant handle the rest.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-glow feature-glow-violet"></div>
+          <div class="feature-icon">⏰</div>
+          <h3 class="feature-title">Smart Reminders</h3>
+          <p class="feature-desc">Never miss what matters. Set reminders and let NOVA keep you on track.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-glow feature-glow-blue"></div>
+          <div class="feature-icon">📝</div>
+          <h3 class="feature-title">Intelligent Notes</h3>
+          <p class="feature-desc">Capture ideas instantly. Organize thoughts with tags, pins, and smart search.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-glow feature-glow-green"></div>
+          <div class="feature-icon">📚</div>
+          <h3 class="feature-title">Study Companion</h3>
+          <p class="feature-desc">Build smarter study plans. Track progress and stay ahead of your schedule.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-glow feature-glow-amber"></div>
+          <div class="feature-icon">💰</div>
+          <h3 class="feature-title">Expense Tracking</h3>
+          <p class="feature-desc">Understand your spending. Track expenses by category and see where your money goes.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-glow feature-glow-pink"></div>
+          <div class="feature-icon">🎯</div>
+          <h3 class="feature-title">Personal Goals</h3>
+          <p class="feature-desc">Turn plans into progress. Set goals, track milestones, and celebrate achievements.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section class="section" id="how-it-works">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-badge">✦ How it works</div>
+        <h2 class="section-title">Simple. Fast.<br><span class="text-gradient">Intelligent.</span></h2>
+        <p class="section-subtitle">Get started with NOVA in three simple steps.</p>
+      </div>
+
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-number">1</div>
+          <h3 class="step-title">Create your account</h3>
+          <p class="step-desc">Sign up in seconds. No credit card required. Your data stays private and secure.</p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-number">2</div>
+          <h3 class="step-title">Talk to NOVA</h3>
+          <p class="step-desc">Use voice or text to tell NOVA what you need — reminders, notes, plans, and more.</p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-number">3</div>
+          <h3 class="step-title">Achieve more</h3>
+          <p class="step-desc">Stay organized, track progress, and turn your plans into real achievements.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <div class="container">
+      <div class="cta-card">
+        <h2 class="cta-title">Ready to meet <span class="text-gradient">NOVA</span>?</h2>
+        <p class="cta-subtitle">Join thousands of users who are already organizing their lives with NOVA.</p>
+        <div class="cta-actions">
+          <a href="register.html" class="btn btn-primary btn-lg">Get Started Free</a>
+          <a href="login.html" class="btn btn-secondary btn-lg">Sign In</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <div class="landing-logo-icon" style="width:28px;height:28px;font-size:0.75rem;">N</div>
+        <span>NOVA — Next-Gen Optimized Virtual Assistant</span>
+      </div>
+      <div class="footer-links">
+        <a href="#features" class="footer-link">Features</a>
+        <a href="#how-it-works" class="footer-link">How it works</a>
+        <a href="login.html" class="footer-link">Login</a>
+        <a href="register.html" class="footer-link">Register</a>
+      </div>
+      <div class="footer-copy">© 2024 NOVA. All rights reserved.</div>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+  <script>
+    // Nav scroll effect
+    const nav = document.getElementById('landingNav');
+    window.addEventListener('scroll', () => {
+      nav.classList.toggle('scrolled', window.scrollY > 50);
+    });
+  </script>
+</body>
+</html>
