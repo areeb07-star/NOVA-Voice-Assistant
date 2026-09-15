@@ -332,6 +332,150 @@ def get_user_from_token(token):
     return None
 
 # ============================================================
+# CHAT HISTORY
+# ============================================================
+
+@app.route("/api/chat-history/save", methods=["POST"])
+def save_chat():
+    data = request.get_json() or {}
+
+    # Authentication
+    auth_header = request.headers.get("Authorization", "")
+
+    if not auth_header.startswith("Bearer "):
+        return jsonify({
+            "success": False,
+            "message": "Authorization token is required"
+        }), 401
+
+    token = auth_header.split(" ", 1)[1].strip()
+    authenticated_user_id = get_user_from_token(token)
+
+    if not authenticated_user_id:
+        return jsonify({
+            "success": False,
+            "message": "Invalid or expired authorization token"
+        }), 401
+
+    role = str(data.get("role", "")).strip()
+    content = str(data.get("content", "")).strip()
+
+    if not role or not content:
+        return jsonify({
+            "success": False,
+            "message": "role and content are required"
+        }), 400
+
+    if role not in ["user", "assistant"]:
+        return jsonify({
+            "success": False,
+            "message": "role must be 'user' or 'assistant'"
+        }), 400
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            INSERT INTO chat_history
+            (user_id, role, content)
+            VALUES (%s, %s, %s)
+        """, (
+            authenticated_user_id,
+            role,
+            content
+        ))
+
+        conn.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "Chat message saved"
+        })
+
+    except Exception as e:
+        conn.rollback()
+
+        print("CHAT HISTORY SAVE ERROR:", e)
+
+        return jsonify({
+            "success": False,
+            "message": "Failed to save chat message"
+        }), 500
+
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.route("/api/chat-history/get", methods=["POST"])
+def get_chat():
+    data = request.get_json() or {}
+
+    # Authentication
+    auth_header = request.headers.get("Authorization", "")
+
+    if not auth_header.startswith("Bearer "):
+        return jsonify({
+            "success": False,
+            "message": "Authorization token is required"
+        }), 401
+
+    token = auth_header.split(" ", 1)[1].strip()
+    authenticated_user_id = get_user_from_token(token)
+
+    if not authenticated_user_id:
+        return jsonify({
+            "success": False,
+            "message": "Invalid or expired authorization token"
+        }), 401
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            SELECT role, content, created_at
+            FROM chat_history
+            WHERE user_id = %s
+            ORDER BY created_at DESC
+            LIMIT 50
+        """, (authenticated_user_id,))
+
+        rows = cur.fetchall()
+
+        # Reverse so oldest → newest appears in chat UI
+        rows.reverse()
+
+        messages = [
+            {
+                "role": row[0],
+                "content": row[1],
+                "created_at": str(row[2])
+            }
+            for row in rows
+        ]
+
+        return jsonify({
+            "success": True,
+            "messages": messages,
+            "count": len(messages)
+        })
+
+    except Exception as e:
+
+        print("CHAT HISTORY GET ERROR:", e)
+
+        return jsonify({
+            "success": False,
+            "message": "Failed to fetch chat history"
+        }), 500
+
+    finally:
+        cur.close()
+        conn.close()
+        
+# ============================================================
 # HOME / HEALTH CHECK
 # ============================================================
 
