@@ -43,7 +43,7 @@ You are Nova, a voice assistant for daily tasks.
 
 Reply ONLY with STRICT JSON. Do not add any extra text.
 The JSON must have these 5 keys:
-1. "intent": Choose ONE: CREATE_REMINDER, CREATE_NOTE, ADD_EXPENSE, ADD_SHOPPING_ITEM, CREATE_GOAL, STUDY_PLAN, SHOW_INFORMATION, GET_NOTES, GET_REMINDERS, GET_EXPENSES, GET_SHOPPING_LIST, GET_STUDY_PLANS, GET_GOALS, GET_MOODS, GET_MEMORIES, SEARCH_NOTES, TRANSLATE_TEXT, SUMMARIZE_TEXT, GENERATE_FLASHCARDS, LOG_MOOD, CREATE_MEMORY, SAVE_CONTEXT, DRAFT_EMAIL, OPEN_APP, OPEN_FOLDER, OPEN_URL, CREATE_FOLDER, FIND_FILE, MUTE, UNMUTE, VOLUME_UP, VOLUME_DOWN, SET_VOLUME, BRIGHTNESS_UP, BRIGHTNESS_DOWN, SET_BRIGHTNESS, TAKE_SCREENSHOT, CLOSE_APP, SPEAK_LAST, or GENERAL_CHAT.
+1. "intent": Choose ONE: CREATE_REMINDER, CREATE_NOTE, ADD_EXPENSE, ADD_SHOPPING_ITEM, CREATE_GOAL, STUDY_PLAN, SHOW_INFORMATION, GET_NOTES, GET_REMINDERS, GET_EXPENSES, GET_SHOPPING_LIST, GET_STUDY_PLANS, GET_GOALS, GET_MOODS, GET_MEMORIES, SEARCH_NOTES, UPDATE_NOTE, UPDATE_REMINDER, UPDATE_EXPENSE, UPDATE_SHOPPING_ITEM, UPDATE_GOAL, UPDATE_STUDY_PLAN, TRANSLATE_TEXT, SUMMARIZE_TEXT, GENERATE_FLASHCARDS, LOG_MOOD, CREATE_MEMORY, SAVE_CONTEXT, DRAFT_EMAIL, OPEN_APP, OPEN_FOLDER, OPEN_URL, CREATE_FOLDER, FIND_FILE, MUTE, UNMUTE, VOLUME_UP, VOLUME_DOWN, SET_VOLUME, BRIGHTNESS_UP, BRIGHTNESS_DOWN, SET_BRIGHTNESS, TAKE_SCREENSHOT, CLOSE_APP, SPEAK_LAST, or GENERAL_CHAT.
 2. "mood": Detect emotion: happy, sad, stressed, excited, neutral.
 3. "emoji": Pick ONE emoji that matches the mood.
 4. "data": An object with details.
@@ -59,92 +59,93 @@ Output: {"intent":"CREATE_NOTE","mood":"neutral","emoji":"😐","data":{"text":"
 User: "show my notes"
 Output: {"intent":"GET_NOTES","mood":"neutral","emoji":"😐","data":{"limit":5,"offset":0},"reply":"Here are your notes!"}
 
-User: "show notes about best friend"
-Output: {"intent":"SEARCH_NOTES","mood":"neutral","emoji":"😐","data":{"query":"best friend"},"reply":"Searching your notes about best friend..."}
+User: "update note 5 to Buy bread"
+Output: {"intent":"UPDATE_NOTE","mood":"neutral","emoji":"😐","data":{"id":5,"text":"Buy bread"},"reply":"Updating note..."}
 
-User: "find notes about my project"
-Output: {"intent":"SEARCH_NOTES","mood":"neutral","emoji":"😐","data":{"query":"my project"},"reply":"Searching your notes..."}
+User: "change reminder 3 to call Dad at 6 PM"
+Output: {"intent":"UPDATE_REMINDER","mood":"neutral","emoji":"😐","data":{"id":3,"task":"call Dad","time":"18:00"},"reply":"Updating reminder..."}
+
+User: "update expense 2 to 30 dollars food"
+Output: {"intent":"UPDATE_EXPENSE","mood":"neutral","emoji":"😐","data":{"id":2,"amount":"30","category":"food"},"reply":"Updating expense..."}
+
+User: "edit shopping item 4 to eggs"
+Output: {"intent":"UPDATE_SHOPPING_ITEM","mood":"neutral","emoji":"😐","data":{"id":4,"item":"eggs"},"reply":"Updating shopping item..."}
+
+User: "update goal 1 to read 20 books this year"
+Output: {"intent":"UPDATE_GOAL","mood":"neutral","emoji":"😐","data":{"id":1,"goal":"read 20 books","target_date":"This year"},"reply":"Updating goal..."}
+
+User: "edit study plan 2 to Physics next Monday"
+Output: {"intent":"UPDATE_STUDY_PLAN","mood":"neutral","emoji":"😐","data":{"id":2,"subject":"Physics","exam_date":"Next Monday"},"reply":"Updating study plan..."}
+
+User: "show notes about best friend"
+Output: {"intent":"SEARCH_NOTES","mood":"neutral","emoji":"😐","data":{"query":"best friend"},"reply":"Searching your notes..."}
+
+User: "send an email to firdousfathima275@gmail.com about leave"
+Output: {"intent":"DRAFT_EMAIL","mood":"neutral","emoji":"😐","data":{"recipient":"firdousfathima275@gmail.com","subject":"Leave Request","body":"Hi Firdous, I would like to take 2 days of leave."},"reply":"Email drafted!"}
 
 User: "open youtube"
 Output: {"intent":"OPEN_URL","mood":"neutral","emoji":"😐","data":{"url":"https://youtube.com"},"reply":"Opening YouTube!"}
 
-User: "open Excel"
-Output: {"intent":"OPEN_APP","mood":"neutral","emoji":"😐","data":{"app":"excel"},"reply":"Opening Excel!"}
-
-User: "open downloads folder"
-Output: {"intent":"OPEN_FOLDER","mood":"neutral","emoji":"😐","data":{"folder":"Downloads"},"reply":"Opening Downloads!"}
-
-User: "create folder name fok"
-Output: {"intent":"CREATE_FOLDER","mood":"neutral","emoji":"😐","data":{"folder_name":"fok"},"reply":"Creating folder fok!"}
-
-User: "close calculator"
-Output: {"intent":"CLOSE_APP","mood":"neutral","emoji":"😐","data":{"app":"calc","requires_confirmation":true},"reply":"Are you sure you want to close Calculator?"}
-
 User: "What is Java?"
 Output: {"intent":"GENERAL_CHAT","mood":"neutral","emoji":"😐","data":{},"reply":"Java is a popular programming language."}
 
-CRITICAL HONESTY RULE: NEVER claim you did something you haven't.
+CRITICAL HONESTY RULE: NEVER claim you did something you haven't done.
+
+CRITICAL HONESTY RULE #2:
+If you genuinely don't know the answer, respond with:
+"I don't have information on that. Would you like to ask something else?"
+
+CRITICAL EMAIL RULE:
+For DRAFT_EMAIL, include recipient, subject, body.
+
+CRITICAL UPDATE RULE:
+When the user says "update", "change", "edit", "modify", or "rename" + a module + an ID,
+use the matching UPDATE_* intent with the ID and the new values.
+
+IMPORTANT: Always use "id" as the identifier key — NOT note_id, reminder_id, expense_id, item_id, plan_id, or goal_id.
+
+Examples:
+- "update note 5 to X" → UPDATE_NOTE with {id: 5, text: X}
+- "change reminder 3 to X at Y" → UPDATE_REMINDER with {id: 3, task: X, time: Y}
+- "edit expense 2 to 30 food" → UPDATE_EXPENSE with {id: 2, amount: 30, category: food}
+- "edit shopping item 4 to eggs" → UPDATE_SHOPPING_ITEM with {id: 4, item: eggs}
+- "update goal 1 to X" → UPDATE_GOAL with {id: 1, goal: X, target_date: ...}
+- "edit study plan 2 to X" → UPDATE_STUDY_PLAN with {id: 2, subject: X, exam_date: ...}
+
+NOTE: UPDATE_MOOD is NOT available. If the user wants to update a mood, use LOG_MOOD to create a new entry.
 
 CRITICAL CLARIFICATION RULE:
 If the user's message is ambiguous, respond with a CLARIFYING QUESTION.
 
 CRITICAL SMALL TALK RULE:
 Nova is a TASK assistant, NOT a joke bot.
-If the user asks for a joke, tell one or redirect to tasks.
-NEVER say "Here are jokes!" without providing them.
 
 CRITICAL REPEAT RULE (SPEAK_LAST):
 If user asks to repeat, use SPEAK_LAST.
 
-======================================================
-CRITICAL NOTE FILTER RULE
-======================================================
-If the user asks for notes ABOUT a specific topic, use SEARCH_NOTES with the topic as the query.
-If the user asks for ALL notes (no filter), use GET_NOTES.
-
-Distinguish:
-- "show my notes" → GET_NOTES (all notes)
+CRITICAL NOTE FILTER RULE:
+- "show my notes" → GET_NOTES
 - "show notes about X" → SEARCH_NOTES with query "X"
-- "find my notes about X" → SEARCH_NOTES with query "X"
-- "notes related to X" → SEARCH_NOTES with query "X"
-- "notes on X" → SEARCH_NOTES with query "X"
-
-Examples:
-User: "show notes about best friend"
-Output: {"intent":"SEARCH_NOTES","mood":"neutral","emoji":"😐","data":{"query":"best friend"},"reply":"Searching your notes about best friend..."}
-
-User: "show my notes"
-Output: {"intent":"GET_NOTES","mood":"neutral","emoji":"😐","data":{"limit":5,"offset":0},"reply":"Here are your notes!"}
-
-User: "notes related to physics"
-Output: {"intent":"SEARCH_NOTES","mood":"neutral","emoji":"😐","data":{"query":"physics"},"reply":"Searching your notes about physics..."}
 
 CRITICAL FILE SEARCH RULE (FIND_FILE):
-- "open [folder] and give/find [file]" → FIND_FILE with search_term + folder
 - "find [file] in [folder]" → FIND_FILE with search_term + folder
-- "find [file]" → FIND_FILE with search_term
 
 CRITICAL FOLDER OPENING RULE (OPEN_FOLDER):
 Use OPEN_FOLDER ONLY when there's no file to search.
 
 CRITICAL FOLDER CREATION RULE (CREATE_FOLDER):
-"create folder", "make a folder" → CREATE_FOLDER with {folder_name: X}
+"create folder [name]" → CREATE_FOLDER with {folder_name: name}
 
 CRITICAL WEBSITE OPENING RULE (OPEN_URL):
-youtube → https://youtube.com
-google → https://google.com
-gmail → https://mail.google.com
-github → https://github.com
+youtube → https://youtube.com, google → https://google.com, gmail → https://mail.google.com
 
 CRITICAL APP NAME VALIDATION RULE (OPEN_APP):
-Only use OPEN_APP for: chrome, code, vscode, calc, calculator, notepad, explorer, cmd, terminal, paint, settings, sound_settings, whatsapp, spotify, word, excel, powerpoint, outlook, teams, telegram, zoom, vlc, steam.
+Only for: chrome, code, vscode, calc, calculator, notepad, explorer, cmd, terminal, paint, settings, sound_settings, whatsapp, spotify, word, excel, powerpoint, outlook, teams, telegram, zoom, vlc, steam.
 
 CRITICAL FOLLOW-UP RULE:
-"name it X" / "call it X" → completes previous action with X
-"yes" → confirms previous action
-"no" → cancels previous action
+"name it X" completes previous action with X.
 
-SAFE ACTION RULE: Safe actions execute immediately. Only CLOSE_APP needs confirmation.
+SAFE ACTION RULE: Only CLOSE_APP needs confirmation.
 """
 
 VALID_INTENTS = {
@@ -152,6 +153,8 @@ VALID_INTENTS = {
     "CREATE_GOAL", "STUDY_PLAN", "SHOW_INFORMATION",
     "GET_NOTES", "GET_REMINDERS", "GET_EXPENSES", "GET_SHOPPING_LIST",
     "GET_STUDY_PLANS", "GET_GOALS", "GET_MOODS", "GET_MEMORIES", "SEARCH_NOTES",
+    "UPDATE_NOTE", "UPDATE_REMINDER", "UPDATE_EXPENSE", "UPDATE_SHOPPING_ITEM",
+    "UPDATE_GOAL", "UPDATE_STUDY_PLAN",
     "TRANSLATE_TEXT", "SUMMARIZE_TEXT", "GENERATE_FLASHCARDS",
     "LOG_MOOD", "CREATE_MEMORY", "SAVE_CONTEXT", "DRAFT_EMAIL",
     "OPEN_APP", "OPEN_FOLDER", "OPEN_URL", "CREATE_FOLDER",
@@ -198,6 +201,20 @@ def extract_json_object(raw_text):
 
     cleaned = re.sub(r",\s*([}\]])", r"\1", cleaned)
     return cleaned
+
+
+def save_chat_message(user_id, role, content, token):
+    if not token or not user_id:
+        return
+    try:
+        requests.post(
+            f"{BACKEND_URL}/api/chat-history/save",
+            json={"user_id": user_id, "role": role, "content": content},
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=3
+        )
+    except Exception:
+        pass
 
 
 def process_user_input(user_text, user_id="default"):
@@ -277,6 +294,8 @@ def fetch_from_backend(intent, data, token):
 
 
 def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
+    save_chat_message(user_id, "user", user_text, token)
+
     pending = pending_confirmations.get(user_id)
     is_confirmation = False
 
@@ -294,12 +313,14 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
             is_confirmation = True
         elif lower in ["no", "cancel", "nope", "stop", "don't", "dont"]:
             pending_confirmations.pop(user_id, None)
+            reply = "Okay, I cancelled that action."
+            save_chat_message(user_id, "assistant", reply, token)
             return {
                 "intent": "GENERAL_CHAT",
                 "mood": "neutral",
                 "emoji": "😐",
                 "data": {},
-                "reply": "Okay, I cancelled that action."
+                "reply": reply
             }
         else:
             pending_confirmations.pop(user_id, None)
@@ -320,6 +341,7 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
                 except Exception:
                     continue
         result["reply"] = last_reply if last_reply else "I don't have anything to repeat yet."
+        save_chat_message(user_id, "assistant", result["reply"], token)
         return {
             "intent": result.get("intent"),
             "mood": result.get("mood"),
@@ -328,13 +350,37 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
             "reply": result.get("reply")
         }
 
-    if result["intent"] in ["CREATE_NOTE", "CREATE_REMINDER", "ADD_EXPENSE",
-                            "ADD_SHOPPING_ITEM", "STUDY_PLAN", "CREATE_GOAL",
-                            "LOG_MOOD", "CREATE_MEMORY", "SAVE_CONTEXT", "DRAFT_EMAIL"]:
+    # --- CREATE + UPDATE ---
+    if result["intent"] in [
+        "CREATE_NOTE", "CREATE_REMINDER", "ADD_EXPENSE", "ADD_SHOPPING_ITEM",
+        "STUDY_PLAN", "CREATE_GOAL", "LOG_MOOD", "CREATE_MEMORY", "SAVE_CONTEXT",
+        "UPDATE_NOTE", "UPDATE_REMINDER", "UPDATE_EXPENSE", "UPDATE_SHOPPING_ITEM",
+        "UPDATE_GOAL", "UPDATE_STUDY_PLAN"
+    ]:
         result["data"]["user_id"] = user_id
         backend_response = send_to_backend(result["intent"], result["data"], token)
         print("Backend says:", backend_response)
 
+        if isinstance(backend_response, dict) and not backend_response.get("success"):
+            error_msg = backend_response.get("message", "unknown error")
+            result["reply"] = f"Sorry, I couldn't save that: {error_msg}"
+
+    # --- DRAFT_EMAIL ---
+    elif result["intent"] == "DRAFT_EMAIL":
+        result["data"]["user_id"] = user_id
+        if not result["data"].get("subject"):
+            result["data"]["subject"] = "Nova Message"
+        backend_response = send_to_backend(result["intent"], result["data"], token)
+        print("Backend says:", backend_response)
+
+        if isinstance(backend_response, dict) and backend_response.get("success"):
+            recipient = result["data"].get("recipient", "the recipient")
+            result["reply"] = f"Email sent to {recipient}."
+        else:
+            error_msg = backend_response.get("message", "unknown error") if isinstance(backend_response, dict) else "unknown"
+            result["reply"] = f"Sorry, I couldn't send the email: {error_msg}"
+
+    # --- FIND_FILE ---
     elif result["intent"] == "FIND_FILE":
         result["data"]["user_id"] = user_id
         result["data"]["device_id"] = device_id
@@ -364,6 +410,7 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         else:
             result["reply"] = f"Sorry, I couldn't find '{search_term}'."
 
+    # --- CLOSE_APP ---
     elif result["intent"] == "CLOSE_APP":
         if not is_confirmation:
             pending_confirmations[user_id] = {
@@ -373,6 +420,7 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
             app_name = result["data"].get("app", "this app")
             result["reply"] = f"Are you sure you want to close {app_name}? Say yes to confirm."
             result["data"]["requires_confirmation"] = True
+            save_chat_message(user_id, "assistant", result["reply"], token)
             return {
                 "intent": result.get("intent"),
                 "mood": result.get("mood"),
@@ -387,6 +435,7 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         backend_response = send_to_backend(result["intent"], result["data"], token)
         print("Backend says:", backend_response)
 
+    # --- OPEN_FOLDER ---
     elif result["intent"] == "OPEN_FOLDER":
         folder = result["data"].get("folder", "")
 
@@ -413,6 +462,7 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
             else:
                 result["reply"] = f"Sorry, I couldn't open {folder}."
 
+    # --- OPEN_APP / OPEN_URL / CREATE_FOLDER ---
     elif result["intent"] in ["OPEN_APP", "OPEN_URL", "CREATE_FOLDER"]:
         result["data"]["user_id"] = user_id
         result["data"]["device_id"] = device_id
@@ -431,6 +481,7 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         else:
             result["reply"] = "Sorry, I couldn't complete that action right now."
 
+    # --- OTHER DEVICE ACTIONS ---
     elif result["intent"] in ["MUTE", "UNMUTE",
                               "VOLUME_UP", "VOLUME_DOWN", "SET_VOLUME",
                               "BRIGHTNESS_UP", "BRIGHTNESS_DOWN", "SET_BRIGHTNESS",
@@ -440,6 +491,7 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         backend_response = send_to_backend(result["intent"], result["data"], token)
         print("Backend says:", backend_response)
 
+    # --- SEMANTIC SEARCH ---
     elif result["intent"] == "SEARCH_NOTES":
         query = result["data"].get("query", user_text)
         search_payload = {"query": query, "user_id": user_id}
@@ -451,7 +503,6 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
             print("Semantic search result:", fetched_data)
 
             if fetched_data.get("success"):
-                # Filter results by similarity threshold
                 results = fetched_data.get("results", [])
                 filtered = [item for item in results if item.get("similarity", 0) >= SIMILARITY_THRESHOLD]
 
@@ -466,6 +517,7 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         except Exception as e:
             result["reply"] = f"Could not search: {e}"
 
+    # --- FETCHING DATA ---
     elif result["intent"] in ["GET_NOTES", "GET_REMINDERS", "GET_EXPENSES",
                               "GET_SHOPPING_LIST", "GET_STUDY_PLANS", "GET_GOALS",
                               "GET_MOODS", "GET_MEMORIES", "GET_CONTEXT", "SHOW_INFORMATION"]:
@@ -502,8 +554,11 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
                 elif result["intent"] == "GET_MEMORIES":
                     result["reply"] = "Here is what I remember:\n" + "\n".join(formatted)
 
+    # --- INSTANT MODULES ---
     elif result["intent"] in ["TRANSLATE_TEXT", "SUMMARIZE_TEXT", "GENERATE_FLASHCARDS", "GENERAL_CHAT"]:
         print("INSTANT MODULE: No backend needed. Just showing AI's answer!")
+
+    save_chat_message(user_id, "assistant", result["reply"], token)
 
     return {
         "intent": result.get("intent"),
