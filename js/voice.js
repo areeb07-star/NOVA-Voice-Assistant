@@ -115,16 +115,33 @@ function getBestVoiceForLanguage(lang) {
     'gu-IN': ['Google ગુજરાતી'],
     'pa-IN': ['Google ਪੰਜਾਬੀ']
   };
-  const preferred = voiceMap[lang] || voiceMap['en-GB'];
+
+  // 1) Try the exact match list
+  const preferred = voiceMap[lang] || [];
   for (const name of preferred) {
     const match = voices.find(v => v.name.includes(name));
     if (match) return match;
   }
-  return voices.find(v => v.lang === lang) ||
-         voices.find(v => v.lang.startsWith(lang.split('-')[0])) ||
-         voices.find(v => v.lang === 'en-GB') ||
-         voices.find(v => v.lang.startsWith('en')) ||
-         voices[0];
+
+  // 2) Try exact lang code
+  let v = voices.find(v => v.lang === lang);
+  if (v) return v;
+
+  // 3) Try lang prefix (e.g. 'hi' matches 'hi-IN')
+  const langPrefix = lang.split('-')[0];
+  v = voices.find(v => v.lang.startsWith(langPrefix));
+  if (v) return v;
+
+  // 4) Fall back to Indian English
+  v = voices.find(v => v.lang === 'en-IN' || v.name.includes('India'));
+  if (v) return v;
+
+  // 5) Fall back to any English
+  v = voices.find(v => v.lang.startsWith('en'));
+  if (v) return v;
+
+  // 6) Last resort — first voice
+  return voices[0] || null;
 }
 
 // ============================================================
