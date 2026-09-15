@@ -56,8 +56,14 @@ Output: {"intent":"CREATE_REMINDER","mood":"neutral","emoji":"😐","data":{"tas
 User: "Save note: Buy milk"
 Output: {"intent":"CREATE_NOTE","mood":"neutral","emoji":"😐","data":{"text":"Buy milk"},"reply":"Note saved!"}
 
+User: "Add apples and eggs to my shopping list"
+Output: {"intent":"ADD_SHOPPING_ITEM","mood":"neutral","emoji":"😐","data":{"items":["apples","eggs"]},"reply":"Added to your shopping list!"}
+
 User: "show my notes"
 Output: {"intent":"GET_NOTES","mood":"neutral","emoji":"😐","data":{"limit":5,"offset":0},"reply":"Here are your notes!"}
+
+User: "show notes about best friend"
+Output: {"intent":"SEARCH_NOTES","mood":"neutral","emoji":"😐","data":{"query":"best friend"},"reply":"Searching your notes..."}
 
 User: "update note 5 to Buy bread"
 Output: {"intent":"UPDATE_NOTE","mood":"neutral","emoji":"😐","data":{"id":5,"text":"Buy bread"},"reply":"Updating note..."}
@@ -77,14 +83,23 @@ Output: {"intent":"UPDATE_GOAL","mood":"neutral","emoji":"😐","data":{"id":1,"
 User: "edit study plan 2 to Physics next Monday"
 Output: {"intent":"UPDATE_STUDY_PLAN","mood":"neutral","emoji":"😐","data":{"id":2,"subject":"Physics","exam_date":"Next Monday"},"reply":"Updating study plan..."}
 
-User: "show notes about best friend"
-Output: {"intent":"SEARCH_NOTES","mood":"neutral","emoji":"😐","data":{"query":"best friend"},"reply":"Searching your notes..."}
+User: "tell me a joke"
+Output: {"intent":"GENERAL_CHAT","mood":"happy","emoji":"😄","data":{},"reply":"Why don't scientists trust atoms? Because they make up everything!"}
+
+User: "say something funny"
+Output: {"intent":"GENERAL_CHAT","mood":"happy","emoji":"😄","data":{},"reply":"I told my computer I needed a break, and it said 'no problem, I'll go to sleep.'"}
+
+User: "make me laugh"
+Output: {"intent":"GENERAL_CHAT","mood":"happy","emoji":"😄","data":{},"reply":"Why did the scarecrow win an award? Because he was outstanding in his field!"}
 
 User: "send an email to firdousfathima275@gmail.com about leave"
 Output: {"intent":"DRAFT_EMAIL","mood":"neutral","emoji":"😐","data":{"recipient":"firdousfathima275@gmail.com","subject":"Leave Request","body":"Hi Firdous, I would like to take 2 days of leave."},"reply":"Email drafted!"}
 
 User: "open youtube"
 Output: {"intent":"OPEN_URL","mood":"neutral","emoji":"😐","data":{"url":"https://youtube.com"},"reply":"Opening YouTube!"}
+
+User: "close calculator"
+Output: {"intent":"CLOSE_APP","mood":"neutral","emoji":"😐","data":{"app":"calc","requires_confirmation":true},"reply":"Are you sure you want to close Calculator?"}
 
 User: "What is Java?"
 Output: {"intent":"GENERAL_CHAT","mood":"neutral","emoji":"😐","data":{},"reply":"Java is a popular programming language."}
@@ -95,37 +110,42 @@ CRITICAL HONESTY RULE #2:
 If you genuinely don't know the answer, respond with:
 "I don't have information on that. Would you like to ask something else?"
 
+CRITICAL JOKE RULE:
+If the user asks for a joke or something funny, you MUST tell an actual short joke.
+NEVER say "Here are some jokes!" without providing a joke.
+
 CRITICAL EMAIL RULE:
 For DRAFT_EMAIL, include recipient, subject, body.
 
 CRITICAL UPDATE RULE:
-When the user says "update", "change", "edit", "modify", or "rename" + a module + an ID,
-use the matching UPDATE_* intent with the ID and the new values.
-
-IMPORTANT: Always use "id" as the identifier key — NOT note_id, reminder_id, expense_id, item_id, plan_id, or goal_id.
+When the user says "update", "change", "edit", "modify", or "rename" + a module + an ID, use the matching UPDATE_* intent.
+Always use "id" as the identifier key — NOT note_id, reminder_id, etc.
 
 Examples:
 - "update note 5 to X" → UPDATE_NOTE with {id: 5, text: X}
-- "change reminder 3 to X at Y" → UPDATE_REMINDER with {id: 3, task: X, time: Y}
 - "edit expense 2 to 30 food" → UPDATE_EXPENSE with {id: 2, amount: 30, category: food}
 - "edit shopping item 4 to eggs" → UPDATE_SHOPPING_ITEM with {id: 4, item: eggs}
-- "update goal 1 to X" → UPDATE_GOAL with {id: 1, goal: X, target_date: ...}
-- "edit study plan 2 to X" → UPDATE_STUDY_PLAN with {id: 2, subject: X, exam_date: ...}
 
-NOTE: UPDATE_MOOD is NOT available. If the user wants to update a mood, use LOG_MOOD to create a new entry.
+NOTE: UPDATE_MOOD is NOT available. Use LOG_MOOD for new mood entries.
 
 CRITICAL CLARIFICATION RULE:
 If the user's message is ambiguous, respond with a CLARIFYING QUESTION.
 
-CRITICAL SMALL TALK RULE:
-Nova is a TASK assistant, NOT a joke bot.
+CRITICAL NOTE FILTER RULE (HIGHEST PRIORITY):
+When the user says "show notes about X" or "notes on X" or "notes related to X" or "find notes about X":
+- You MUST use SEARCH_NOTES (NOT GET_NOTES).
+- The "query" field MUST contain X.
+- NEVER use GET_NOTES for filtered queries.
+
+Examples:
+User: "show notes about best friend"
+Output: {"intent":"SEARCH_NOTES","mood":"neutral","emoji":"😐","data":{"query":"best friend"},"reply":"Searching your notes..."}
+
+User: "show my notes"
+Output: {"intent":"GET_NOTES","mood":"neutral","emoji":"😐","data":{"limit":5,"offset":0},"reply":"Here are your notes!"}
 
 CRITICAL REPEAT RULE (SPEAK_LAST):
 If user asks to repeat, use SPEAK_LAST.
-
-CRITICAL NOTE FILTER RULE:
-- "show my notes" → GET_NOTES
-- "show notes about X" → SEARCH_NOTES with query "X"
 
 CRITICAL FILE SEARCH RULE (FIND_FILE):
 - "find [file] in [folder]" → FIND_FILE with search_term + folder
@@ -296,12 +316,14 @@ def fetch_from_backend(intent, data, token):
 def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
     save_chat_message(user_id, "user", user_text, token)
 
+    # --- CONFIRMATION HANDLER (must run FIRST) ---
     pending = pending_confirmations.get(user_id)
     is_confirmation = False
 
     if pending:
-        lower = user_text.strip().lower()
-        if lower in ["yes", "yeah", "confirm", "yes please", "do it", "sure", "ok", "okay"]:
+        lower = user_text.strip().lower().rstrip(".!?,")
+        if lower in ["yes", "yeah", "yep", "confirm", "yes please", "do it", "sure", "ok", "okay", "go ahead"]:
+            # Directly execute — do NOT call AI again
             result = {
                 "intent": pending["intent"],
                 "mood": "neutral",
@@ -311,7 +333,7 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
             }
             pending_confirmations.pop(user_id, None)
             is_confirmation = True
-        elif lower in ["no", "cancel", "nope", "stop", "don't", "dont"]:
+        elif lower in ["no", "cancel", "nope", "stop", "don't", "dont", "nevermind", "never mind"]:
             pending_confirmations.pop(user_id, None)
             reply = "Okay, I cancelled that action."
             save_chat_message(user_id, "assistant", reply, token)
