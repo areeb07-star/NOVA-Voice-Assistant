@@ -152,6 +152,23 @@ CRITICAL FILE SEARCH RULE (FIND_FILE):
 
 CRITICAL FOLDER OPENING RULE (OPEN_FOLDER):
 Use OPEN_FOLDER ONLY when there's no file to search.
+You MUST always include the folder name in data.folder.
+
+Examples:
+User: "open downloads"
+Output: {"intent":"OPEN_FOLDER","mood":"neutral","emoji":"😐","data":{"folder":"downloads"},"reply":"Opening downloads folder!"}
+
+User: "open my project folder"
+Output: {"intent":"OPEN_FOLDER","mood":"neutral","emoji":"😐","data":{"folder":"project"},"reply":"Opening project folder!"}
+
+User: "open documents"
+Output: {"intent":"OPEN_FOLDER","mood":"neutral","emoji":"😐","data":{"folder":"documents"},"reply":"Opening documents folder!"}
+
+User: "open the desktop folder"
+Output: {"intent":"OPEN_FOLDER","mood":"neutral","emoji":"😐","data":{"folder":"desktop"},"reply":"Opening desktop folder!"}
+
+User: "open pictures"
+Output: {"intent":"OPEN_FOLDER","mood":"neutral","emoji":"😐","data":{"folder":"pictures"},"reply":"Opening pictures folder!"}
 
 CRITICAL FOLDER CREATION RULE (CREATE_FOLDER):
 "create folder [name]" → CREATE_FOLDER with {folder_name: name}
@@ -209,7 +226,29 @@ UPDATE_ID_KEY_ALIASES = {
 }
 
 
-def normalize_result(raw_result):
+def extract_folder_from_text(user_text):
+    """Fallback: pull the folder name out of the user's message."""
+    if not user_text:
+        return ""
+    text = user_text.strip().lower()
+    # Patterns like: open downloads / open the downloads folder / open my project folder
+    patterns = [
+        r"open\s+(?:the\s+|my\s+)?([a-z0-9_\- ]+?)\s+folder\b",
+        r"open\s+(?:the\s+|my\s+)?folder\s+([a-z0-9_\- ]+)",
+        r"open\s+(?:the\s+|my\s+)?([a-z0-9_\- ]+)$",
+    ]
+    for pat in patterns:
+        m = re.search(pat, text)
+        if m:
+            folder = m.group(1).strip()
+            # Strip common filler words
+            folder = re.sub(r"^(the|my|a|an)\s+", "", folder)
+            if folder:
+                return folder
+    return ""
+
+
+def normalize_result(raw_result, user_text=""):
     if not isinstance(raw_result, dict):
         return {"intent": "GENERAL_CHAT", "mood": "neutral", "emoji": "😐", "data": {}, "reply": "Sorry, I hit a snag!"}
 
@@ -246,6 +285,18 @@ def normalize_result(raw_result):
         if "id" not in d:
             normalized["intent"] = "GENERAL_CHAT"
             normalized["reply"] = "I need the ID of the item you want to update."
+
+    # OPEN_FOLDER: must always have a folder name
+    if normalized["intent"] == "OPEN_FOLDER":
+        d = normalized["data"]
+        folder = (d.get("folder") or d.get("folder_name") or "").strip()
+        if not folder:
+            folder = extract_folder_from_text(user_text)
+        if not folder:
+            normalized["intent"] = "GENERAL_CHAT"
+            normalized["reply"] = "Which folder would you like me to open?"
+        else:
+            d["folder"] = folder
 
     if not isinstance(normalized["reply"], str):
         normalized["reply"] = "Done!"
@@ -309,7 +360,7 @@ def process_user_input(user_text, user_id="default"):
                 conversation_history[user_id] = history[-HISTORY_LIMIT:]
 
                 result = json.loads(ai_reply)
-                return normalize_result(result)
+                return normalize_result(result, user_text)
             except Exception as e:
                 err_str = str(e)
                 print(f"[Model {model} failed: {err_str[:100]}]")
