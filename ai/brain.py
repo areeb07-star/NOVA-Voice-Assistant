@@ -60,13 +60,10 @@ User: "show my notes"
 Output: {"intent":"GET_NOTES","mood":"neutral","emoji":"😐","data":{"limit":5,"offset":0},"reply":"Here are your notes!"}
 
 User: "show notes about best friend"
-Output: {"intent":"SEARCH_NOTES","mood":"neutral","emoji":"😐","data":{"query":"best friend"},"reply":"Searching your notes about best friend..."}
+Output: {"intent":"SEARCH_NOTES","mood":"neutral","emoji":"😐","data":{"query":"best friend"},"reply":"Searching your notes..."}
 
 User: "send an email to firdousfathima275@gmail.com about taking 2 days of leave"
 Output: {"intent":"DRAFT_EMAIL","mood":"neutral","emoji":"😐","data":{"recipient":"firdousfathima275@gmail.com","subject":"Leave Request","body":"Hi Firdous, I would like to take 2 days of leave. Please let me know if this works."},"reply":"Email drafted! Confirm to send."}
-
-User: "send an email to my boss about sick leave"
-Output: {"intent":"DRAFT_EMAIL","mood":"neutral","emoji":"😐","data":{"recipient":"boss","subject":"Sick Leave","body":"Hi, I am feeling unwell today and will be taking a sick day. Thank you for your understanding."},"reply":"Email drafted! Confirm to send."}
 
 User: "open youtube"
 Output: {"intent":"OPEN_URL","mood":"neutral","emoji":"😐","data":{"url":"https://youtube.com"},"reply":"Opening YouTube!"}
@@ -86,59 +83,53 @@ Output: {"intent":"CLOSE_APP","mood":"neutral","emoji":"😐","data":{"app":"cal
 User: "What is Java?"
 Output: {"intent":"GENERAL_CHAT","mood":"neutral","emoji":"😐","data":{},"reply":"Java is a popular programming language."}
 
-CRITICAL HONESTY RULE: NEVER claim you did something you haven't done.
+CRITICAL HONESTY RULE: NEVER claim you did something you haven't.
+
+CRITICAL HONESTY RULE #2:
+If you genuinely don't know the answer to a general knowledge question, respond with:
+"I don't have information on that. Would you like to ask something else?"
+
+NEVER generate filler or fake answers.
+
+Examples:
+User: "What is the population of Mars?"
+Output: {"intent":"GENERAL_CHAT","mood":"neutral","emoji":"🤔","data":{},"reply":"I don't have information on that. Would you like to ask something else?"}
 
 CRITICAL EMAIL RULE:
-For DRAFT_EMAIL, you MUST include ALL THREE fields:
-- "recipient" (the email address or name)
-- "subject" (a short subject line)
-- "body" (the email content)
-
-NEVER omit the subject. If you don't know it, generate an appropriate one.
+For DRAFT_EMAIL, you MUST include ALL THREE fields: recipient, subject, body.
 
 CRITICAL CLARIFICATION RULE:
 If the user's message is ambiguous, respond with a CLARIFYING QUESTION.
 
 CRITICAL SMALL TALK RULE:
 Nova is a TASK assistant, NOT a joke bot.
-If the user asks for a joke, tell one or redirect to tasks.
-NEVER say "Here are jokes!" without providing them.
 
 CRITICAL REPEAT RULE (SPEAK_LAST):
 If user asks to repeat, use SPEAK_LAST.
 
 CRITICAL NOTE FILTER RULE:
-- "show my notes" → GET_NOTES (all notes)
+- "show my notes" → GET_NOTES
 - "show notes about X" → SEARCH_NOTES with query "X"
-- "find my notes about X" → SEARCH_NOTES with query "X"
-- "notes related to X" → SEARCH_NOTES with query "X"
 
 CRITICAL FILE SEARCH RULE (FIND_FILE):
-- "open [folder] and give/find [file]" → FIND_FILE with search_term + folder
 - "find [file] in [folder]" → FIND_FILE with search_term + folder
-- "find [file]" → FIND_FILE with search_term
 
 CRITICAL FOLDER OPENING RULE (OPEN_FOLDER):
 Use OPEN_FOLDER ONLY when there's no file to search.
 
 CRITICAL FOLDER CREATION RULE (CREATE_FOLDER):
-"create folder", "make a folder" → CREATE_FOLDER with {folder_name: X}
+"create folder [name]" → CREATE_FOLDER with {folder_name: name}
 
 CRITICAL WEBSITE OPENING RULE (OPEN_URL):
-youtube → https://youtube.com
-google → https://google.com
-gmail → https://mail.google.com
-github → https://github.com
+youtube → https://youtube.com, google → https://google.com, gmail → https://mail.google.com
 
 CRITICAL APP NAME VALIDATION RULE (OPEN_APP):
-Only use OPEN_APP for: chrome, code, vscode, calc, calculator, notepad, explorer, cmd, terminal, paint, settings, sound_settings, whatsapp, spotify, word, excel, powerpoint, outlook, teams, telegram, zoom, vlc, steam.
+Only for: chrome, code, vscode, calc, calculator, notepad, explorer, cmd, terminal, paint, settings, sound_settings, whatsapp, spotify, word, excel, powerpoint, outlook, teams, telegram, zoom, vlc, steam.
 
 CRITICAL FOLLOW-UP RULE:
-"name it X" / "call it X" → completes previous action with X
-"yes" → confirms previous action
-"no" → cancels previous action
+"name it X" completes previous action with X.
 
-SAFE ACTION RULE: Safe actions execute immediately. Only CLOSE_APP needs confirmation.
+SAFE ACTION RULE: Only CLOSE_APP needs confirmation.
 """
 
 VALID_INTENTS = {
@@ -192,6 +183,40 @@ def extract_json_object(raw_text):
 
     cleaned = re.sub(r",\s*([}\]])", r"\1", cleaned)
     return cleaned
+
+
+def save_chat_message(user_id, role, content, token):
+    """Save a chat message to the backend. Fails silently if endpoint is not ready."""
+    if not token or not user_id:
+        return
+    try:
+        requests.post(
+            f"{BACKEND_URL}/api/chat-history/save",
+            json={"user_id": user_id, "role": role, "content": content},
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=3
+        )
+    except Exception:
+        pass  # Fail silently — don't break the demo if the endpoint is missing
+
+
+def get_chat_history(user_id, token):
+    """Fetch chat history from the backend. Returns [] if endpoint is not ready."""
+    if not token or not user_id:
+        return []
+    try:
+        r = requests.post(
+            f"{BACKEND_URL}/api/chat-history/get",
+            json={"user_id": user_id},
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=5
+        )
+        data = r.json()
+        if data.get("success"):
+            return data.get("messages", [])
+    except Exception:
+        pass
+    return []
 
 
 def process_user_input(user_text, user_id="default"):
@@ -271,6 +296,9 @@ def fetch_from_backend(intent, data, token):
 
 
 def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
+    # Save the user's message to history
+    save_chat_message(user_id, "user", user_text, token)
+
     pending = pending_confirmations.get(user_id)
     is_confirmation = False
 
@@ -288,12 +316,14 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
             is_confirmation = True
         elif lower in ["no", "cancel", "nope", "stop", "don't", "dont"]:
             pending_confirmations.pop(user_id, None)
+            reply = "Okay, I cancelled that action."
+            save_chat_message(user_id, "assistant", reply, token)
             return {
                 "intent": "GENERAL_CHAT",
                 "mood": "neutral",
                 "emoji": "😐",
                 "data": {},
-                "reply": "Okay, I cancelled that action."
+                "reply": reply
             }
         else:
             pending_confirmations.pop(user_id, None)
@@ -314,6 +344,7 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
                 except Exception:
                     continue
         result["reply"] = last_reply if last_reply else "I don't have anything to repeat yet."
+        save_chat_message(user_id, "assistant", result["reply"], token)
         return {
             "intent": result.get("intent"),
             "mood": result.get("mood"),
@@ -330,17 +361,11 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         backend_response = send_to_backend(result["intent"], result["data"], token)
         print("Backend says:", backend_response)
 
-    # --- DRAFT_EMAIL with HONESTY CHECK ---
+    # --- DRAFT_EMAIL ---
     elif result["intent"] == "DRAFT_EMAIL":
         result["data"]["user_id"] = user_id
-
-        # Ensure required fields exist
         if not result["data"].get("subject"):
-            # Auto-generate a subject if AI forgot
-            body = result["data"].get("body", "")
-            recipient = result["data"].get("recipient", "")
             result["data"]["subject"] = "Nova Message"
-
         backend_response = send_to_backend(result["intent"], result["data"], token)
         print("Backend says:", backend_response)
 
@@ -381,7 +406,7 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         else:
             result["reply"] = f"Sorry, I couldn't find '{search_term}'."
 
-    # --- CLOSE_APP with confirmation ---
+    # --- CLOSE_APP ---
     elif result["intent"] == "CLOSE_APP":
         if not is_confirmation:
             pending_confirmations[user_id] = {
@@ -391,6 +416,7 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
             app_name = result["data"].get("app", "this app")
             result["reply"] = f"Are you sure you want to close {app_name}? Say yes to confirm."
             result["data"]["requires_confirmation"] = True
+            save_chat_message(user_id, "assistant", result["reply"], token)
             return {
                 "intent": result.get("intent"),
                 "mood": result.get("mood"),
@@ -405,7 +431,7 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         backend_response = send_to_backend(result["intent"], result["data"], token)
         print("Backend says:", backend_response)
 
-    # --- OPEN_FOLDER with pre-check ---
+    # --- OPEN_FOLDER ---
     elif result["intent"] == "OPEN_FOLDER":
         folder = result["data"].get("folder", "")
 
@@ -527,6 +553,9 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
     # --- INSTANT MODULES ---
     elif result["intent"] in ["TRANSLATE_TEXT", "SUMMARIZE_TEXT", "GENERATE_FLASHCARDS", "GENERAL_CHAT"]:
         print("INSTANT MODULE: No backend needed. Just showing AI's answer!")
+
+    # Save the AI's reply to history
+    save_chat_message(user_id, "assistant", result["reply"], token)
 
     return {
         "intent": result.get("intent"),
