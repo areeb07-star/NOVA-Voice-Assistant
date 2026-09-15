@@ -376,7 +376,7 @@
 
 <script>
 /* =========================================================
-   NOVA — Register (wired to backend)
+   NOVA — Register (wired to backend, flat JSON)
    ========================================================= */
 var API_BASE = "https://nova-voice-assistant-6vve.onrender.com";
 
@@ -428,22 +428,29 @@ document.getElementById("register-form").addEventListener("submit", async functi
     });
 
     var data = await res.json();
+    console.log("[NOVA Register] Response:", data);
 
     if (res.ok && data.success) {
-      if (data.access_token) {
-        localStorage.setItem("nova-auth-token", data.access_token);
-      }
-      if (data.user && data.user.name) {
-        localStorage.setItem("nova-user-name", data.user.name);
-      } else {
-        localStorage.setItem("nova-user-name", fullName);
-      }
+      // Backend returns flat JSON
+      var name = data.name || fullName;
+      var userId = data.user_id || "";
+      var token = data.access_token || "";
 
-      window.location.href = data.access_token ? "dashboard.html" : "login.html";
+      localStorage.setItem("nova-user-name", name);
+      localStorage.setItem("user_id", userId);
+      localStorage.setItem("nova-user-id", userId);
+      localStorage.setItem("access_token", token);
+      localStorage.setItem("nova-access-token", token);
+      localStorage.setItem("nova-auth-token", token);
+
+      console.log("[NOVA Register] Saved session →", { name: name, userId: userId, hasToken: !!token });
+
+      window.location.href = "dashboard.html";
     } else {
-      throw new Error(data.error || "Registration failed");
+      throw new Error(data.error || data.message || "Registration failed");
     }
   } catch (err) {
+    console.error("[NOVA Register] Error:", err);
     errorText.textContent = err.message || "Registration failed. Please try again.";
     errorBox.classList.add("show");
     submitBtn.classList.remove("loading");

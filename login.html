@@ -295,7 +295,7 @@
 
 <script>
 /* =========================================================
-   NOVA — Login (wired to backend)
+   NOVA — Login (wired to backend, flat JSON)
    ========================================================= */
 var API_BASE = "https://nova-voice-assistant-6vve.onrender.com";
 
@@ -311,7 +311,6 @@ document.getElementById("login-form").addEventListener("submit", async function 
   var email = emailInput.value.trim();
   var password = passwordInput.value;
 
-  // Reset errors
   document.getElementById("emailError").classList.remove("show");
   document.getElementById("passwordError").classList.remove("show");
   emailInput.classList.remove("error");
@@ -342,15 +341,29 @@ document.getElementById("login-form").addEventListener("submit", async function 
     });
 
     var data = await res.json();
+    console.log("[NOVA Login] Response:", data);
 
     if (res.ok && data.success) {
-      localStorage.setItem("nova-auth-token", data.access_token);
-      localStorage.setItem("nova-user-name", data.user && data.user.name ? data.user.name : "User");
+      // Backend returns flat JSON: { success, name, email, user_id, access_token }
+      var name = data.name || data.email || "User";
+      var userId = data.user_id || "";
+      var token = data.access_token || "";
+
+      localStorage.setItem("nova-user-name", name);
+      localStorage.setItem("user_id", userId);
+      localStorage.setItem("nova-user-id", userId);
+      localStorage.setItem("access_token", token);
+      localStorage.setItem("nova-access-token", token);
+      localStorage.setItem("nova-auth-token", token);
+
+      console.log("[NOVA Login] Saved session →", { name: name, userId: userId, hasToken: !!token });
+
       window.location.href = "dashboard.html";
     } else {
-      throw new Error(data.error || "Invalid credentials");
+      throw new Error(data.error || data.message || "Invalid credentials");
     }
   } catch (err) {
+    console.error("[NOVA Login] Error:", err);
     errorText.textContent = err.message || "Login failed. Please try again.";
     errorBox.classList.add("show");
     submitBtn.classList.remove("loading");
@@ -358,7 +371,6 @@ document.getElementById("login-form").addEventListener("submit", async function 
   }
 });
 
-// Password toggle
 document.getElementById("togglePassword").addEventListener("click", function (e) {
   e.preventDefault();
   var p = document.getElementById("password");
