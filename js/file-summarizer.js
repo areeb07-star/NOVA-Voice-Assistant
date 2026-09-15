@@ -1,12 +1,13 @@
 /* ============================================
    NOVA - File Summarizer (Person 4)
    FAST + CLEAR OCR version
+   Deployed: BRIDGE_URL → Render bridge
    ============================================ */
 
 (function () {
   'use strict';
 
-  var BRIDGE_URL = 'http://127.0.0.1:5000/api/summarize';
+  var BRIDGE_URL = 'https://nova-voice-assistant-bridge-f.onrender.com/api/summarize';
   var TESS_CDN = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
   var tesseractReady = false;
   var tesseractLoading = null;
@@ -15,7 +16,6 @@
   window.addEventListener('load', function () {
     console.log('[NOVA Files] Initializing...');
 
-    // Pre-load OCR library in background
     preloadTesseract();
 
     var fileInput = document.getElementById('summarizeFileInput');
@@ -81,7 +81,7 @@
   });
 
   // ============================================================
-  // PRELOAD TESSERACT (so OCR starts instantly)
+  // PRELOAD TESSERACT
   // ============================================================
   function preloadTesseract() {
     if (window.Tesseract) {
@@ -141,7 +141,7 @@
   }
 
   // ============================================================
-  // IMAGE OCR — FAST + CLEAR
+  // IMAGE OCR
   // ============================================================
   async function extractImageText(file) {
     await ensureTesseract();
@@ -151,8 +151,7 @@
 
     console.log('[NOVA Files] Running OCR...');
     var result = await window.Tesseract.recognize(canvas, 'eng', {
-      // Faster + more accurate settings
-      tessedit_pageseg_mode: '6',  // Assume uniform block of text
+      tessedit_pageseg_mode: '6',
       preserve_interword_spaces: '1'
     });
 
@@ -161,13 +160,9 @@
     return text;
   }
 
-  // ============================================================
-  // IMAGE PREPROCESSING — makes OCR 2x more accurate
-  // ============================================================
   async function preprocessImage(file) {
     var img = await loadImage(file);
 
-    // Scale down to max 1400px (faster OCR, still accurate)
     var maxDim = 1400;
     var w = img.width;
     var h = img.height;
@@ -183,16 +178,13 @@
     canvas.height = h;
     var ctx = canvas.getContext('2d');
 
-    // White background (helps OCR)
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, w, h);
     ctx.drawImage(img, 0, 0, w, h);
 
-    // Grayscale + contrast stretch
     var imageData = ctx.getImageData(0, 0, w, h);
     var data = imageData.data;
 
-    // Find min/max brightness
     var minV = 255, maxV = 0;
     for (var i = 0; i < data.length; i += 4) {
       var g = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
@@ -201,7 +193,6 @@
     }
     var range = maxV - minV || 1;
 
-    // Apply contrast stretch
     for (var i = 0; i < data.length; i += 4) {
       var g = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
       var stretched = ((g - minV) / range) * 255;
@@ -228,7 +219,6 @@
     });
   }
 
-  // Clean up OCR output
   function cleanOcrText(raw) {
     return raw
       .replace(/\r/g, '')
@@ -242,7 +232,7 @@
   }
 
   // ============================================================
-  // PDF — text extract, fall back to OCR
+  // PDF
   // ============================================================
   async function extractPdfText(file) {
     if (!window.pdfjsLib) {
@@ -263,7 +253,7 @@
     out = out.trim();
 
     if (out.length < 20) {
-      console.log('[NOVA Files] Scanned PDF — running OCR (max 3 pages for speed)');
+      console.log('[NOVA Files] Scanned PDF — running OCR (max 3 pages)');
       return await ocrPdf(file);
     }
     return out;
@@ -276,12 +266,11 @@
     var pdf = await window.pdfjsLib.getDocument({ data: buf }).promise;
 
     var out = '';
-    var maxPages = Math.min(pdf.numPages, 3); // ⚡ 3 pages max for speed
+    var maxPages = Math.min(pdf.numPages, 3);
 
     for (var i = 1; i <= maxPages; i++) {
       console.log('[NOVA Files] OCR page ' + i + '/' + maxPages);
       var page = await pdf.getPage(i);
-      // Scale 1.2 for speed (was 1.5)
       var vp = page.getViewport({ scale: 1.2 });
       var canvas = document.createElement('canvas');
       canvas.width = vp.width;
