@@ -4,7 +4,7 @@
 # + OPEN_FOLDER without pre-check
 # + Shopping list key fix (formatted_shopping_items)
 # + Load chat history from backend
-# + CREATE_GOAL auto-date rule
+# + CREATE_GOAL auto-date rule + normalize_date() for ISO YYYY-MM-DD
 # + DELETE_* intents wired to backend
 
 import os
@@ -12,7 +12,7 @@ import sys
 import json
 import re
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 from groq import Groq
 from dotenv import load_dotenv
 
@@ -109,10 +109,10 @@ User: "edit shopping item 4 to eggs"
 Output: {"intent":"UPDATE_SHOPPING_ITEM","mood":"neutral","emoji":"😐","data":{"id":4,"items":["eggs"]},"reply":"Updating shopping item..."}
 
 User: "update goal 1 to read 20 books this year"
-Output: {"intent":"UPDATE_GOAL","mood":"neutral","emoji":"😐","data":{"id":1,"goal":"read 20 books","target_date":"This year"},"reply":"Updating goal..."}
+Output: {"intent":"UPDATE_GOAL","mood":"neutral","emoji":"😐","data":{"id":1,"goal":"read 20 books","target_date":"2026-12-31"},"reply":"Updating goal..."}
 
 User: "edit study plan 2 to Physics next Monday"
-Output: {"intent":"UPDATE_STUDY_PLAN","mood":"neutral","emoji":"😐","data":{"id":2,"subject":"Physics","exam_date":"Next Monday"},"reply":"Updating study plan..."}
+Output: {"intent":"UPDATE_STUDY_PLAN","mood":"neutral","emoji":"😐","data":{"id":2,"subject":"Physics","exam_date":"2026-09-21"},"reply":"Updating study plan..."}
 
 User: "delete note 5"
 Output: {"intent":"DELETE_NOTE","mood":"neutral","emoji":"😐","data":{"id":5},"reply":"Deleting note 5..."}
@@ -132,11 +132,14 @@ Output: {"intent":"DELETE_GOAL","mood":"neutral","emoji":"😐","data":{"id":1},
 User: "remove study plan 2"
 Output: {"intent":"DELETE_STUDY_PLAN","mood":"neutral","emoji":"😐","data":{"id":2},"reply":"Deleting study plan 2..."}
 
+User: "my goal is to get a high paid job by the 25th of this month"
+Output: {"intent":"CREATE_GOAL","mood":"neutral","emoji":"😐","data":{"goal":"get a high paid job","target_date":"2026-09-25"},"reply":"Goal added!"}
+
 User: "my goal is to get 100 on my maths test"
-Output: {"intent":"CREATE_GOAL","mood":"neutral","emoji":"😐","data":{"goal":"get 100 on maths test","target_date":"end of term"},"reply":"Goal added!"}
+Output: {"intent":"CREATE_GOAL","mood":"neutral","emoji":"😐","data":{"goal":"get 100 on maths test","target_date":"2026-09-30"},"reply":"Goal added!"}
 
 User: "set a goal to read 20 books this year"
-Output: {"intent":"CREATE_GOAL","mood":"neutral","emoji":"😐","data":{"goal":"read 20 books","target_date":"this year"},"reply":"Goal added!"}
+Output: {"intent":"CREATE_GOAL","mood":"neutral","emoji":"😐","data":{"goal":"read 20 books","target_date":"2026-12-31"},"reply":"Goal added!"}
 
 User: "tell me a joke"
 Output: {"intent":"GENERAL_CHAT","mood":"happy","emoji":"😄","data":{},"reply":"Why don't scientists trust atoms? Because they make up everything!"}
@@ -263,12 +266,18 @@ CRITICAL FOLLOW-UP RULE:
 
 CRITICAL GOAL RULE:
 For CREATE_GOAL, always include both "goal" and "target_date".
+"target_date" MUST be in YYYY-MM-DD format.
+Today's date is provided above — compute the date from it.
 If the user does not specify a date, infer one:
-- "100 on maths test" → "end of term"
-- "lose 5kg" → "in 3 months"
-- "read more books" → "this year"
-- "learn python" → "in 6 months"
-NEVER ask the user for a date. ALWAYS guess one.
+- "100 on maths test" → end of this month
+- "lose 5kg" → 3 months from today
+- "read more books" → end of this year
+- "learn python" → 6 months from today
+NEVER ask the user for a date. ALWAYS compute one.
+
+Example:
+User: "my goal is to get a high paid job by the 25th of this month"
+Output: {"intent":"CREATE_GOAL","mood":"neutral","emoji":"😐","data":{"goal":"get a high paid job","target_date":"2026-09-25"},"reply":"Goal added!"}
 
 SAFE ACTION RULE: Only CLOSE_APP needs confirmation.
 
@@ -316,6 +325,115 @@ UPDATE_ID_KEY_ALIASES = {
 }
 
 
+def normalize_date(value):
+    """Convert natural-language dates to YYYY-MM-DD. Returns original string if unparseable."""
+    if not value or not isinstance(value, str):
+        return value
+
+    today = datetime.now().date()
+    v = value.strip().lower()
+
+    # Already YYYY-MM-DD
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", v):
+        return v
+
+    # Today / tomorrow / yesterday
+    if v in ("today", "now"):
+        return today.isoformat()
+    if v == "tomorrow":
+        return (today + timedelta(days=1)).isoformat()
+    if v == "yesterday":
+        return (today - timedelta(days=1)).isoformat()
+
+    # "in N days/weeks/months/years"
+    m = re.search(r"in\s+(\d+)\s+(day|days|week|weeks|month|months|year|years)", v)
+    if m:
+        n = int(m.group(1))
+        unit = m.group(2).rstrip("s")
+        if unit == "day":
+            delta = timedelta(days=n)
+        elif unit == "week":
+            delta = timedelta(weeks=n)
+        elif unit == "month":
+            delta = timedelta(days=30 * n)
+        elif unit == "year":
+            delta = timedelta(days=365 * n)
+        else:
+            delta = timedelta(0)
+        return (today + delta).isoformat()
+
+    # "next week/month/year" / "this week/month/year"
+    m = re.search(r"(next|this)\s+(week|month|year)", v)
+    if m:
+        when, unit = m.group(1), m.group(2)
+        if unit == "week":
+            delta = timedelta(weeks=1 if when == "next" else 0)
+        elif unit == "month":
+            delta = timedelta(days=30 if when == "next" else 0)
+        else:
+            delta = timedelta(days=365 if when == "next" else 0)
+        return (today + delta).isoformat()
+
+    # "end of term" / "end of month" / "end of year"
+    if "end of" in v:
+        if "term" in v or "month" in v:
+            if today.month == 12:
+                last = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
+            else:
+                last = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
+            return last.isoformat()
+        if "year" in v:
+            return f"{today.year}-12-31"
+
+    # "25th of next month"
+    m = re.search(r"(\d{1,2})(?:st|nd|rd|th)?\s*(?:of\s+)?next\s+month", v)
+    if m:
+        day = int(m.group(1))
+        if today.month == 12:
+            target = today.replace(year=today.year + 1, month=1, day=day)
+        else:
+            target = today.replace(month=today.month + 1, day=day)
+        return target.isoformat()
+
+    # "on the 25th" / "on 25th of this month" / "25 of this month"
+    m = re.search(r"(\d{1,2})(?:st|nd|rd|th)?\s*(?:of\s+)?(?:this\s+)?month", v)
+    if m:
+        day = int(m.group(1))
+        try:
+            d = today.replace(day=day)
+            return d.isoformat()
+        except ValueError:
+            pass
+
+    # Month name + day: "September 25", "25 September"
+    month_names = {
+        "january": 1, "february": 2, "march": 3, "april": 4, "may": 5, "june": 6,
+        "july": 7, "august": 8, "september": 9, "october": 10, "november": 11, "december": 12,
+        "jan": 1, "feb": 2, "mar": 3, "apr": 4, "jun": 6, "jul": 7, "aug": 8,
+        "sep": 9, "sept": 9, "oct": 10, "nov": 11, "dec": 12,
+    }
+    for name, num in month_names.items():
+        m = re.search(rf"{name}\s+(\d{{1,2}})", v)
+        if m:
+            day = int(m.group(1))
+            year = today.year if today.month <= num else today.year + 1
+            try:
+                return f"{year}-{num:02d}-{day:02d}"
+            except Exception:
+                pass
+        m = re.search(rf"(\d{{1,2}})\s+{name}", v)
+        if m:
+            day = int(m.group(1))
+            year = today.year if today.month <= num else today.year + 1
+            try:
+                return f"{year}-{num:02d}-{day:02d}"
+            except Exception:
+                pass
+
+    # Last resort: leave as-is
+    return value
+
+
 def extract_folder_from_text(user_text):
     """Fallback: pull the folder name out of the user's message."""
     if not user_text:
@@ -353,6 +471,22 @@ def normalize_result(raw_result, user_text=""):
 
     if normalized["intent"] not in VALID_INTENTS:
         normalized["intent"] = "GENERAL_CHAT"
+
+    # Normalize date fields
+    if normalized["intent"] in ("CREATE_GOAL", "UPDATE_GOAL"):
+        d = normalized["data"]
+        if "target_date" in d:
+            d["target_date"] = normalize_date(d["target_date"])
+
+    if normalized["intent"] in ("STUDY_PLAN", "UPDATE_STUDY_PLAN"):
+        d = normalized["data"]
+        if "exam_date" in d:
+            d["exam_date"] = normalize_date(d["exam_date"])
+
+    if normalized["intent"] in ("CREATE_REMINDER", "UPDATE_REMINDER"):
+        d = normalized["data"]
+        if "date" in d:
+            d["date"] = normalize_date(d["date"])
 
     # Shopping: ensure "items" is always a list
     if normalized["intent"] == "ADD_SHOPPING_ITEM":
