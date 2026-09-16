@@ -376,7 +376,11 @@
 
 <script>
 /* =========================================================
-   NOVA — Register (wired to backend, flat JSON)
+   NOVA — Register (wired to backend)
+   Stores BOTH key conventions after successful registration:
+     - nova-auth-token / access_token
+     - nova-user-id / user_id
+     - nova-user-name / nova-user-email
    ========================================================= */
 var API_BASE = "https://nova-voice-assistant-6vve.onrender.com";
 
@@ -428,29 +432,35 @@ document.getElementById("register-form").addEventListener("submit", async functi
     });
 
     var data = await res.json();
-    console.log("[NOVA Register] Response:", data);
 
     if (res.ok && data.success) {
-      // Backend returns flat JSON
-      var name = data.name || fullName;
-      var userId = data.user_id || "";
-      var token = data.access_token || "";
+      /* ---------- Save token (both key conventions) ---------- */
+      if (data.access_token) {
+        localStorage.setItem("nova-auth-token", data.access_token);
+        localStorage.setItem("access_token",     data.access_token);
+      }
 
-      localStorage.setItem("nova-user-name", name);
-      localStorage.setItem("user_id", userId);
-      localStorage.setItem("nova-user-id", userId);
-      localStorage.setItem("access_token", token);
-      localStorage.setItem("nova-access-token", token);
-      localStorage.setItem("nova-auth-token", token);
+      /* ---------- Save user info (both key conventions) ---------- */
+      var user = data.user || {};
+      var name = user.name || data.name || fullName;
+      var userId = user.id || user.user_id || data.user_id || "";
 
-      console.log("[NOVA Register] Saved session →", { name: name, userId: userId, hasToken: !!token });
+      localStorage.setItem("nova-user-name",  name);
+      localStorage.setItem("nova-user-email", user.email || data.email || email);
 
-      window.location.href = "dashboard.html";
+      if (userId) {
+        localStorage.setItem("nova-user-id", String(userId));
+        localStorage.setItem("user_id",      String(userId));
+      }
+
+      /* ---------- Redirect ---------- */
+      // If backend returned a token, go straight to dashboard.
+      // If not, send them to login to get one.
+      window.location.href = data.access_token ? "dashboard.html" : "login.html";
     } else {
-      throw new Error(data.error || data.message || "Registration failed");
+      throw new Error(data.error || "Registration failed");
     }
   } catch (err) {
-    console.error("[NOVA Register] Error:", err);
     errorText.textContent = err.message || "Registration failed. Please try again.";
     errorBox.classList.add("show");
     submitBtn.classList.remove("loading");
