@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Download Nova Agent — NOVA</title>
+<link rel="icon" type="image/svg+xml" href="assets/images/nova-logo.svg">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #05060f; color: #f1f5f9; min-height: 100vh; }
+  .dashboard-layout { display: flex; min-height: 100vh; }
+
+  .sidebar { width: 260px; background: rgba(10,12,26,0.85); border-right: 1px solid rgba(255,255,255,0.06); padding: 20px 12px; position: fixed; top: 0; left: 0; height: 100vh; overflow-y: auto; }
+  .sidebar-header { display: flex; align-items: center; gap: 12px; padding: 8px 12px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); margin-bottom: 12px; }
+  .sidebar-logo-img { width: 40px; height: 40px; border-radius: 12px; box-shadow: 0 4px 16px rgba(34,211,238,0.3); }
+  .sidebar-brand { font-size: 1.3rem; font-weight: 700; letter-spacing: 0.05em; background: linear-gradient(135deg, #22d3ee, #8b5cf6, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .nav-section-label { font-size: 0.7rem; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.1em; padding: 16px 12px 6px; }
+  .nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; color: #64748b; text-decoration: none; font-size: 0.9rem; font-weight: 500; transition: all 0.2s ease; position: relative; margin-bottom: 2px; }
+  .nav-item:hover { background: rgba(255,255,255,0.04); color: #f1f5f9; }
+  .nav-item.active { background: rgba(34,211,238,0.08); color: #22d3ee; font-weight: 600; }
+  .nav-item.active::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 3px; height: 60%; background: linear-gradient(135deg,#22d3ee,#8b5cf6); border-radius: 0 4px 4px 0; box-shadow: 0 0 12px rgba(34,211,238,0.5); }
+  .nav-icon { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; flex-shrink: 0; }
+  .nav-icon svg { width: 18px; height: 18px; stroke-width: 1.8; }
+  .nav-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 12px; }
+
+  .main-content { flex: 1; margin-left: 260px; min-height: 100vh; }
+  .topbar { height: 72px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; border-bottom: 1px solid rgba(255,255,255,0.06); background: rgba(10,12,26,0.6); backdrop-filter: blur(20px); position: sticky; top: 0; z-index: 50; }
+  .greeting-title { font-size: 1.1rem; font-weight: 700; color: #f1f5f9; }
+  .greeting-subtitle { font-size: 0.8rem; color: #94a3b8; }
+  .topbar-right { display: flex; align-items: center; gap: 16px; position: relative; }
+  .topbar-icon-btn { width: 40px; height: 40px; border-radius: 10px; background: transparent; border: 0; color: #94a3b8; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; }
+  .topbar-icon-btn:hover { background: rgba(255,255,255,0.05); color: #f1f5f9; }
+  .topbar-icon-btn svg { width: 20px; height: 20px; stroke-width: 1.8; }
+  .notification-dot { position: absolute; top: 8px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: #22d3ee; box-shadow: 0 0 8px rgba(34,211,238,0.6); }
+  .avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg,#22d3ee,#8b5cf6); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; color: #fff; cursor: pointer; user-select: none; }
+
+  .page-content { padding: 32px; max-width: 800px; margin: 0 auto; }
+
+  .hero {
+    text-align: center;
+    padding: 40px 20px 32px;
+  }
+  .hero-icon {
+    width: 88px; height: 88px; border-radius: 24px; margin: 0 auto 24px;
+    background: linear-gradient(135deg, #22d3ee, #8b5cf6);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 10px 40px rgba(34,211,238,0.35);
+  }
+  .hero-icon svg { width: 44px; height: 44px; stroke-width: 1.8; color: #fff; }
+  .hero h1 { font-size: 2rem; font-weight: 800; margin-bottom: 12px; background: linear-gradient(135deg,#22d3ee,#8b5cf6,#ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .hero p { color: #94a3b8; font-size: 0.95rem; max-width: 500px; margin: 0 auto; }
+
+  .download-section {
+    text-align: center;
+    margin: 32px 0 40px;
+  }
+  .download-btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 16px 40px;
+    background: linear-gradient(135deg, #22d3ee, #8b5cf6);
+    color: #fff;
+    border-radius: 9999px;
+    text-decoration: none;
+    font-size: 1.05rem;
+    font-weight: 700;
+    box-shadow: 0 6px 30px rgba(34,211,238,0.4);
+    transition: all 0.25s ease;
+  }
+  .download-btn:hover { transform: translateY(-3px); box-shadow: 0 10px 40px rgba(34,211,238,0.55); }
+  .download-btn svg { width: 22px; height: 22px; stroke-width: 2.2; }
+  .download-meta { font-size: 0.8rem; color: #64748b; margin-top: 12px; }
+
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin: 32px 0;
+  }
+  .step-card {
+    background: rgba(18,21,45,0.65);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 16px;
+    padding: 24px 20px;
+    text-align: center;
+    transition: all 0.3s ease;
+  }
+  .step-card:hover { border-color: rgba(34,211,238,0.3); transform: translateY(-3px); }
+  .step-num {
+    width: 40px; height: 40px; border-radius: 50%; margin: 0 auto 12px;
+    background: linear-gradient(135deg, #22d3ee, #8b5cf6);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 1rem; color: #fff;
+  }
+  .step-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 6px; color: #f1f5f9; }
+  .step-desc { font-size: 0.82rem; color: #94a3b8; line-height: 1.5; }
+
+  .info-box {
+    background: rgba(34,211,238,0.06);
+    border: 1px solid rgba(34,211,238,0.15);
+    border-radius: 16px;
+    padding: 24px;
+    margin: 24px 0;
+  }
+  .info-box h3 {
+    font-size: 1rem; font-weight: 700; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px; color: #22d3ee;
+  }
+  .info-box h3 svg { width: 18px; height: 18px; stroke-width: 2; }
+  .info-box ul { list-style: none; padding: 0; }
+  .info-box li {
+    padding: 8px 0;
+    color: #cbd5e1;
+    font-size: 0.88rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    line-height: 1.5;
+  }
+  .info-box li::before {
+    content: '✓';
+    color: #10b981;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+
+  .faq {
+    margin-top: 32px;
+  }
+  .faq-item {
+    background: rgba(18,21,45,0.65);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    padding: 20px 24px;
+    margin-bottom: 12px;
+  }
+  .faq-q { font-weight: 700; font-size: 0.92rem; margin-bottom: 8px; color: #f1f5f9; }
+  .faq-a { font-size: 0.85rem; color: #94a3b8; line-height: 1.6; }
+
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); }
+    .main-content { margin-left: 0; }
+    .page-content { padding: 20px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="dashboard-layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <img src="assets/images/nova-logo.svg" alt="NOVA" class="sidebar-logo-img">
+      <div class="sidebar-brand">NOVA</div>
+    </div>
+    <nav>
+      <div class="nav-section-label">Main</div>
+      <a href="dashboard.html" class="nav-item"><i data-lucide="layout-dashboard" class="nav-icon"></i><span>Dashboard</span></a>
+      <a href="assistant.html" class="nav-item"><i data-lucide="sparkles" class="nav-icon"></i><span>Assistant</span></a>
+      <div class="nav-section-label">Organize</div>
+      <a href="reminders.html" class="nav-item"><i data-lucide="clock" class="nav-icon"></i><span>Reminders</span></a>
+      <a href="notes.html" class="nav-item"><i data-lucide="file-text" class="nav-icon"></i><span>Notes</span></a>
+      <a href="shopping.html" class="nav-item"><i data-lucide="shopping-cart" class="nav-icon"></i><span>Shopping</span></a>
+      <a href="expenses.html" class="nav-item"><i data-lucide="wallet" class="nav-icon"></i><span>Expenses</span></a>
+      <a href="study_plans.html" class="nav-item"><i data-lucide="book-open" class="nav-icon"></i><span>Study Plans</span></a>
+      <a href="goals.html" class="nav-item"><i data-lucide="target" class="nav-icon"></i><span>Goals</span></a>
+      <div class="nav-divider"></div>
+      <a href="download-agent.html" class="nav-item active"><i data-lucide="zap" class="nav-icon"></i><span>Nova Agent</span></a>
+      <a href="profile.html" class="nav-item"><i data-lucide="settings" class="nav-icon"></i><span>Profile</span></a>
+      <a href="login.html" class="nav-item"><i data-lucide="log-out" class="nav-icon"></i><span>Logout</span></a>
+    </nav>
+  </aside>
+
+  <div class="main-content">
+    <header class="topbar">
+      <div>
+        <div class="greeting-title">Nova Agent</div>
+        <div class="greeting-subtitle">Enable device control on your laptop.</div>
+      </div>
+      <div class="topbar-right">
+        <button class="topbar-icon-btn"><i data-lucide="bell"></i><span class="notification-dot"></span></button>
+        <div class="avatar" id="avatarInitial">U</div>
+      </div>
+    </header>
+
+    <div class="page-content">
+
+      <div class="hero">
+        <div class="hero-icon"><i data-lucide="zap"></i></div>
+        <h1>Nova Agent</h1>
+        <p>Install a small helper app to let Nova open apps, take screenshots, and control volume on your laptop.</p>
+      </div>
+
+      <div class="download-section">
+        <a class="download-btn"
+           href="https://github.com/areeb07-star/NOVA-Voice-Assistant/releases/latest/download/NovaAgent.exe"
+           download>
+          <i data-lucide="download"></i>
+          Download for Windows
+        </a>
+        <div class="download-meta">30.5 MB · Windows 10/11 · v1.0</div>
+      </div>
+
+      <div class="steps">
+        <div class="step-card">
+          <div class="step-num">1</div>
+          <div class="step-title">Download</div>
+          <div class="step-desc">Click the button above to download NovaAgent.exe</div>
+        </div>
+        <div class="step-card">
+          <div class="step-num">2</div>
+          <div class="step-title">Run it</div>
+          <div class="step-desc">Double-click the .exe. Windows may ask for permission — click "Run anyway".</div>
+        </div>
+        <div class="step-card">
+          <div class="step-num">3</div>
+          <div class="step-title">Sign in</div>
+          <div class="step-desc">Enter your Nova email + password once. The agent runs silently afterwards.</div>
+        </div>
+      </div>
+
+      <div class="info-box">
+        <h3><i data-lucide="shield-check"></i> What Nova can do on your laptop</h3>
+        <ul>
+          <li>Open apps (Chrome, Word, Notepad, etc.)</li>
+          <li>Open folders and search for files</li>
+          <li>Take screenshots</li>
+          <li>Adjust volume and brightness</li>
+          <li>Close apps you ask Nova to close</li>
+        </ul>
+      </div>
+
+      <div class="info-box">
+        <h3><i data-lucide="lock"></i> Safety</h3>
+        <ul>
+          <li>Runs only actions on an approved allowlist</li>
+          <li>Tied to your Nova account — no one else can use it</li>
+          <li>You can pause it anytime with the kill switch</li>
+          <li>Config is stored locally in <code>%APPDATA%\Nova\config.json</code></li>
+        </ul>
+      </div>
+
+      <div class="faq">
+        <h2 style="font-size:1.1rem; font-weight:700; margin-bottom:16px; color:#f1f5f9;">Frequently asked</h2>
+
+        <div class="faq-item">
+          <div class="faq-q">Is it safe?</div>
+          <div class="faq-a">Yes. The agent only runs actions from a fixed allowlist. It never opens files, never runs shell commands, and never touches anything you didn't ask for.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">Do I need to keep it running?</div>
+          <div class="faq-a">Only when you want Nova to control your laptop. Close the window (or press Ctrl+C) to stop. Restart it anytime by double-clicking the .exe.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">Windows blocked it — what now?</div>
+          <div class="faq-a">Click "More info" → "Run anyway". This appears because the .exe isn't code-signed. It's normal for student projects and small apps.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">How do I stop it?</div>
+          <div class="faq-a">Close the black terminal window, or right-click the taskbar icon and close. You can also create an empty file called <code>nova.pause</code> on your Desktop to pause polling.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  var name = localStorage.getItem("nova-user-name") || "User";
+  var avatar = document.getElementById("avatarInitial");
+  if (avatar) avatar.textContent = (name.charAt(0) || "U").toUpperCase();
+  if (window.lucide) lucide.createIcons();
+</script>
+</body>
+</html>
