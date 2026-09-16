@@ -276,7 +276,6 @@
             <input type="checkbox" id="rememberMe">
             <span>Remember me</span>
           </label>
-          <a href="#" class="auth-link">Forgot password?</a>
         </div>
 
         <button type="submit" class="auth-submit" id="loginSubmit">
@@ -295,7 +294,7 @@
 
 <script>
 /* =========================================================
-   NOVA — Login (wired to backend, flat JSON)
+   NOVA — Login (flat JSON backend)
    ========================================================= */
 var API_BASE = "https://nova-voice-assistant-6vve.onrender.com";
 
@@ -344,7 +343,6 @@ document.getElementById("login-form").addEventListener("submit", async function 
     console.log("[NOVA Login] Response:", data);
 
     if (res.ok && data.success) {
-      // Backend returns flat JSON: { success, name, email, user_id, access_token }
       var name = data.name || data.email || "User";
       var userId = data.user_id || "";
       var token = data.access_token || "";
