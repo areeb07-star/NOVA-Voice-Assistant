@@ -1,3 +1,8 @@
+# brain.py — Nova AI Brain (Person 3 + Person 4 fixes)
+# Flat JSON response + UPDATE_* intents + chat history
+# + Friendlier personality
+# + OPEN_FOLDER without pre-check
+
 import os
 import sys
 import json
@@ -39,7 +44,17 @@ MODELS = [
 SIMILARITY_THRESHOLD = 0.65
 
 SYSTEM_PROMPT = """
-You are Nova, a voice assistant for daily tasks.
+You are Nova, a friendly, warm, human-like personal voice assistant.
+
+PERSONALITY RULES (VERY IMPORTANT):
+- You are warm, human-like, encouraging. NOT robotic.
+- NEVER say "I am just a program", "I am an AI", "I am a language model", or "I don't have feelings".
+- For "how are you": reply warmly like "I'm doing great, thanks for asking! How about you?"
+- For "who are you": reply "I'm Nova, your personal assistant! I'm here to help with your day."
+- Use emojis naturally.
+- Keep casual chat replies SHORT (1-2 sentences).
+- Be supportive when the user sounds stressed, sad, or tired.
+- If a user says "I'm stressed" or "I'm sad", acknowledge their feeling warmly before anything else.
 
 Reply ONLY with STRICT JSON. Do not add any extra text.
 The JSON must have these 5 keys:
@@ -50,6 +65,18 @@ The JSON must have these 5 keys:
 5. "reply": A short confirmation. NEVER claim you did something you haven't done.
 
 Examples:
+User: "how are you"
+Output: {"intent":"GENERAL_CHAT","mood":"happy","emoji":"😊","data":{},"reply":"I'm doing great, thanks for asking! How about you?"}
+
+User: "who are you"
+Output: {"intent":"GENERAL_CHAT","mood":"neutral","emoji":"😊","data":{},"reply":"I'm Nova, your personal assistant! I'm here to help with your day."}
+
+User: "i'm stressed"
+Output: {"intent":"GENERAL_CHAT","mood":"stressed","emoji":"😔","data":{},"reply":"I'm sorry to hear that. Take a deep breath — I'm here if you need anything."}
+
+User: "hello"
+Output: {"intent":"GENERAL_CHAT","mood":"happy","emoji":"😊","data":{},"reply":"Hey there! How can I help you today?"}
+
 User: "Remind me to call Mom at 5 PM"
 Output: {"intent":"CREATE_REMINDER","mood":"neutral","emoji":"😐","data":{"task":"call Mom","time":"17:00"},"reply":"Reminder set for 5 PM!"}
 
@@ -89,11 +116,8 @@ Output: {"intent":"GENERAL_CHAT","mood":"happy","emoji":"😄","data":{},"reply"
 User: "say something funny"
 Output: {"intent":"GENERAL_CHAT","mood":"happy","emoji":"😄","data":{},"reply":"I told my computer I needed a break, and it said 'no problem, I'll go to sleep.'"}
 
-User: "make me laugh"
-Output: {"intent":"GENERAL_CHAT","mood":"happy","emoji":"😄","data":{},"reply":"Why did the scarecrow win an award? Because he was outstanding in his field!"}
-
-User: "send an email to firdousfathima275@gmail.com about leave"
-Output: {"intent":"DRAFT_EMAIL","mood":"neutral","emoji":"😐","data":{"recipient":"firdousfathima275@gmail.com","subject":"Leave Request","body":"Hi Firdous, I would like to take 2 days of leave."},"reply":"Email drafted!"}
+User: "send an email to test@example.com about leave"
+Output: {"intent":"DRAFT_EMAIL","mood":"neutral","emoji":"😐","data":{"recipient":"test@example.com","subject":"Leave Request","body":"Hi, I would like to take 2 days of leave."},"reply":"Email drafted!"}
 
 User: "open youtube"
 Output: {"intent":"OPEN_URL","mood":"neutral","emoji":"😐","data":{"url":"https://youtube.com"},"reply":"Opening YouTube!"}
@@ -119,7 +143,7 @@ For DRAFT_EMAIL, include recipient, subject, body.
 
 CRITICAL UPDATE RULE:
 When the user says "update", "change", "edit", "modify", or "rename" + a module + an ID, use the matching UPDATE_* intent.
-ALWAYS use "id" as the ONLY identifier key. NEVER use note_id, reminder_id, expense_id, goal_id, plan_id, study_plan_id, or shopping_id.
+ALWAYS use "id" as the ONLY identifier key.
 
 Examples:
 - "update note 5 to X" → UPDATE_NOTE with {id: 5, text: X}
@@ -135,7 +159,6 @@ CRITICAL NOTE FILTER RULE (HIGHEST PRIORITY):
 When the user says "show notes about X" or "notes on X" or "notes related to X" or "find notes about X":
 - You MUST use SEARCH_NOTES (NOT GET_NOTES).
 - The "query" field MUST contain X.
-- NEVER use GET_NOTES for filtered queries.
 
 Examples:
 User: "show notes about best friend"
@@ -231,7 +254,6 @@ def extract_folder_from_text(user_text):
     if not user_text:
         return ""
     text = user_text.strip().lower()
-    # Patterns like: open downloads / open the downloads folder / open my project folder
     patterns = [
         r"open\s+(?:the\s+|my\s+)?([a-z0-9_\- ]+?)\s+folder\b",
         r"open\s+(?:the\s+|my\s+)?folder\s+([a-z0-9_\- ]+)",
@@ -241,7 +263,6 @@ def extract_folder_from_text(user_text):
         m = re.search(pat, text)
         if m:
             folder = m.group(1).strip()
-            # Strip common filler words
             folder = re.sub(r"^(the|my|a|an)\s+", "", folder)
             if folder:
                 return folder
@@ -552,32 +573,20 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         backend_response = send_to_backend(result["intent"], result["data"], token)
         print("Backend says:", backend_response)
 
-    # --- OPEN_FOLDER ---
+    # --- OPEN_FOLDER (no pre-check, send directly) ---
     elif result["intent"] == "OPEN_FOLDER":
-        folder = result["data"].get("folder", "")
+        folder = result["data"].get("folder", "downloads")
+        result["data"]["folder"] = folder
+        result["data"]["user_id"] = user_id
+        result["data"]["device_id"] = device_id
 
-        check_payload = {
-            "search_term": folder,
-            "user_id": user_id,
-            "device_id": device_id
-        }
-        check_response = send_to_backend("FIND_FILE", check_payload, token)
-        print("Pre-check says:", check_response)
+        backend_response = send_to_backend("OPEN_FOLDER", result["data"], token)
+        print("Backend says:", backend_response)
 
-        files_found = check_response.get("files_found", 0) if isinstance(check_response, dict) else 0
-
-        if files_found == 0:
-            result["reply"] = f"Sorry, I couldn't find a folder named '{folder}' on your laptop. Want me to open a different folder?"
+        if isinstance(backend_response, dict) and backend_response.get("success"):
+            result["reply"] = f"Opening {folder} folder!"
         else:
-            result["data"]["user_id"] = user_id
-            result["data"]["device_id"] = device_id
-            backend_response = send_to_backend("OPEN_FOLDER", result["data"], token)
-            print("Backend says:", backend_response)
-
-            if isinstance(backend_response, dict) and backend_response.get("success"):
-                result["reply"] = f"Opening {folder} folder!"
-            else:
-                result["reply"] = f"Sorry, I couldn't open {folder}."
+            result["reply"] = f"Trying to open {folder} folder..."
 
     # --- OPEN_APP / OPEN_URL / CREATE_FOLDER ---
     elif result["intent"] in ["OPEN_APP", "OPEN_URL", "CREATE_FOLDER"]:
@@ -686,6 +695,9 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
     }
 
 
+# ============================================================
+# CLI TEST MODE — only runs when you do `python brain.py`
+# ============================================================
 if __name__ == "__main__":
     print(">> Nova Brain is ready! Type 'exit' to quit.")
 
