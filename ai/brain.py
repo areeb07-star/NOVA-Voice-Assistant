@@ -1,11 +1,11 @@
 # brain.py — Nova AI Brain (Person 3 + Person 4 fixes)
-# Flat JSON response + UPDATE_* intents + chat history
+# Flat JSON response + UPDATE_*/DELETE_* intents + chat history
 # + Friendlier personality
 # + OPEN_FOLDER without pre-check
 # + Shopping list key fix (formatted_shopping_items)
 # + Load chat history from backend
 # + CREATE_GOAL auto-date rule
-# + Graceful DELETE fallback
+# + DELETE_* intents wired to backend
 
 import os
 import sys
@@ -62,7 +62,7 @@ PERSONALITY RULES (VERY IMPORTANT):
 
 Reply ONLY with STRICT JSON. Do not add any extra text.
 The JSON must have these 5 keys:
-1. "intent": Choose ONE: CREATE_REMINDER, CREATE_NOTE, ADD_EXPENSE, ADD_SHOPPING_ITEM, CREATE_GOAL, STUDY_PLAN, SHOW_INFORMATION, GET_NOTES, GET_REMINDERS, GET_EXPENSES, GET_SHOPPING_LIST, GET_STUDY_PLANS, GET_GOALS, GET_MOODS, GET_MEMORIES, SEARCH_NOTES, UPDATE_NOTE, UPDATE_REMINDER, UPDATE_EXPENSE, UPDATE_SHOPPING_ITEM, UPDATE_GOAL, UPDATE_STUDY_PLAN, TRANSLATE_TEXT, SUMMARIZE_TEXT, GENERATE_FLASHCARDS, LOG_MOOD, CREATE_MEMORY, SAVE_CONTEXT, DRAFT_EMAIL, OPEN_APP, OPEN_FOLDER, OPEN_URL, CREATE_FOLDER, FIND_FILE, MUTE, UNMUTE, VOLUME_UP, VOLUME_DOWN, SET_VOLUME, BRIGHTNESS_UP, BRIGHTNESS_DOWN, SET_BRIGHTNESS, TAKE_SCREENSHOT, CLOSE_APP, SPEAK_LAST, or GENERAL_CHAT.
+1. "intent": Choose ONE: CREATE_REMINDER, CREATE_NOTE, ADD_EXPENSE, ADD_SHOPPING_ITEM, CREATE_GOAL, STUDY_PLAN, SHOW_INFORMATION, GET_NOTES, GET_REMINDERS, GET_EXPENSES, GET_SHOPPING_LIST, GET_STUDY_PLANS, GET_GOALS, GET_MOODS, GET_MEMORIES, SEARCH_NOTES, UPDATE_NOTE, UPDATE_REMINDER, UPDATE_EXPENSE, UPDATE_SHOPPING_ITEM, UPDATE_GOAL, UPDATE_STUDY_PLAN, DELETE_NOTE, DELETE_REMINDER, DELETE_EXPENSE, DELETE_SHOPPING_ITEM, DELETE_GOAL, DELETE_STUDY_PLAN, TRANSLATE_TEXT, SUMMARIZE_TEXT, GENERATE_FLASHCARDS, LOG_MOOD, CREATE_MEMORY, SAVE_CONTEXT, DRAFT_EMAIL, OPEN_APP, OPEN_FOLDER, OPEN_URL, CREATE_FOLDER, FIND_FILE, MUTE, UNMUTE, VOLUME_UP, VOLUME_DOWN, SET_VOLUME, BRIGHTNESS_UP, BRIGHTNESS_DOWN, SET_BRIGHTNESS, TAKE_SCREENSHOT, CLOSE_APP, SPEAK_LAST, or GENERAL_CHAT.
 2. "mood": Detect emotion: happy, sad, stressed, excited, neutral.
 3. "emoji": Pick ONE emoji that matches the mood.
 4. "data": An object with details.
@@ -114,6 +114,24 @@ Output: {"intent":"UPDATE_GOAL","mood":"neutral","emoji":"😐","data":{"id":1,"
 User: "edit study plan 2 to Physics next Monday"
 Output: {"intent":"UPDATE_STUDY_PLAN","mood":"neutral","emoji":"😐","data":{"id":2,"subject":"Physics","exam_date":"Next Monday"},"reply":"Updating study plan..."}
 
+User: "delete note 5"
+Output: {"intent":"DELETE_NOTE","mood":"neutral","emoji":"😐","data":{"id":5},"reply":"Deleting note 5..."}
+
+User: "remove reminder 3"
+Output: {"intent":"DELETE_REMINDER","mood":"neutral","emoji":"😐","data":{"id":3},"reply":"Deleting reminder 3..."}
+
+User: "delete expense 2"
+Output: {"intent":"DELETE_EXPENSE","mood":"neutral","emoji":"😐","data":{"id":2},"reply":"Deleting expense 2..."}
+
+User: "remove shopping item 4"
+Output: {"intent":"DELETE_SHOPPING_ITEM","mood":"neutral","emoji":"😐","data":{"id":4},"reply":"Deleting shopping item 4..."}
+
+User: "delete goal 1"
+Output: {"intent":"DELETE_GOAL","mood":"neutral","emoji":"😐","data":{"id":1},"reply":"Deleting goal 1..."}
+
+User: "remove study plan 2"
+Output: {"intent":"DELETE_STUDY_PLAN","mood":"neutral","emoji":"😐","data":{"id":2},"reply":"Deleting study plan 2..."}
+
 User: "my goal is to get 100 on my maths test"
 Output: {"intent":"CREATE_GOAL","mood":"neutral","emoji":"😐","data":{"goal":"get 100 on maths test","target_date":"end of term"},"reply":"Goal added!"}
 
@@ -159,6 +177,33 @@ Examples:
 - "update note 5 to X" → UPDATE_NOTE with {id: 5, text: X}
 - "edit expense 2 to 30 food" → UPDATE_EXPENSE with {id: 2, amount: 30, category: food}
 - "edit shopping item 4 to eggs" → UPDATE_SHOPPING_ITEM with {id: 4, items: ["eggs"]}
+
+CRITICAL DELETE RULE:
+When the user says "delete", "remove", "erase", or "throw away" + a module + an ID, use the matching DELETE_* intent.
+ALWAYS use "id" as the ONLY identifier key.
+Do NOT include user_id — backend uses the authenticated user.
+
+Examples:
+User: "delete note 5"
+Output: {"intent":"DELETE_NOTE","mood":"neutral","emoji":"😐","data":{"id":5},"reply":"Deleting note 5..."}
+
+User: "remove reminder 3"
+Output: {"intent":"DELETE_REMINDER","mood":"neutral","emoji":"😐","data":{"id":3},"reply":"Deleting reminder 3..."}
+
+User: "delete expense 2"
+Output: {"intent":"DELETE_EXPENSE","mood":"neutral","emoji":"😐","data":{"id":2},"reply":"Deleting expense 2..."}
+
+User: "remove shopping item 4"
+Output: {"intent":"DELETE_SHOPPING_ITEM","mood":"neutral","emoji":"😐","data":{"id":4},"reply":"Deleting shopping item 4..."}
+
+User: "delete goal 1"
+Output: {"intent":"DELETE_GOAL","mood":"neutral","emoji":"😐","data":{"id":1},"reply":"Deleting goal 1..."}
+
+User: "remove study plan 2"
+Output: {"intent":"DELETE_STUDY_PLAN","mood":"neutral","emoji":"😐","data":{"id":2},"reply":"Deleting study plan 2..."}
+
+If the user does NOT provide an ID (e.g. "delete my python note"), ask:
+"Which note ID would you like to delete? You can check your notes first by saying 'show my notes'."
 
 NOTE: UPDATE_MOOD is NOT available. Use LOG_MOOD for new mood entries.
 
@@ -225,18 +270,6 @@ If the user does not specify a date, infer one:
 - "learn python" → "in 6 months"
 NEVER ask the user for a date. ALWAYS guess one.
 
-CRITICAL DELETE RULE:
-Nova does not support deleting notes, reminders, goals, expenses, shopping items, or study plans yet.
-If the user asks to delete/remove something, reply warmly:
-"I can't delete that yet, but you can edit it instead. Want me to update it?"
-
-Examples:
-User: "remove python note from my notes"
-Output: {"intent":"GENERAL_CHAT","mood":"neutral","emoji":"😐","data":{},"reply":"I can't delete notes yet, but you can edit them instead. Want me to update that note?"}
-
-User: "delete my shopping list"
-Output: {"intent":"GENERAL_CHAT","mood":"neutral","emoji":"😐","data":{},"reply":"I can't delete the shopping list yet, but I can edit items for you."}
-
 SAFE ACTION RULE: Only CLOSE_APP needs confirmation.
 
 GET intents support optional fields: "search", "limit", "offset", "date_from", "date_to".
@@ -249,6 +282,8 @@ VALID_INTENTS = {
     "GET_STUDY_PLANS", "GET_GOALS", "GET_MOODS", "GET_MEMORIES", "SEARCH_NOTES",
     "UPDATE_NOTE", "UPDATE_REMINDER", "UPDATE_EXPENSE", "UPDATE_SHOPPING_ITEM",
     "UPDATE_GOAL", "UPDATE_STUDY_PLAN",
+    "DELETE_NOTE", "DELETE_REMINDER", "DELETE_EXPENSE", "DELETE_SHOPPING_ITEM",
+    "DELETE_GOAL", "DELETE_STUDY_PLAN",
     "TRANSLATE_TEXT", "SUMMARIZE_TEXT", "GENERATE_FLASHCARDS",
     "LOG_MOOD", "CREATE_MEMORY", "SAVE_CONTEXT", "DRAFT_EMAIL",
     "OPEN_APP", "OPEN_FOLDER", "OPEN_URL", "CREATE_FOLDER",
@@ -339,6 +374,17 @@ def normalize_result(raw_result, user_text=""):
             normalized["intent"] = "GENERAL_CHAT"
             normalized["reply"] = "I need the ID of the item you want to update."
 
+    # DELETE_*: force "id"
+    if normalized["intent"].startswith("DELETE_"):
+        d = normalized["data"]
+        for bad_key, good_key in UPDATE_ID_KEY_ALIASES.items():
+            if bad_key in d and good_key not in d:
+                d[good_key] = d.pop(bad_key)
+        d.pop("user_id", None)
+        if "id" not in d:
+            normalized["intent"] = "GENERAL_CHAT"
+            normalized["reply"] = "Which item ID would you like me to delete? You can say 'show my notes' first to check."
+
     # OPEN_FOLDER: must always have a folder name
     if normalized["intent"] == "OPEN_FOLDER":
         d = normalized["data"]
@@ -415,7 +461,6 @@ def process_user_input(user_text, user_id="default", token=None):
 
     history = conversation_history.get(user_id, [])
 
-    # If no local history, try loading from backend
     if not history and token:
         history = load_chat_history(user_id, token, HISTORY_LIMIT)
 
@@ -495,7 +540,6 @@ def fetch_from_backend(intent, data, token):
 def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
     save_chat_message(user_id, "user", user_text, token)
 
-    # --- CONFIRMATION HANDLER (must run FIRST) ---
     pending = pending_confirmations.get(user_id)
     is_confirmation = False
 
@@ -564,6 +608,23 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         if isinstance(backend_response, dict) and not backend_response.get("success"):
             error_msg = backend_response.get("message", "unknown error")
             result["reply"] = f"Sorry, I couldn't save that: {error_msg}"
+
+    # --- DELETE_* ---
+    elif result["intent"] in [
+        "DELETE_NOTE", "DELETE_REMINDER", "DELETE_EXPENSE",
+        "DELETE_SHOPPING_ITEM", "DELETE_GOAL", "DELETE_STUDY_PLAN"
+    ]:
+        backend_response = send_to_backend(result["intent"], result["data"], token)
+        print("Backend says:", backend_response)
+
+        if isinstance(backend_response, dict):
+            if backend_response.get("success"):
+                result["reply"] = backend_response.get("message", "Deleted successfully.")
+            else:
+                err = backend_response.get("message", "not found")
+                result["reply"] = f"Sorry, I couldn't delete that: {err}"
+        else:
+            result["reply"] = "Sorry, I couldn't delete that right now."
 
     # --- DRAFT_EMAIL ---
     elif result["intent"] == "DRAFT_EMAIL":
@@ -635,7 +696,7 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         backend_response = send_to_backend(result["intent"], result["data"], token)
         print("Backend says:", backend_response)
 
-    # --- OPEN_FOLDER (no pre-check, send directly) ---
+    # --- OPEN_FOLDER ---
     elif result["intent"] == "OPEN_FOLDER":
         folder = result["data"].get("folder", "downloads")
         result["data"]["folder"] = folder
