@@ -87,6 +87,7 @@ APP_ALIASES = {
     "vs code": "code", "visual studio code": "code",
     "ms paint": "paint",
     "command prompt": "cmd", "powershell": "terminal",
+    "file explorer": "explorer", "files": "explorer",
 }
 
 REFUSE_APPS = {
@@ -102,7 +103,6 @@ ALLOWED_ACTIONS = {
     "TAKE_SCREENSHOT", "CLOSE_APP"
 }
 
-# Common folder name → real Windows folder
 COMMON_FOLDERS = {
     "downloads": "Downloads", "download": "Downloads",
     "desktop": "Desktop",
@@ -198,6 +198,7 @@ def open_app(app_name):
         app_name = APP_ALIASES[app_name]
     print(f">> open_app: '{app_name}'")
 
+    # Windows Settings URIs
     if app_name == "settings":
         try: os.startfile("ms-settings:"); return True, "Opened Settings"
         except Exception as e: return False, str(e)
@@ -223,6 +224,7 @@ def open_app(app_name):
         try: os.startfile("ms-windows-store:"); return True, "Opened Store"
         except Exception as e: return False, str(e)
 
+    # Try known ALLOWED_APPS path
     if app_name in ALLOWED_APPS:
         path = ALLOWED_APPS[app_name]
         if os.path.exists(path):
@@ -234,6 +236,7 @@ def open_app(app_name):
         else:
             print(f">> Path missing: {path}, trying dynamic search...")
 
+    # Try dynamic detection
     dynamic = find_app_path(app_name)
     if dynamic:
         try:
@@ -242,6 +245,7 @@ def open_app(app_name):
         except Exception as e:
             return False, str(e)
 
+    # Fallback to Windows start
     try:
         result = subprocess.run(["cmd", "/c", "start", "", app_name],
                                 capture_output=True, timeout=5, shell=False)
@@ -276,7 +280,7 @@ def open_url(url, browser=None):
 
 
 # ============================================================
-# OPEN FOLDER (deep search)
+# OPEN FOLDER (with explorer + startfile fallback)
 # ============================================================
 def open_folder(folder_name):
     if not folder_name:
@@ -285,29 +289,38 @@ def open_folder(folder_name):
     folder_name = folder_name.strip()
     print(f">> open_folder: '{folder_name}'")
 
-    # 1. Common folders
     lower = folder_name.lower()
     if lower in COMMON_FOLDERS:
         real = COMMON_FOLDERS[lower]
         path = os.path.join(USER_HOME, real) if real else USER_HOME
         if os.path.exists(path):
-            subprocess.Popen(f'explorer "{path}"')
-            return True, f"Opened {folder_name}"
+            try:
+                subprocess.Popen(f'explorer "{path}"')
+                return True, f"Opened {folder_name}"
+            except Exception as e:
+                print(f"explorer failed: {e}, trying startfile")
+                try:
+                    os.startfile(path)
+                    return True, f"Opened {folder_name} via startfile"
+                except Exception as e2:
+                    return False, f"Could not open: {e2}"
 
-    # 2. Common candidate locations
     candidates = [
         os.path.join(USER_HOME, folder_name),
         os.path.join(USER_HOME, "Desktop", folder_name),
         os.path.join(USER_HOME, "Downloads", folder_name),
         os.path.join(USER_HOME, "Documents", folder_name),
+        os.path.join(USER_HOME, "Pictures", folder_name),
     ]
     for path in candidates:
         if os.path.exists(path):
-            subprocess.Popen(f'explorer "{path}"')
-            return True, f"Opened {folder_name} at {path}"
+            try:
+                subprocess.Popen(f'explorer "{path}"')
+                return True, f"Opened {folder_name} at {path}"
+            except Exception as e:
+                return False, str(e)
 
-    # 3. Deep search in home
-    print(f">> Folder '{folder_name}' not in common paths, searching...")
+    print(f">> Searching for folder '{folder_name}' in home...")
     skip = {"AppData", "node_modules", ".git", "__pycache__", "venv", ".venv",
             "System Volume Information", "$Recycle.Bin"}
     for root, dirs, files in os.walk(USER_HOME):
@@ -315,8 +328,11 @@ def open_folder(folder_name):
         for d in dirs:
             if d.lower() == folder_name.lower():
                 path = os.path.join(root, d)
-                subprocess.Popen(f'explorer "{path}"')
-                return True, f"Found and opened {folder_name}"
+                try:
+                    subprocess.Popen(f'explorer "{path}"')
+                    return True, f"Found and opened {folder_name}"
+                except Exception as e:
+                    return False, str(e)
 
     return False, f"Folder '{folder_name}' not found"
 
@@ -333,8 +349,10 @@ def close_app(app_name):
         for proc in psutil.process_iter(['name']):
             try:
                 if proc.info['name'] and app_name in proc.info['name'].lower():
-                    proc.kill(); killed = True
-            except: continue
+                    proc.kill()
+                    killed = True
+            except:
+                continue
         return (True, f"Closed {app_name}") if killed else (False, f"{app_name} not running")
     except Exception as e:
         return False, str(e)
@@ -355,15 +373,13 @@ def create_folder(folder_name):
 
 
 # ============================================================
-# FIND FILE  (⭐ Person 3's fix — searches files AND folders)
+# FIND FILE (files AND folders)
 # ============================================================
 def find_file(search_term, folder=None):
-    """Search for a file OR folder. If folder given, search only that folder."""
     results = []
     if not search_term:
         return False, "No search term provided"
 
-    # Determine base path
     if folder:
         folder_key = folder.strip().lower()
         if folder_key in COMMON_FOLDERS:
@@ -385,10 +401,7 @@ def find_file(search_term, folder=None):
     term = search_term.lower()
 
     for root, dirs, files in os.walk(base):
-        # Don't descend into skipped folders
         dirs[:] = [d for d in dirs if d not in skip_folders]
-
-        # ⭐ Search BOTH files AND folders
         for name in files + dirs:
             if term in name.lower():
                 results.append(os.path.join(root, name))
@@ -486,7 +499,8 @@ def execute_action(action, data):
         elif action == "BRIGHTNESS_DOWN": return brightness_down()
         elif action == "SET_BRIGHTNESS": return set_brightness(data.get("value", 50))
         elif action == "TAKE_SCREENSHOT": return take_screenshot()
-    except Exception as e: return False, str(e)
+    except Exception as e:
+        return False, str(e)
     return False, "Unknown action"
 
 
@@ -494,13 +508,15 @@ def execute_action(action, data):
 # PARSING / POLLING / REPORTING
 # ============================================================
 def parse_response(response):
-    if not isinstance(response, dict): return None, {}, None
+    if not isinstance(response, dict):
+        return None, {}, None
     if response.get("device_action"):
         da = response["device_action"]
         action = da.get("action") or da.get("type")
         data = da.get("data", {})
         qid = da.get("queue_id")
-        if action: return action, data, qid
+        if action:
+            return action, data, qid
     if response.get("action"):
         return response["action"], response.get("data", {}), response.get("queue_id")
     return None, {}, None
@@ -525,7 +541,8 @@ def report_result(action, data, success, message, qid):
             "device_id": DEVICE_ID, "action": action, "success": success,
             "message": message, "data": data, "user_id": data.get("user_id"),
         }
-        if qid: payload["queue_id"] = qid
+        if qid:
+            payload["queue_id"] = qid
         r = requests.post(f"{BACKEND_URL}/api/agent/result", json=payload, timeout=10)
         print(f">> Reported: {r.status_code}")
     except Exception as e:
@@ -555,7 +572,8 @@ def main():
     while True:
         if os.path.exists(KILL_SWITCH):
             print(">> Kill switch active. Pausing...")
-            time.sleep(5); continue
+            time.sleep(5)
+            continue
 
         action, data, qid = poll_backend()
         if action:
