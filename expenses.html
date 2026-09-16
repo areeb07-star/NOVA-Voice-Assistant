@@ -8,318 +8,128 @@
 <script src="https://unpkg.com/lucide@latest"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: #05060f;
-    color: #f1f5f9;
-    min-height: 100vh;
-  }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #05060f; color: #f1f5f9; min-height: 100vh; }
   .dashboard-layout { display: flex; min-height: 100vh; }
 
-  /* SIDEBAR */
-  .sidebar {
-    width: 260px;
-    background: rgba(10,12,26,0.85);
-    border-right: 1px solid rgba(255,255,255,0.06);
-    padding: 20px 12px;
-    position: fixed;
-    top: 0; left: 0;
-    height: 100vh;
-    overflow-y: auto;
-  }
-  .sidebar-header {
-    display: flex; align-items: center; gap: 12px;
-    padding: 8px 12px 20px;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-    margin-bottom: 12px;
-  }
-  .sidebar-logo-img {
-    width: 40px; height: 40px;
-    border-radius: 12px;
-    box-shadow: 0 4px 16px rgba(34,211,238,0.3);
-  }
-  .sidebar-brand {
-    font-size: 1.3rem; font-weight: 700; letter-spacing: 0.05em;
-    background: linear-gradient(135deg, #22d3ee, #8b5cf6, #ec4899);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  .nav-section-label {
-    font-size: 0.7rem; font-weight: 700; color: #475569;
-    text-transform: uppercase; letter-spacing: 0.1em;
-    padding: 16px 12px 6px;
-  }
-  .nav-item {
-    display: flex; align-items: center; gap: 12px;
-    padding: 10px 12px; border-radius: 10px;
-    color: #64748b; text-decoration: none;
-    font-size: 0.9rem; font-weight: 500;
-    transition: all 0.2s ease; position: relative;
-    margin-bottom: 2px;
-  }
+  .sidebar { width: 260px; background: rgba(10,12,26,0.85); border-right: 1px solid rgba(255,255,255,0.06); padding: 20px 12px; position: fixed; top: 0; left: 0; height: 100vh; overflow-y: auto; }
+  .sidebar-header { display: flex; align-items: center; gap: 12px; padding: 8px 12px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); margin-bottom: 12px; }
+  .sidebar-logo-img { width: 40px; height: 40px; border-radius: 12px; box-shadow: 0 4px 16px rgba(34,211,238,0.3); }
+  .sidebar-brand { font-size: 1.3rem; font-weight: 700; letter-spacing: 0.05em; background: linear-gradient(135deg, #22d3ee, #8b5cf6, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .nav-section-label { font-size: 0.7rem; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.1em; padding: 16px 12px 6px; }
+  .nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; color: #64748b; text-decoration: none; font-size: 0.9rem; font-weight: 500; transition: all 0.2s ease; position: relative; margin-bottom: 2px; }
   .nav-item:hover { background: rgba(255,255,255,0.04); color: #f1f5f9; }
-  .nav-item.active {
-    background: rgba(34,211,238,0.08); color: #22d3ee; font-weight: 600;
-  }
-  .nav-item.active::before {
-    content: ''; position: absolute;
-    left: 0; top: 50%; transform: translateY(-50%);
-    width: 3px; height: 60%;
-    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
-    border-radius: 0 4px 4px 0;
-    box-shadow: 0 0 12px rgba(34,211,238,0.5);
-  }
-  .nav-icon {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 20px; height: 20px; flex-shrink: 0;
-  }
+  .nav-item.active { background: rgba(34,211,238,0.08); color: #22d3ee; font-weight: 600; }
+  .nav-item.active::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 3px; height: 60%; background: linear-gradient(135deg,#22d3ee,#8b5cf6); border-radius: 0 4px 4px 0; box-shadow: 0 0 12px rgba(34,211,238,0.5); }
+  .nav-icon { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; flex-shrink: 0; }
   .nav-icon svg { width: 18px; height: 18px; stroke-width: 1.8; }
   .nav-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 12px; }
 
-  /* MAIN */
   .main-content { flex: 1; margin-left: 260px; min-height: 100vh; }
-  .topbar {
-    height: 72px; display: flex; align-items: center; justify-content: space-between;
-    padding: 0 32px;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-    background: rgba(10,12,26,0.6);
-    backdrop-filter: blur(20px);
-    position: sticky; top: 0; z-index: 50;
-  }
+  .topbar { height: 72px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; border-bottom: 1px solid rgba(255,255,255,0.06); background: rgba(10,12,26,0.6); backdrop-filter: blur(20px); position: sticky; top: 0; z-index: 50; }
   .greeting-title { font-size: 1.1rem; font-weight: 700; color: #f1f5f9; }
   .greeting-subtitle { font-size: 0.8rem; color: #94a3b8; }
-  .topbar-right { display: flex; align-items: center; gap: 16px; }
-  .topbar-icon-btn {
-    width: 40px; height: 40px; border-radius: 10px;
-    background: transparent; border: 0; color: #94a3b8;
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
-    position: relative; transition: all 0.2s ease;
-  }
+  .topbar-right { display: flex; align-items: center; gap: 16px; position: relative; }
+  .topbar-icon-btn { width: 40px; height: 40px; border-radius: 10px; background: transparent; border: 0; color: #94a3b8; cursor: pointer; display: flex; align-items: center; justify-content: center; position: relative; transition: all 0.2s ease; }
   .topbar-icon-btn:hover { background: rgba(255,255,255,0.05); color: #f1f5f9; }
   .topbar-icon-btn svg { width: 20px; height: 20px; stroke-width: 1.8; }
-  .notification-dot {
-    position: absolute; top: 8px; right: 8px;
-    width: 8px; height: 8px; border-radius: 50%;
-    background: #22d3ee; box-shadow: 0 0 8px rgba(34,211,238,0.6);
-  }
-  .avatar {
-    width: 40px; height: 40px; border-radius: 50%;
-    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 700; font-size: 0.9rem; color: #fff;
-  }
+  .notification-dot { position: absolute; top: 8px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: #22d3ee; box-shadow: 0 0 8px rgba(34,211,238,0.6); }
+  .avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg,#22d3ee,#8b5cf6); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; color: #fff; cursor: pointer; transition: transform 0.2s ease; user-select: none; }
+  .avatar:hover { transform: scale(1.05); }
+
+  .profile-menu { position: absolute; top: calc(100% + 8px); right: 0; width: 200px; background: rgba(18,21,45,0.95); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 6px; backdrop-filter: blur(20px); box-shadow: 0 10px 40px rgba(0,0,0,0.5); z-index: 100; animation: menuFadeIn 0.15s ease; }
+  .profile-menu[hidden] { display: none; }
+  @keyframes menuFadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+  .profile-menu-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; color: #cbd5e1; text-decoration: none; font-size: 0.88rem; font-weight: 500; cursor: pointer; transition: background 0.15s ease; border: 0; background: transparent; width: 100%; text-align: left; font-family: inherit; }
+  .profile-menu-item:hover { background: rgba(255,255,255,0.06); color: #f1f5f9; }
+  .profile-menu-item svg { width: 16px; height: 16px; stroke-width: 2; color: #94a3b8; }
+  .profile-menu-item:hover svg { color: #22d3ee; }
+  .profile-menu-item.danger { color: #f87171; }
+  .profile-menu-item.danger svg { color: #f87171; }
+  .profile-menu-item.danger:hover { background: rgba(239,68,68,0.1); color: #ef4444; }
+  .profile-menu hr { border: 0; height: 1px; background: rgba(255,255,255,0.08); margin: 6px 4px; }
 
   .page-content { padding: 32px; }
 
-  /* TOOLBAR */
-  .toolbar {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 16px; margin-bottom: 24px; flex-wrap: wrap;
-  }
+  .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
   .toolbar-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  .count-badge {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 6px 14px;
-    background: rgba(34,211,238,0.08);
-    border: 1px solid rgba(34,211,238,0.2);
-    border-radius: 9999px;
-    font-size: 0.8rem; font-weight: 600;
-    color: #22d3ee;
-  }
-  .btn {
-    display: inline-flex; align-items: center; justify-content: center;
-    gap: 8px; padding: 10px 22px;
-    font-size: 0.9rem; font-weight: 600;
-    border-radius: 9999px; border: 0; cursor: pointer;
-    font-family: inherit; transition: all 0.2s ease;
-  }
-  .btn-ghost {
-    background: rgba(255,255,255,0.04);
-    color: #94a3b8;
-    border: 1px solid rgba(255,255,255,0.08);
-  }
-  .btn-ghost:hover {
-    background: rgba(255,255,255,0.07);
-    color: #f1f5f9;
-    border-color: rgba(34,211,238,0.3);
-  }
+  .count-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; background: rgba(34,211,238,0.08); border: 1px solid rgba(34,211,238,0.2); border-radius: 9999px; font-size: 0.8rem; font-weight: 600; color: #22d3ee; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 22px; font-size: 0.9rem; font-weight: 600; border-radius: 9999px; border: 0; cursor: pointer; font-family: inherit; transition: all 0.2s ease; }
+  .btn-ghost { background: rgba(255,255,255,0.04); color: #94a3b8; border: 1px solid rgba(255,255,255,0.08); }
+  .btn-ghost:hover { background: rgba(255,255,255,0.07); color: #f1f5f9; border-color: rgba(34,211,238,0.3); }
   .btn-ghost svg { width: 16px; height: 16px; stroke-width: 2; }
 
-  /* SUMMARY CARDS */
-  .summary-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 16px;
-    margin-bottom: 32px;
-  }
-  .summary-card {
-    background: rgba(18,21,45,0.65);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 16px;
-    padding: 20px;
-    position: relative;
-    overflow: hidden;
-    transition: all 0.3s ease;
-  }
-  .summary-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-    background: linear-gradient(135deg,#22d3ee,#8b5cf6);
-  }
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 32px; }
+  .summary-card { background: rgba(18,21,45,0.65); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 20px; position: relative; overflow: hidden; transition: all 0.3s ease; }
+  .summary-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(135deg,#22d3ee,#8b5cf6); }
   .summary-card.green::before { background: linear-gradient(135deg,#10b981,#22d3ee); }
   .summary-card.violet::before { background: linear-gradient(135deg,#8b5cf6,#ec4899); }
-  .summary-card:hover {
-    transform: translateY(-4px);
-    border-color: rgba(255,255,255,0.1);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
-  }
-  .summary-label {
-    font-size: 0.7rem; font-weight: 700;
-    color: #64748b;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 12px;
-    display: flex; align-items: center; gap: 8px;
-  }
+  .summary-card:hover { transform: translateY(-4px); border-color: rgba(255,255,255,0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+  .summary-label { font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
   .summary-label svg { width: 14px; height: 14px; stroke-width: 2; }
-  .summary-value {
-    font-size: 2rem; font-weight: 800;
-    color: #f1f5f9;
-    line-height: 1;
-    margin-bottom: 6px;
-  }
-  .summary-sub {
-    font-size: 0.78rem;
-    color: #64748b;
-  }
+  .summary-value { font-size: 2rem; font-weight: 800; color: #f1f5f9; line-height: 1; margin-bottom: 6px; }
+  .summary-sub { font-size: 0.78rem; color: #64748b; }
 
-  /* CATEGORY BREAKDOWN */
-  .category-section {
-    margin-bottom: 32px;
-  }
-  .category-title {
-    font-size: 1rem; font-weight: 700;
-    margin-bottom: 16px;
-    color: #f1f5f9;
-  }
-  .category-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 12px;
-  }
-  .category-card {
-    background: rgba(18,21,45,0.65);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 12px;
-    padding: 16px;
-    text-align: center;
-    transition: all 0.3s ease;
-  }
-  .category-card:hover {
-    transform: translateY(-3px);
-    border-color: rgba(255,255,255,0.1);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
-  }
-  .category-icon {
-    width: 40px; height: 40px;
-    border-radius: 10px;
-    background: rgba(34,211,238,0.08);
-    border: 1px solid rgba(34,211,238,0.15);
-    display: flex; align-items: center; justify-content: center;
-    color: #22d3ee;
-    margin: 0 auto 10px;
-  }
+  .category-section { margin-bottom: 32px; }
+  .category-title { font-size: 1rem; font-weight: 700; margin-bottom: 16px; color: #f1f5f9; }
+  .category-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+  .category-card { background: rgba(18,21,45,0.65); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 16px; text-align: center; transition: all 0.3s ease; }
+  .category-card:hover { transform: translateY(-3px); border-color: rgba(255,255,255,0.1); box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
+  .category-icon { width: 40px; height: 40px; border-radius: 10px; background: rgba(34,211,238,0.08); border: 1px solid rgba(34,211,238,0.15); display: flex; align-items: center; justify-content: center; color: #22d3ee; margin: 0 auto 10px; }
   .category-icon svg { width: 18px; height: 18px; stroke-width: 1.8; }
-  .category-name {
-    font-size: 0.75rem;
-    color: #64748b;
-    margin-bottom: 6px;
-    text-transform: capitalize;
-  }
-  .category-amount {
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: #f1f5f9;
-  }
+  .category-name { font-size: 0.75rem; color: #64748b; margin-bottom: 6px; text-transform: capitalize; }
+  .category-amount { font-size: 1.05rem; font-weight: 700; color: #f1f5f9; }
 
-  /* EXPENSE LIST */
-  .list-section-title {
-    font-size: 1rem; font-weight: 700;
-    margin-bottom: 16px;
-    color: #f1f5f9;
-  }
-  .expense-list {
-    display: flex; flex-direction: column; gap: 10px;
-  }
-  .expense-item {
-    display: flex; align-items: center; gap: 16px;
-    padding: 16px 20px;
-    background: rgba(18,21,45,0.65);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 14px;
-    transition: all 0.3s ease;
-  }
-  .expense-item:hover {
-    border-color: rgba(255,255,255,0.1);
-    transform: translateX(4px);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-  }
-  .expense-icon {
-    width: 44px; height: 44px;
-    border-radius: 12px;
-    background: rgba(34,211,238,0.08);
-    border: 1px solid rgba(34,211,238,0.15);
-    display: flex; align-items: center; justify-content: center;
-    color: #22d3ee;
-    flex-shrink: 0;
-  }
+  .list-section-title { font-size: 1rem; font-weight: 700; margin-bottom: 16px; color: #f1f5f9; }
+  .expense-list { display: flex; flex-direction: column; gap: 10px; }
+  .expense-item { display: flex; align-items: center; gap: 16px; padding: 16px 20px; background: rgba(18,21,45,0.65); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; transition: all 0.3s ease; }
+  .expense-item:hover { border-color: rgba(255,255,255,0.1); transform: translateX(4px); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+  .expense-icon { width: 44px; height: 44px; border-radius: 12px; background: rgba(34,211,238,0.08); border: 1px solid rgba(34,211,238,0.15); display: flex; align-items: center; justify-content: center; color: #22d3ee; flex-shrink: 0; }
   .expense-icon svg { width: 20px; height: 20px; stroke-width: 1.8; }
-
   .expense-content { flex: 1; min-width: 0; }
-  .expense-category-name {
-    font-size: 0.95rem; font-weight: 600;
-    color: #f1f5f9; margin-bottom: 4px;
-    text-transform: capitalize;
-  }
-  .expense-date {
-    font-size: 0.78rem;
-    color: #64748b;
-  }
-  .expense-amount {
-    font-size: 1.1rem;
-    font-weight: 800;
-    color: #f1f5f9;
-    white-space: nowrap;
-  }
+  .expense-category-name { font-size: 0.95rem; font-weight: 600; color: #f1f5f9; margin-bottom: 4px; text-transform: capitalize; }
+  .expense-date { font-size: 0.78rem; color: #64748b; }
+  .expense-amount { font-size: 1.1rem; font-weight: 800; color: #f1f5f9; white-space: nowrap; }
   .expense-amount::before { content: "₹"; opacity: 0.7; margin-right: 2px; }
 
-  /* STATES */
-  .state-box {
-    padding: 48px 32px;
-    text-align: center;
-    color: #64748b;
-    font-size: 0.95rem;
-  }
-  .state-box .state-icon {
-    font-size: 3rem; opacity: 0.5;
-    margin-bottom: 16px;
-  }
+  /* EDIT BUTTON */
+  .edit-btn { width: 36px; height: 36px; border-radius: 10px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: #94a3b8; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease; opacity: 0; flex-shrink: 0; }
+  .expense-item:hover .edit-btn { opacity: 1; }
+  .edit-btn:hover { background: rgba(34,211,238,0.1); border-color: rgba(34,211,238,0.3); color: #22d3ee; transform: scale(1.05); }
+  .edit-btn svg { width: 16px; height: 16px; stroke-width: 2; }
+
+  .state-box { padding: 48px 32px; text-align: center; color: #64748b; font-size: 0.95rem; }
+  .state-box .state-icon { font-size: 3rem; opacity: 0.5; margin-bottom: 16px; }
   .state-box.error { color: #ef4444; }
-  .state-box.loading {
-    display: flex; flex-direction: column; align-items: center; gap: 16px;
-  }
-  .spinner {
-    width: 36px; height: 36px;
-    border: 3px solid rgba(255,255,255,0.08);
-    border-top-color: #22d3ee;
-    border-radius: 50%;
-    animation: spin 0.9s linear infinite;
-  }
+  .state-box.loading { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  .spinner { width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.08); border-top-color: #22d3ee; border-radius: 50%; animation: spin 0.9s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* RESPONSIVE */
+  /* MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; opacity: 0; visibility: hidden; transition: all 0.3s ease; }
+  .modal-overlay.active { opacity: 1; visibility: visible; }
+  .modal { background: #0a0c1a; border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; transform: translateY(20px); transition: transform 0.3s ease; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+  .modal-overlay.active .modal { transform: translateY(0); }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .modal-title { font-size: 1.15rem; font-weight: 700; color: #f1f5f9; }
+  .modal-close { width: 36px; height: 36px; border-radius: 8px; background: transparent; border: 0; color: #64748b; cursor: pointer; font-size: 1.2rem; transition: all 0.2s ease; }
+  .modal-close:hover { background: rgba(239,68,68,0.1); color: #ef4444; }
+  .modal-body { padding: 24px; }
+  .modal-footer { display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 20px 24px; border-top: 1px solid rgba(255,255,255,0.06); }
+  .form-group { margin-bottom: 20px; }
+  .form-group:last-child { margin-bottom: 0; }
+  .form-label { display: block; font-size: 0.85rem; font-weight: 600; color: #94a3b8; margin-bottom: 8px; }
+  .form-input, .form-select { width: 100%; padding: 12px 16px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: #f1f5f9; font-size: 0.95rem; font-family: inherit; outline: none; transition: all 0.2s ease; }
+  .form-input:focus, .form-select:focus { border-color: #22d3ee; background: rgba(34,211,238,0.05); box-shadow: 0 0 0 3px rgba(34,211,238,0.1); }
+  .form-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 1rem center; padding-right: 2.5rem; cursor: pointer; }
+  .form-select option { background: #0a0c1a; color: #f1f5f9; }
+  .btn-primary { background: linear-gradient(135deg,#22d3ee,#8b5cf6); color: #fff; padding: 10px 24px; border-radius: 9999px; border: 0; cursor: pointer; font-weight: 600; font-size: 0.9rem; font-family: inherit; transition: all 0.2s ease; }
+  .btn-primary:hover:not(:disabled) { box-shadow: 0 6px 30px rgba(34,211,238,0.4); transform: translateY(-2px); }
+  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+  .btn-secondary { background: transparent; color: #94a3b8; padding: 10px 24px; border-radius: 9999px; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; font-weight: 600; font-size: 0.9rem; font-family: inherit; transition: all 0.2s ease; }
+  .btn-secondary:hover { background: rgba(255,255,255,0.04); color: #f1f5f9; }
+
+  .toast-container { position: fixed; top: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+
   @media (max-width: 768px) {
     .sidebar { transform: translateX(-100%); }
     .main-content { margin-left: 0; }
@@ -327,6 +137,7 @@
     .toolbar { flex-direction: column; align-items: stretch; }
     .toolbar-left { flex-direction: column; align-items: stretch; }
     .summary-value { font-size: 1.6rem; }
+    .edit-btn { opacity: 1; }
   }
 </style>
 </head>
@@ -341,38 +152,18 @@
     </div>
     <nav>
       <div class="nav-section-label">Main</div>
-      <a href="dashboard.html" class="nav-item">
-        <i data-lucide="layout-dashboard" class="nav-icon"></i><span>Dashboard</span>
-      </a>
-      <a href="#" class="nav-item">
-        <i data-lucide="sparkles" class="nav-icon"></i><span>Assistant</span>
-      </a>
+      <a href="dashboard.html" class="nav-item"><i data-lucide="layout-dashboard" class="nav-icon"></i><span>Dashboard</span></a>
+      <a href="assistant.html" class="nav-item"><i data-lucide="sparkles" class="nav-icon"></i><span>Assistant</span></a>
       <div class="nav-section-label">Organize</div>
-      <a href="reminders.html" class="nav-item">
-        <i data-lucide="clock" class="nav-icon"></i><span>Reminders</span>
-      </a>
-      <a href="notes.html" class="nav-item">
-        <i data-lucide="file-text" class="nav-icon"></i><span>Notes</span>
-      </a>
-      <a href="shopping.html" class="nav-item">
-        <i data-lucide="shopping-cart" class="nav-icon"></i><span>Shopping</span>
-      </a>
-      <a href="expenses.html" class="nav-item active">
-        <i data-lucide="wallet" class="nav-icon"></i><span>Expenses</span>
-      </a>
-      <a href="study_plans.html" class="nav-item">
-        <i data-lucide="book-open" class="nav-icon"></i><span>Study Plans</span>
-      </a>
-      <a href="goals.html" class="nav-item">
-        <i data-lucide="target" class="nav-icon"></i><span>Goals</span>
-      </a>
+      <a href="reminders.html" class="nav-item"><i data-lucide="clock" class="nav-icon"></i><span>Reminders</span></a>
+      <a href="notes.html" class="nav-item"><i data-lucide="file-text" class="nav-icon"></i><span>Notes</span></a>
+      <a href="shopping.html" class="nav-item"><i data-lucide="shopping-cart" class="nav-icon"></i><span>Shopping</span></a>
+      <a href="expenses.html" class="nav-item active"><i data-lucide="wallet" class="nav-icon"></i><span>Expenses</span></a>
+      <a href="study_plans.html" class="nav-item"><i data-lucide="book-open" class="nav-icon"></i><span>Study Plans</span></a>
+      <a href="goals.html" class="nav-item"><i data-lucide="target" class="nav-icon"></i><span>Goals</span></a>
       <div class="nav-divider"></div>
-      <a href="profile.html" class="nav-item">
-        <i data-lucide="settings" class="nav-icon"></i><span>Profile</span>
-      </a>
-      <a href="login.html" class="nav-item" id="logoutBtn">
-        <i data-lucide="log-out" class="nav-icon"></i><span>Logout</span>
-      </a>
+      <a href="profile.html" class="nav-item"><i data-lucide="settings" class="nav-icon"></i><span>Profile</span></a>
+      <a href="login.html" class="nav-item" id="sidebarLogout"><i data-lucide="log-out" class="nav-icon"></i><span>Logout</span></a>
     </nav>
   </aside>
 
@@ -383,11 +174,14 @@
         <div class="greeting-subtitle">Understand your spending.</div>
       </div>
       <div class="topbar-right">
-        <button class="topbar-icon-btn" id="notifBtn">
-          <i data-lucide="bell"></i>
-          <span class="notification-dot"></span>
-        </button>
+        <button class="topbar-icon-btn" id="notifBtn"><i data-lucide="bell"></i><span class="notification-dot"></span></button>
         <div class="avatar" id="avatarInitial">U</div>
+        <div class="profile-menu" id="profileMenu" hidden>
+          <a href="profile.html" class="profile-menu-item"><i data-lucide="user"></i> Profile</a>
+          <a href="profile.html#settings" class="profile-menu-item"><i data-lucide="settings"></i> Settings</a>
+          <hr>
+          <button class="profile-menu-item danger" id="logoutMenuBtn" type="button"><i data-lucide="log-out"></i> Logout</button>
+        </div>
       </div>
     </header>
 
@@ -400,43 +194,32 @@
             <span id="countText">Loading...</span>
           </div>
         </div>
-        <button class="btn btn-ghost" id="refreshBtn">
-          <i data-lucide="refresh-cw"></i> Refresh
-        </button>
+        <button class="btn btn-ghost" id="refreshBtn"><i data-lucide="refresh-cw"></i> Refresh</button>
       </div>
 
-      <!-- Summary cards -->
       <div class="summary-grid">
         <div class="summary-card">
-          <div class="summary-label">
-            <i data-lucide="trending-up"></i> Total Spent
-          </div>
+          <div class="summary-label"><i data-lucide="trending-up"></i> Total Spent</div>
           <div class="summary-value" id="totalSpent">₹0</div>
           <div class="summary-sub" id="totalCount">0 transactions</div>
         </div>
         <div class="summary-card green">
-          <div class="summary-label">
-            <i data-lucide="calendar"></i> This Month
-          </div>
+          <div class="summary-label"><i data-lucide="calendar"></i> This Month</div>
           <div class="summary-value" id="monthSpent">₹0</div>
           <div class="summary-sub">Current month</div>
         </div>
         <div class="summary-card violet">
-          <div class="summary-label">
-            <i data-lucide="clock"></i> Today
-          </div>
+          <div class="summary-label"><i data-lucide="clock"></i> Today</div>
           <div class="summary-value" id="todaySpent">₹0</div>
           <div class="summary-sub">Today's total</div>
         </div>
       </div>
 
-      <!-- Category breakdown -->
       <div class="category-section" id="categorySection" style="display:none;">
         <div class="category-title">By Category</div>
         <div class="category-grid" id="categoryGrid"></div>
       </div>
 
-      <!-- Expense list -->
       <div class="list-section-title">Recent Expenses</div>
       <div class="expense-list" id="data-list"></div>
 
@@ -444,16 +227,43 @@
   </div>
 </div>
 
-<script>
-/* =========================================================
-   NOVA — Expenses (wired to POST /api/assistant)
-   Intent: GET_EXPENSES
-   Response: { success, count, expenses: [{ id, amount, category, created_at }] }
-   ========================================================= */
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">Edit Expense</h3>
+      <button class="modal-close" id="modalCloseBtn" type="button">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Amount (₹)</label>
+        <input type="number" id="editAmount" class="form-input" placeholder="0" min="0" step="0.01">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Category</label>
+        <select id="editCategory" class="form-select">
+          <option value="Food">Food</option>
+          <option value="Travel">Travel</option>
+          <option value="Education">Education</option>
+          <option value="Shopping">Shopping</option>
+          <option value="Bills">Bills</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="modalCancelBtn" type="button">Cancel</button>
+      <button class="btn-primary" id="modalSaveBtn" type="button">Save Changes</button>
+    </div>
+  </div>
+</div>
 
+<script>
 var API_BASE = "https://nova-voice-assistant-6vve.onrender.com";
 var INTENT   = "GET_EXPENSES";
 var DATA_KEY = "expenses";
+var lastItems = [];
+var editingId = null;
 
 document.addEventListener("DOMContentLoaded", function () {
   var name = localStorage.getItem("nova-user-name") || "User";
@@ -462,39 +272,24 @@ document.addEventListener("DOMContentLoaded", function () {
 
   if (window.lucide) lucide.createIcons();
 
-  var logoutBtn = document.getElementById("logoutBtn");
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", function (e) {
-      e.preventDefault();
-      localStorage.removeItem("nova-auth-token");
-      localStorage.removeItem("nova-user-name");
-      localStorage.removeItem("nova-user-email");
-      localStorage.removeItem("nova-user-id");
-      window.location.href = "login.html";
-    });
-  }
+  initLogout();
+  initProfileMenu();
+  initEditModal();
 
   var notifBtn = document.getElementById("notifBtn");
-  if (notifBtn) {
-    notifBtn.addEventListener("click", function () {
-      showToast("info", "🔔 Notifications", "You have 3 new notifications.");
-    });
-  }
+  if (notifBtn) notifBtn.addEventListener("click", function () {
+    showToast("info", "🔔 Notifications", "You have 3 new notifications.");
+  });
 
   var refreshBtn = document.getElementById("refreshBtn");
-  if (refreshBtn) {
-    refreshBtn.addEventListener("click", loadData);
-  }
+  if (refreshBtn) refreshBtn.addEventListener("click", loadData);
 
   loadData();
 });
 
 async function loadData() {
-  var token = localStorage.getItem("nova-auth-token");
-  if (!token) {
-    window.location.href = "login.html";
-    return;
-  }
+  var token = localStorage.getItem("nova-auth-token") || localStorage.getItem("access_token");
+  if (!token) { window.location.href = "login.html"; return; }
 
   var container = document.getElementById("data-list");
   var countText = document.getElementById("countText");
@@ -506,15 +301,13 @@ async function loadData() {
   try {
     var res = await fetch(API_BASE + "/api/assistant", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + token
-      },
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
       body: JSON.stringify({ intent: INTENT, data: {} })
     });
 
     if (res.status === 401) {
       localStorage.removeItem("nova-auth-token");
+      localStorage.removeItem("access_token");
       window.location.href = "login.html";
       return;
     }
@@ -528,64 +321,43 @@ async function loadData() {
     }
 
     var items = data[DATA_KEY] || [];
+    lastItems = items;
 
-    if (countText) {
-      countText.textContent = items.length + (items.length === 1 ? " expense" : " expenses");
-    }
+    if (countText) countText.textContent = items.length + (items.length === 1 ? " expense" : " expenses");
 
-    // Compute summaries
     updateSummaries(items);
 
     if (items.length === 0) {
-      container.innerHTML =
-        '<div class="state-box">' +
-          '<div class="state-icon">💰</div>' +
-          '<div>No expenses yet. Ask NOVA to log one!</div>' +
-        '</div>';
+      container.innerHTML = '<div class="state-box"><div class="state-icon">💰</div><div>No expenses yet. Ask NOVA to log one!</div></div>';
       var catSec = document.getElementById("categorySection");
       if (catSec) catSec.style.display = "none";
       return;
     }
 
-    // Render categories
     renderCategories(items);
 
-    // Render list
     var html = "";
-    items.forEach(function (e) {
-      html += renderRow(e);
-    });
+    items.forEach(function (e) { html += renderRow(e); });
     container.innerHTML = html;
 
     if (window.lucide) lucide.createIcons();
+    attachEditListeners();
   } catch (err) {
     console.error("Load error:", err);
-    container.innerHTML =
-      '<div class="state-box error">' +
-        '⚠️ Could not connect to server.<br>' +
-        '<span style="font-size:0.85rem;color:#94a3b8;">If the server is cold, wait 30 seconds and click Refresh.</span>' +
-      '</div>';
+    container.innerHTML = '<div class="state-box error">⚠️ Could not connect to server.<br><span style="font-size:0.85rem;color:#94a3b8;">If the server is cold, wait 30 seconds and click Refresh.</span></div>';
     if (countText) countText.textContent = "Offline";
   }
 }
 
-/* ---------- Summaries ---------- */
 function updateSummaries(items) {
-  var total = 0;
-  var monthTotal = 0;
-  var todayTotal = 0;
-
+  var total = 0, monthTotal = 0, todayTotal = 0;
   var now = new Date();
-  var thisMonthPrefix = now.getFullYear() + "-" +
-                        String(now.getMonth() + 1).padStart(2, "0");
-  var todayPrefix = now.getFullYear() + "-" +
-                    String(now.getMonth() + 1).padStart(2, "0") + "-" +
-                    String(now.getDate()).padStart(2, "0");
+  var thisMonthPrefix = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
+  var todayPrefix = thisMonthPrefix + "-" + String(now.getDate()).padStart(2, "0");
 
   items.forEach(function (e) {
     var amt = Number(e.amount) || 0;
     total += amt;
-
     var created = e.created_at || "";
     if (created.indexOf(thisMonthPrefix) === 0) monthTotal += amt;
     if (created.indexOf(todayPrefix) === 0) todayTotal += amt;
@@ -594,15 +366,13 @@ function updateSummaries(items) {
   document.getElementById("totalSpent").textContent = "₹" + formatNumber(total);
   document.getElementById("monthSpent").textContent = "₹" + formatNumber(monthTotal);
   document.getElementById("todaySpent").textContent = "₹" + formatNumber(todayTotal);
-  document.getElementById("totalCount").textContent =
-    items.length + (items.length === 1 ? " transaction" : " transactions");
+  document.getElementById("totalCount").textContent = items.length + (items.length === 1 ? " transaction" : " transactions");
 }
 
 function formatNumber(n) {
   return Number(n).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 }
 
-/* ---------- Category breakdown ---------- */
 function renderCategories(items) {
   var section = document.getElementById("categorySection");
   var grid = document.getElementById("categoryGrid");
@@ -615,15 +385,9 @@ function renderCategories(items) {
   });
 
   var cats = Object.keys(byCat);
-  if (cats.length === 0) {
-    section.style.display = "none";
-    return;
-  }
+  if (cats.length === 0) { section.style.display = "none"; return; }
 
-  var iconMap = {
-    "Food": "utensils", "Travel": "bus", "Education": "graduation-cap",
-    "Shopping": "shopping-bag", "Bills": "receipt", "Other": "package"
-  };
+  var iconMap = { "Food": "utensils", "Travel": "bus", "Education": "graduation-cap", "Shopping": "shopping-bag", "Bills": "receipt", "Other": "package" };
 
   var html = "";
   cats.forEach(function (cat) {
@@ -639,16 +403,13 @@ function renderCategories(items) {
   section.style.display = "block";
 }
 
-/* ---------- Row template ---------- */
 function renderRow(e) {
   var amount = Number(e.amount) || 0;
   var category = e.category || "Other";
   var created = e.created_at || "";
+  var id = e.id || "";
 
-  var iconMap = {
-    "Food": "utensils", "Travel": "bus", "Education": "graduation-cap",
-    "Shopping": "shopping-bag", "Bills": "receipt", "Other": "package"
-  };
+  var iconMap = { "Food": "utensils", "Travel": "bus", "Education": "graduation-cap", "Shopping": "shopping-bag", "Bills": "receipt", "Other": "package" };
   var icon = iconMap[category] || "package";
 
   return (
@@ -659,18 +420,101 @@ function renderRow(e) {
         (created ? '<div class="expense-date">' + escapeHtml(created) + '</div>' : '') +
       '</div>' +
       '<div class="expense-amount">' + formatNumber(amount) + '</div>' +
+      (id ?
+        '<button class="edit-btn" data-edit-id="' + id + '" title="Edit">' +
+          '<i data-lucide="pencil"></i>' +
+        '</button>' : ''
+      ) +
     '</div>'
   );
 }
 
+function attachEditListeners() {
+  document.querySelectorAll("[data-edit-id]").forEach(function (btn) {
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      openEditModal(Number(btn.dataset.editId));
+    });
+  });
+}
+
+function initEditModal() {
+  document.getElementById("modalCloseBtn").addEventListener("click", closeEditModal);
+  document.getElementById("modalCancelBtn").addEventListener("click", closeEditModal);
+  document.getElementById("modalSaveBtn").addEventListener("click", saveEdit);
+  document.getElementById("editModal").addEventListener("click", function (e) {
+    if (e.target === this) closeEditModal();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") {
+      var m = document.getElementById("editModal");
+      if (m.classList.contains("active")) closeEditModal();
+    }
+  });
+}
+
+function openEditModal(id) {
+  var item = lastItems.find(function (x) { return x.id === id; });
+  if (!item) return;
+  editingId = id;
+  document.getElementById("editAmount").value = item.amount || "";
+  document.getElementById("editCategory").value = item.category || "Other";
+  document.getElementById("editModal").classList.add("active");
+  document.body.style.overflow = "hidden";
+  setTimeout(function () { document.getElementById("editAmount").focus(); }, 100);
+}
+
+function closeEditModal() {
+  document.getElementById("editModal").classList.remove("active");
+  document.body.style.overflow = "";
+  editingId = null;
+}
+
+async function saveEdit() {
+  if (!editingId) return;
+
+  var amount = parseFloat(document.getElementById("editAmount").value);
+  var category = document.getElementById("editCategory").value;
+
+  if (!amount || amount <= 0) { showToast("warning", "Valid amount is required", ""); return; }
+  if (!category) { showToast("warning", "Category is required", ""); return; }
+
+  var saveBtn = document.getElementById("modalSaveBtn");
+  saveBtn.disabled = true;
+  saveBtn.textContent = "Saving...";
+
+  try {
+    var token = localStorage.getItem("nova-auth-token") || localStorage.getItem("access_token");
+    var res = await fetch(API_BASE + "/api/assistant", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+      body: JSON.stringify({
+        intent: "UPDATE_EXPENSE",
+        data: { id: editingId, amount: amount, category: category }
+      })
+    });
+
+    var data = await res.json();
+
+    if (data.success) {
+      closeEditModal();
+      showToast("success", "Updated", "Expense saved successfully.");
+      loadData();
+    } else {
+      showToast("error", "Update failed", data.message || "Please try again.");
+    }
+  } catch (err) {
+    console.error(err);
+    showToast("error", "Network error", "Could not connect to server.");
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = "Save Changes";
+  }
+}
+
 function escapeHtml(str) {
   if (str === null || str === undefined) return "";
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+  return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
 function showToast(type, title, message) {
@@ -678,20 +522,40 @@ function showToast(type, title, message) {
   if (!container) {
     container = document.createElement("div");
     container.className = "toast-container";
-    container.style.cssText = "position:fixed;top:20px;right:20px;z-index:2000;display:flex;flex-direction:column;gap:8px;pointer-events:none;";
     document.body.appendChild(container);
   }
   var icons = { success: "✅", error: "❌", info: "ℹ️", warning: "⚠️" };
   var t = document.createElement("div");
   t.style.cssText = "display:flex;align-items:center;gap:12px;padding:14px 20px;background:#0a0c1a;border:1px solid rgba(255,255,255,0.1);border-radius:12px;min-width:280px;max-width:380px;pointer-events:auto;box-shadow:0 10px 40px rgba(0,0,0,0.4);color:#f1f5f9;font-size:0.9rem;";
-  t.innerHTML =
-    '<span>' + (icons[type] || "ℹ️") + '</span>' +
-    '<div>' +
-      '<div style="font-weight:600;">' + title + '</div>' +
-      (message ? '<div style="font-size:0.8rem;color:#94a3b8;margin-top:2px;">' + message + '</div>' : '') +
-    '</div>';
+  t.innerHTML = '<span>' + (icons[type] || "ℹ️") + '</span><div><div style="font-weight:600;">' + title + '</div>' + (message ? '<div style="font-size:0.8rem;color:#94a3b8;margin-top:2px;">' + message + '</div>' : '') + '</div>';
   container.appendChild(t);
   setTimeout(function () { t.remove(); }, 4000);
+}
+
+function initLogout() {
+  function doLogout() {
+    ["nova-auth-token","access_token","nova-user-name","nova-user-email","nova-user-id","user_id"].forEach(function (k) {
+      localStorage.removeItem(k);
+    });
+    window.location.href = "login.html";
+  }
+  var s = document.getElementById("sidebarLogout");
+  if (s) s.addEventListener("click", function (e) { e.preventDefault(); doLogout(); });
+  var m = document.getElementById("logoutMenuBtn");
+  if (m) m.addEventListener("click", doLogout);
+}
+
+function initProfileMenu() {
+  var avatarCircle = document.getElementById("avatarInitial");
+  var profileMenu = document.getElementById("profileMenu");
+  if (!avatarCircle || !profileMenu) return;
+  avatarCircle.addEventListener("click", function (e) { e.stopPropagation(); profileMenu.hidden = !profileMenu.hidden; });
+  document.addEventListener("click", function (e) {
+    if (!profileMenu.hidden && !profileMenu.contains(e.target) && e.target !== avatarCircle) profileMenu.hidden = true;
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") profileMenu.hidden = true;
+  });
 }
 </script>
 </body>
