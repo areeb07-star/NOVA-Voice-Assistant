@@ -2,6 +2,7 @@
 # Flat JSON response + UPDATE_* intents + chat history
 # + Friendlier personality
 # + OPEN_FOLDER without pre-check
+# + Shopping list key fix + history load from backend
 
 import os
 import sys
@@ -32,7 +33,7 @@ BACKEND_URL = "https://nova-voice-assistant-6vve.onrender.com"
 DEFAULT_DEVICE_ID = "azzam-laptop-001"
 
 conversation_history = {}
-HISTORY_LIMIT = 6
+HISTORY_LIMIT = 10          # was 6 — bumped for better memory
 
 pending_confirmations = {}
 
@@ -354,12 +355,42 @@ def save_chat_message(user_id, role, content, token):
         pass
 
 
-def process_user_input(user_text, user_id="default"):
+def load_chat_history(user_id, token, limit=HISTORY_LIMIT):
+    """Fetch recent chat history from backend when local cache is empty."""
+    if not token or not user_id:
+        return []
+    try:
+        r = requests.post(
+            f"{BACKEND_URL}/api/chat-history/get",
+            json={"user_id": user_id, "limit": limit},
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=3
+        )
+        data = r.json()
+        messages = data.get("messages") or data.get("history") or data.get("chat_history") or []
+
+        history = []
+        for m in messages:
+            if isinstance(m, dict) and "role" in m and "content" in m:
+                history.append({"role": m["role"], "content": m["content"]})
+        return history[-limit:]
+    except Exception as e:
+        print(f"[load_chat_history failed: {e}]")
+        return []
+
+
+def process_user_input(user_text, user_id="default", token=None):
     today = datetime.now().strftime("%B %d, %Y")
 
     history = conversation_history.get(user_id, [])
+
+    # If no local history, try loading from backend
+    if not history and token:
+        history = load_chat_history(user_id, token, HISTORY_LIMIT)
+
     history.append({"role": "user", "content": user_text})
     history = history[-HISTORY_LIMIT:]
+    conversation_history[user_id] = history
 
     last_error = None
     for client in clients:
@@ -462,9 +493,9 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
             }
         else:
             pending_confirmations.pop(user_id, None)
-            result = process_user_input(user_text, user_id)
+            result = process_user_input(user_text, user_id, token)
     else:
-        result = process_user_input(user_text, user_id)
+        result = process_user_input(user_text, user_id, token)
 
     if result["intent"] == "SPEAK_LAST":
         history = conversation_history.get(user_id, [])
@@ -655,7 +686,7 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         if fetched_data.get("success"):
             formatted = (fetched_data.get("formatted_notes") or
                          fetched_data.get("formatted_reminders") or
-                         fetched_data.get("formatted_items") or
+                         fetched_data.get("formatted_shopping_items") or   # ✅ FIXED
                          fetched_data.get("formatted_expenses") or
                          fetched_data.get("formatted_goals") or
                          fetched_data.get("formatted_study_plans") or
