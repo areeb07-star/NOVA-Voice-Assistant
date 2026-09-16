@@ -10,7 +10,6 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #05060f; color: #f1f5f9; min-height: 100vh; }
   .dashboard-layout { display: flex; min-height: 100vh; }
-
   .sidebar { width: 260px; background: rgba(10,12,26,0.85); border-right: 1px solid rgba(255,255,255,0.06); padding: 20px 12px; position: fixed; top: 0; left: 0; height: 100vh; overflow-y: auto; }
   .sidebar-header { display: flex; align-items: center; gap: 12px; padding: 8px 12px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); margin-bottom: 12px; }
   .sidebar-logo-img { width: 40px; height: 40px; border-radius: 12px; box-shadow: 0 4px 16px rgba(34,211,238,0.3); }
@@ -35,7 +34,6 @@
   .notification-dot { position: absolute; top: 8px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: #22d3ee; box-shadow: 0 0 8px rgba(34,211,238,0.6); }
   .avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg,#22d3ee,#8b5cf6); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; color: #fff; cursor: pointer; transition: transform 0.2s ease; user-select: none; }
   .avatar:hover { transform: scale(1.05); }
-
   .profile-menu { position: absolute; top: calc(100% + 8px); right: 0; width: 200px; background: rgba(18,21,45,0.95); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 6px; backdrop-filter: blur(20px); box-shadow: 0 10px 40px rgba(0,0,0,0.5); z-index: 100; animation: menuFadeIn 0.15s ease; }
   .profile-menu[hidden] { display: none; }
   @keyframes menuFadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
@@ -49,7 +47,6 @@
   .profile-menu hr { border: 0; height: 1px; background: rgba(255,255,255,0.08); margin: 6px 4px; }
 
   .page-content { padding: 32px; }
-
   .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
   .toolbar-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .count-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; background: rgba(34,211,238,0.08); border: 1px solid rgba(34,211,238,0.2); border-radius: 9999px; font-size: 0.8rem; font-weight: 600; color: #22d3ee; }
@@ -73,11 +70,14 @@
   .plan-detail-label { color: #64748b; margin-right: 6px; }
   .plan-detail-value { color: #f1f5f9; font-weight: 600; }
 
-  /* EDIT BUTTON */
   .edit-btn { width: 36px; height: 36px; border-radius: 10px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: #94a3b8; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease; opacity: 0; flex-shrink: 0; margin-left: auto; }
   .plan-card:hover .edit-btn { opacity: 1; }
   .edit-btn:hover { background: rgba(34,211,238,0.1); border-color: rgba(34,211,238,0.3); color: #22d3ee; transform: scale(1.05); }
   .edit-btn svg { width: 16px; height: 16px; stroke-width: 2; }
+  .delete-btn { width: 36px; height: 36px; border-radius: 10px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: #94a3b8; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease; opacity: 0; flex-shrink: 0; }
+  .plan-card:hover .delete-btn { opacity: 1; }
+  .delete-btn:hover { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: #ef4444; transform: scale(1.05); }
+  .delete-btn svg { width: 16px; height: 16px; stroke-width: 2; }
 
   .state-box { padding: 48px 32px; text-align: center; color: #64748b; font-size: 0.95rem; grid-column: 1 / -1; }
   .state-box .state-icon { font-size: 3rem; opacity: 0.5; margin-bottom: 16px; }
@@ -86,7 +86,6 @@
   .spinner { width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.08); border-top-color: #22d3ee; border-radius: 50%; animation: spin 0.9s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* MODAL */
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; opacity: 0; visibility: hidden; transition: all 0.3s ease; }
   .modal-overlay.active { opacity: 1; visibility: visible; }
   .modal { background: #0a0c1a; border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; transform: translateY(20px); transition: transform 0.3s ease; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
@@ -118,7 +117,7 @@
     .toolbar { flex-direction: column; align-items: stretch; }
     .toolbar-left { flex-direction: column; align-items: stretch; }
     .plans-grid { grid-template-columns: 1fr; }
-    .edit-btn { opacity: 1; }
+    .edit-btn, .delete-btn { opacity: 1; }
   }
 </style>
 </head>
@@ -209,6 +208,7 @@
 <script>
 var API_BASE = "https://nova-voice-assistant-6vve.onrender.com";
 var INTENT   = "GET_STUDY_PLANS";
+var DELETE_INTENT = "DELETE_STUDY_PLAN";
 var DATA_KEY = "study_plans";
 var lastItems = [];
 var editingId = null;
@@ -283,7 +283,7 @@ async function loadData() {
     container.innerHTML = html;
 
     if (window.lucide) lucide.createIcons();
-    attachEditListeners();
+    attachListeners();
   } catch (err) {
     console.error("Load error:", err);
     container.innerHTML = '<div class="state-box error">⚠️ Could not connect to server.<br><span style="font-size:0.85rem;color:#94a3b8;">If the server is cold, wait 30 seconds and click Refresh.</span></div>';
@@ -311,7 +311,7 @@ function renderRow(p) {
   }
 
   return (
-    '<div class="plan-card">' +
+    '<div class="plan-card" data-id="' + id + '">' +
       '<div class="plan-header">' +
         '<div class="plan-icon"><i data-lucide="book-open"></i></div>' +
         '<div class="plan-header-info">' +
@@ -321,6 +321,9 @@ function renderRow(p) {
         (id ?
           '<button class="edit-btn" data-edit-id="' + id + '" title="Edit">' +
             '<i data-lucide="pencil"></i>' +
+          '</button>' +
+          '<button class="delete-btn" data-delete-id="' + id + '" title="Delete">' +
+            '<i data-lucide="trash-2"></i>' +
           '</button>' : ''
         ) +
       '</div>' +
@@ -345,13 +348,46 @@ function renderRow(p) {
   );
 }
 
-function attachEditListeners() {
+function attachListeners() {
   document.querySelectorAll("[data-edit-id]").forEach(function (btn) {
     btn.addEventListener("click", function (e) {
       e.stopPropagation();
       openEditModal(Number(btn.dataset.editId));
     });
   });
+
+  document.querySelectorAll("[data-delete-id]").forEach(function (btn) {
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      deleteItem(DELETE_INTENT, Number(btn.dataset.deleteId));
+    });
+  });
+}
+
+async function deleteItem(intent, id) {
+  if (!confirm("Delete this item? This cannot be undone.")) return;
+
+  var token = localStorage.getItem("nova-auth-token") || localStorage.getItem("access_token");
+  if (!token) { window.location.href = "login.html"; return; }
+
+  try {
+    var res = await fetch(API_BASE + "/api/assistant", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+      body: JSON.stringify({ intent: intent, data: { id: id } })
+    });
+    var data = await res.json();
+
+    if (data.success) {
+      showToast("success", "Deleted", "Item removed.");
+      loadData();
+    } else {
+      showToast("error", "Delete failed", data.message || "Please try again.");
+    }
+  } catch (e) {
+    console.error(e);
+    showToast("error", "Network error", "Could not connect to server.");
+  }
 }
 
 function initEditModal() {
