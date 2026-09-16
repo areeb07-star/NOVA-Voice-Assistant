@@ -1335,23 +1335,41 @@ def assistant():
                 details.get("subject", "")
             ).strip()
 
-            exam_date = details.get(
-                "exam_date"
-            )
+            exam_date = details.get("exam_date")
 
             if not user_id:
+               return jsonify({
+               "success": False,
+               "message": "User ID is required"
+               }), 400
 
-                return jsonify({
+            if not subject:
+               return jsonify({
                     "success": False,
-                    "message": "User ID is required"
-                }), 400
+                    "message": "Subject is required"
+               }), 400
 
-            if not subject or not exam_date:
+            if not exam_date or str(exam_date).strip().upper() in [
+         "TBD",
+         "UNKNOWN",
+         "N/A",
+         "NONE"
+            ]:
+              return jsonify({
+                 "success": False,
+                 "message": "Exam date is required. Please provide the exam date."
+               }), 400
 
-                return jsonify({
-                    "success": False,
-                    "message": "Subject and exam date are required"
-                }), 400
+            try:
+                exam_date = datetime.strptime(
+                str(exam_date).strip(),
+                "%Y-%m-%d"
+                ).date()
+            except ValueError:
+               return jsonify({
+                  "success": False,
+                  "message": "Invalid exam date. Use YYYY-MM-DD format."
+               }), 400
 
             cur.execute(
                 """
@@ -2771,7 +2789,343 @@ DOCUMENT:
                 cur.close()
                 conn.close()
 
+        # ============================================================
+        # DELETE NOTE
+        # ============================================================
 
+        elif intent == "DELETE_NOTE":
+
+            note_id = details.get("id")
+
+            if not note_id:
+                return jsonify({
+                    "success": False,
+                    "message": "Note ID is required"
+                }), 400
+
+            conn = get_connection()
+            cur = conn.cursor()
+
+            try:
+                cur.execute("""
+                    DELETE FROM notes
+                    WHERE id = %s
+                      AND user_id = %s
+                """, (
+                    note_id,
+                    user_id
+                ))
+
+                if cur.rowcount == 0:
+                    conn.rollback()
+
+                    return jsonify({
+                        "success": False,
+                        "message": "Note not found"
+                    }), 404
+
+                conn.commit()
+
+                return jsonify({
+                    "success": True,
+                    "message": "Note deleted",
+                    "id": note_id
+                })
+
+            except Exception as e:
+                conn.rollback()
+                print("DELETE NOTE ERROR:", e)
+
+                return jsonify({
+                    "success": False,
+                    "message": "Failed to delete note"
+                }), 500
+
+            finally:
+                cur.close()
+                conn.close()
+
+        # ============================================================
+        # DELETE REMINDER
+        # ============================================================
+
+        elif intent == "DELETE_REMINDER":
+
+            reminder_id = details.get("id")
+
+            if not reminder_id:
+                return jsonify({
+                    "success": False,
+                    "message": "Reminder ID is required"
+                }), 400
+
+            conn = get_connection()
+            cur = conn.cursor()
+
+            try:
+                cur.execute("""
+                    DELETE FROM reminders
+                    WHERE id = %s
+                      AND user_id = %s
+                """, (
+                    reminder_id,
+                    user_id
+                ))
+
+                if cur.rowcount == 0:
+                    conn.rollback()
+
+                    return jsonify({
+                        "success": False,
+                        "message": "Reminder not found"
+                    }), 404
+
+                conn.commit()
+
+                return jsonify({
+                    "success": True,
+                    "message": "Reminder deleted",
+                    "id": reminder_id
+                })
+
+            except Exception as e:
+                conn.rollback()
+                print("DELETE REMINDER ERROR:", e)
+
+                return jsonify({
+                    "success": False,
+                    "message": "Failed to delete reminder"
+                }), 500
+
+            finally:
+                cur.close()
+                conn.close()
+
+        # ============================================================
+        # DELETE EXPENSE
+        # ============================================================
+
+        elif intent == "DELETE_EXPENSE":
+
+            expense_id = details.get("id")
+
+            if not expense_id:
+                return jsonify({
+                    "success": False,
+                    "message": "Expense ID is required"
+                }), 400
+
+            conn = get_connection()
+            cur = conn.cursor()
+
+            try:
+                cur.execute("""
+                    DELETE FROM expenses
+                    WHERE id = %s
+                      AND user_id = %s
+                """, (
+                    expense_id,
+                    user_id
+                ))
+
+                if cur.rowcount == 0:
+                    conn.rollback()
+
+                    return jsonify({
+                        "success": False,
+                        "message": "Expense not found"
+                    }), 404
+
+                conn.commit()
+
+                return jsonify({
+                    "success": True,
+                    "message": "Expense deleted",
+                    "id": expense_id
+                })
+
+            except Exception as e:
+                conn.rollback()
+                print("DELETE EXPENSE ERROR:", e)
+
+                return jsonify({
+                    "success": False,
+                    "message": "Failed to delete expense"
+                }), 500
+
+            finally:
+                cur.close()
+                conn.close()
+
+        # ============================================================
+        # DELETE SHOPPING ITEM
+        # ============================================================
+
+        elif intent == "DELETE_SHOPPING_ITEM":
+
+            item_id = details.get("id")
+
+            if not item_id:
+                return jsonify({
+                    "success": False,
+                    "message": "Shopping item ID is required"
+                }), 400
+
+            conn = get_connection()
+            cur = conn.cursor()
+
+            try:
+                cur.execute("""
+                    DELETE FROM shopping_items
+                    WHERE id = %s
+                      AND user_id = %s
+                """, (
+                    item_id,
+                    user_id
+                ))
+
+                if cur.rowcount == 0:
+                    conn.rollback()
+
+                    return jsonify({
+                        "success": False,
+                        "message": "Shopping item not found"
+                    }), 404
+
+                conn.commit()
+
+                return jsonify({
+                    "success": True,
+                    "message": "Shopping item deleted",
+                    "id": item_id
+                })
+
+            except Exception as e:
+                conn.rollback()
+                print("DELETE SHOPPING ITEM ERROR:", e)
+
+                return jsonify({
+                    "success": False,
+                    "message": "Failed to delete shopping item"
+                }), 500
+
+            finally:
+                cur.close()
+                conn.close()
+
+        # ============================================================
+        # DELETE STUDY PLAN
+        # ============================================================
+
+        elif intent == "DELETE_STUDY_PLAN":
+
+            study_plan_id = details.get("id")
+
+            if not study_plan_id:
+                return jsonify({
+                    "success": False,
+                    "message": "Study plan ID is required"
+                }), 400
+
+            conn = get_connection()
+            cur = conn.cursor()
+
+            try:
+                cur.execute("""
+                    DELETE FROM study_plans
+                    WHERE id = %s
+                      AND user_id = %s
+                """, (
+                    study_plan_id,
+                    user_id
+                ))
+
+                if cur.rowcount == 0:
+                    conn.rollback()
+
+                    return jsonify({
+                        "success": False,
+                        "message": "Study plan not found"
+                    }), 404
+
+                conn.commit()
+
+                return jsonify({
+                    "success": True,
+                    "message": "Study plan deleted",
+                    "id": study_plan_id
+                })
+
+            except Exception as e:
+                conn.rollback()
+                print("DELETE STUDY PLAN ERROR:", e)
+
+                return jsonify({
+                    "success": False,
+                    "message": "Failed to delete study plan"
+                }), 500
+
+            finally:
+                cur.close()
+                conn.close()
+
+        # ============================================================
+        # DELETE GOAL
+        # ============================================================
+
+        elif intent == "DELETE_GOAL":
+
+            goal_id = details.get("id")
+
+            if not goal_id:
+                return jsonify({
+                    "success": False,
+                    "message": "Goal ID is required"
+                }), 400
+
+            conn = get_connection()
+            cur = conn.cursor()
+
+            try:
+                cur.execute("""
+                    DELETE FROM goals
+                    WHERE id = %s
+                      AND user_id = %s
+                """, (
+                    goal_id,
+                    user_id
+                ))
+
+                if cur.rowcount == 0:
+                    conn.rollback()
+
+                    return jsonify({
+                        "success": False,
+                        "message": "Goal not found"
+                    }), 404
+
+                conn.commit()
+
+                return jsonify({
+                    "success": True,
+                    "message": "Goal deleted",
+                    "id": goal_id
+                })
+
+            except Exception as e:
+                conn.rollback()
+                print("DELETE GOAL ERROR:", e)
+
+                return jsonify({
+                    "success": False,
+                    "message": "Failed to delete goal"
+                }), 500
+
+            finally:
+                cur.close()
+                conn.close()
+
+        
         # =========================================
         # GET NOTES
         # =========================================
