@@ -2,7 +2,10 @@
 # Flat JSON response + UPDATE_* intents + chat history
 # + Friendlier personality
 # + OPEN_FOLDER without pre-check
-# + Shopping list key fix + history load from backend
+# + Shopping list key fix (formatted_shopping_items)
+# + Load chat history from backend
+# + CREATE_GOAL auto-date rule
+# + Graceful DELETE fallback
 
 import os
 import sys
@@ -33,7 +36,7 @@ BACKEND_URL = "https://nova-voice-assistant-6vve.onrender.com"
 DEFAULT_DEVICE_ID = "azzam-laptop-001"
 
 conversation_history = {}
-HISTORY_LIMIT = 10          # was 6 — bumped for better memory
+HISTORY_LIMIT = 10
 
 pending_confirmations = {}
 
@@ -111,6 +114,12 @@ Output: {"intent":"UPDATE_GOAL","mood":"neutral","emoji":"😐","data":{"id":1,"
 User: "edit study plan 2 to Physics next Monday"
 Output: {"intent":"UPDATE_STUDY_PLAN","mood":"neutral","emoji":"😐","data":{"id":2,"subject":"Physics","exam_date":"Next Monday"},"reply":"Updating study plan..."}
 
+User: "my goal is to get 100 on my maths test"
+Output: {"intent":"CREATE_GOAL","mood":"neutral","emoji":"😐","data":{"goal":"get 100 on maths test","target_date":"end of term"},"reply":"Goal added!"}
+
+User: "set a goal to read 20 books this year"
+Output: {"intent":"CREATE_GOAL","mood":"neutral","emoji":"😐","data":{"goal":"read 20 books","target_date":"this year"},"reply":"Goal added!"}
+
 User: "tell me a joke"
 Output: {"intent":"GENERAL_CHAT","mood":"happy","emoji":"😄","data":{},"reply":"Why don't scientists trust atoms? Because they make up everything!"}
 
@@ -144,7 +153,7 @@ For DRAFT_EMAIL, include recipient, subject, body.
 
 CRITICAL UPDATE RULE:
 When the user says "update", "change", "edit", "modify", or "rename" + a module + an ID, use the matching UPDATE_* intent.
-ALWAYS use "id" as the ONLY identifier key.
+ALWAYS use "id" as the ONLY identifier key. NEVER use note_id, reminder_id, expense_id, goal_id, plan_id, study_plan_id, or shopping_id.
 
 Examples:
 - "update note 5 to X" → UPDATE_NOTE with {id: 5, text: X}
@@ -160,6 +169,7 @@ CRITICAL NOTE FILTER RULE (HIGHEST PRIORITY):
 When the user says "show notes about X" or "notes on X" or "notes related to X" or "find notes about X":
 - You MUST use SEARCH_NOTES (NOT GET_NOTES).
 - The "query" field MUST contain X.
+- NEVER use GET_NOTES for filtered queries.
 
 Examples:
 User: "show notes about best friend"
@@ -205,6 +215,27 @@ Only for: chrome, code, vscode, calc, calculator, notepad, explorer, cmd, termin
 
 CRITICAL FOLLOW-UP RULE:
 "name it X" completes previous action with X.
+
+CRITICAL GOAL RULE:
+For CREATE_GOAL, always include both "goal" and "target_date".
+If the user does not specify a date, infer one:
+- "100 on maths test" → "end of term"
+- "lose 5kg" → "in 3 months"
+- "read more books" → "this year"
+- "learn python" → "in 6 months"
+NEVER ask the user for a date. ALWAYS guess one.
+
+CRITICAL DELETE RULE:
+Nova does not support deleting notes, reminders, goals, expenses, shopping items, or study plans yet.
+If the user asks to delete/remove something, reply warmly:
+"I can't delete that yet, but you can edit it instead. Want me to update it?"
+
+Examples:
+User: "remove python note from my notes"
+Output: {"intent":"GENERAL_CHAT","mood":"neutral","emoji":"😐","data":{},"reply":"I can't delete notes yet, but you can edit them instead. Want me to update that note?"}
+
+User: "delete my shopping list"
+Output: {"intent":"GENERAL_CHAT","mood":"neutral","emoji":"😐","data":{},"reply":"I can't delete the shopping list yet, but I can edit items for you."}
 
 SAFE ACTION RULE: Only CLOSE_APP needs confirmation.
 
@@ -686,7 +717,7 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         if fetched_data.get("success"):
             formatted = (fetched_data.get("formatted_notes") or
                          fetched_data.get("formatted_reminders") or
-                         fetched_data.get("formatted_shopping_items") or   # ✅ FIXED
+                         fetched_data.get("formatted_shopping_items") or
                          fetched_data.get("formatted_expenses") or
                          fetched_data.get("formatted_goals") or
                          fetched_data.get("formatted_study_plans") or
@@ -726,9 +757,6 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
     }
 
 
-# ============================================================
-# CLI TEST MODE — only runs when you do `python brain.py`
-# ============================================================
 if __name__ == "__main__":
     print(">> Nova Brain is ready! Type 'exit' to quit.")
 
