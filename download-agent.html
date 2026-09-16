@@ -37,10 +37,7 @@
 
   .page-content { padding: 32px; max-width: 800px; margin: 0 auto; }
 
-  .hero {
-    text-align: center;
-    padding: 40px 20px 32px;
-  }
+  .hero { text-align: center; padding: 40px 20px 32px; }
   .hero-icon {
     width: 88px; height: 88px; border-radius: 24px; margin: 0 auto 24px;
     background: linear-gradient(135deg, #22d3ee, #8b5cf6);
@@ -51,10 +48,39 @@
   .hero h1 { font-size: 2rem; font-weight: 800; margin-bottom: 12px; background: linear-gradient(135deg,#22d3ee,#8b5cf6,#ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
   .hero p { color: #94a3b8; font-size: 0.95rem; max-width: 500px; margin: 0 auto; }
 
-  .download-section {
-    text-align: center;
-    margin: 32px 0 40px;
+  .already-note {
+    margin-top: 24px;
+    padding: 14px 20px;
+    background: rgba(34,211,238,0.06);
+    border: 1px solid rgba(34,211,238,0.15);
+    border-radius: 12px;
+    display: inline-block;
+    font-size: 0.88rem;
+    color: #94a3b8;
+    max-width: 520px;
+    line-height: 1.5;
   }
+  .already-note strong { color: #22d3ee; }
+
+  .agent-status {
+    display: none;
+    margin: 24px auto 0;
+    padding: 16px 24px;
+    background: rgba(16,185,129,0.08);
+    border: 1px solid rgba(16,185,129,0.25);
+    border-radius: 14px;
+    max-width: 520px;
+    font-size: 0.9rem;
+    color: #10b981;
+    font-weight: 600;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+  }
+  .agent-status.show { display: flex; }
+  .agent-status svg { width: 20px; height: 20px; stroke-width: 2.2; }
+
+  .download-section { text-align: center; margin: 32px 0 40px; }
   .download-btn {
     display: inline-flex; align-items: center; gap: 10px;
     padding: 16px 40px;
@@ -66,10 +92,14 @@
     font-weight: 700;
     box-shadow: 0 6px 30px rgba(34,211,238,0.4);
     transition: all 0.25s ease;
+    border: 0;
+    cursor: pointer;
+    font-family: inherit;
   }
   .download-btn:hover { transform: translateY(-3px); box-shadow: 0 10px 40px rgba(34,211,238,0.55); }
   .download-btn svg { width: 22px; height: 22px; stroke-width: 2.2; }
-  .download-meta { font-size: 0.8rem; color: #64748b; margin-top: 12px; }
+  .download-meta { font-size: 0.8rem; color: #64748b; margin-top: 12px; line-height: 1.6; }
+  .download-meta small { font-size: 0.75rem; opacity: 0.7; }
 
   .steps {
     display: grid;
@@ -124,9 +154,7 @@
     flex-shrink: 0;
   }
 
-  .faq {
-    margin-top: 32px;
-  }
+  .faq { margin-top: 32px; }
   .faq-item {
     background: rgba(18,21,45,0.65);
     border: 1px solid rgba(255,255,255,0.06);
@@ -167,7 +195,7 @@
       <div class="nav-divider"></div>
       <a href="download-agent.html" class="nav-item active"><i data-lucide="zap" class="nav-icon"></i><span>Nova Agent</span></a>
       <a href="profile.html" class="nav-item"><i data-lucide="settings" class="nav-icon"></i><span>Profile</span></a>
-      <a href="login.html" class="nav-item"><i data-lucide="log-out" class="nav-icon"></i><span>Logout</span></a>
+      <a href="login.html" class="nav-item" id="sidebarLogout"><i data-lucide="log-out" class="nav-icon"></i><span>Logout</span></a>
     </nav>
   </aside>
 
@@ -189,16 +217,31 @@
         <div class="hero-icon"><i data-lucide="zap"></i></div>
         <h1>Nova Agent</h1>
         <p>Install a small helper app to let Nova open apps, take screenshots, and control volume on your laptop.</p>
+
+        <div class="agent-status" id="agentStatus">
+          <i data-lucide="check-circle-2"></i>
+          <span>Nova Agent is running on this laptop</span>
+        </div>
+
+        <div class="already-note" id="alreadyNote">
+          <strong>Already downloaded NovaAgent?</strong>
+          Just double-click the file on your laptop. You don't need to download again.
+        </div>
       </div>
 
       <div class="download-section">
         <a class="download-btn"
+           id="downloadBtn"
            href="https://github.com/areeb07-star/NOVA-Voice-Assistant/releases/latest/download/NovaAgent.exe"
            download>
           <i data-lucide="download"></i>
-          Download for Windows
+          <span id="downloadBtnText">Download for Windows</span>
         </a>
-        <div class="download-meta">30.5 MB · Windows 10/11 · v1.0</div>
+        <div class="download-meta">
+          30.5 MB · Windows 10/11 · v1.0
+          <br>
+          <small>Only download once. After that, run the file from your laptop.</small>
+        </div>
       </div>
 
       <div class="steps">
@@ -254,6 +297,11 @@
         </div>
 
         <div class="faq-item">
+          <div class="faq-q">Do I need to download it every time?</div>
+          <div class="faq-a">No. You only download NovaAgent.exe once. After that, just double-click the file wherever you saved it. If you lose the file, you can re-download it from this page.</div>
+        </div>
+
+        <div class="faq-item">
           <div class="faq-q">Windows blocked it — what now?</div>
           <div class="faq-a">Click "More info" → "Run anyway". This appears because the .exe isn't code-signed. It's normal for student projects and small apps.</div>
         </div>
@@ -269,10 +317,58 @@
 </div>
 
 <script>
+  /* ---------- User info ---------- */
   var name = localStorage.getItem("nova-user-name") || "User";
   var avatar = document.getElementById("avatarInitial");
   if (avatar) avatar.textContent = (name.charAt(0) || "U").toUpperCase();
   if (window.lucide) lucide.createIcons();
+
+  /* ---------- Logout ---------- */
+  var logoutBtn = document.getElementById("sidebarLogout");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+      ["nova-auth-token","access_token","nova-user-name","nova-user-email",
+       "nova-user-id","user_id","nova-access-token"].forEach(function (k) {
+        localStorage.removeItem(k);
+      });
+      window.location.href = "login.html";
+    });
+  }
+
+  /* ---------- Live check: is NovaAgent running on this laptop? ---------- */
+  (function checkAgentRunning() {
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, 1500);
+
+    fetch('http://127.0.0.1:5050/health', {
+      cache: 'no-store',
+      signal: controller.signal
+    })
+      .then(function (r) { clearTimeout(timer); return r.json(); })
+      .then(function (data) {
+        if (data && data.status === 'ok') {
+          var statusBanner = document.getElementById("agentStatus");
+          var alreadyNote = document.getElementById("alreadyNote");
+          var downloadBtn = document.getElementById("downloadBtn");
+          var downloadText = document.getElementById("downloadBtnText");
+
+          if (statusBanner) statusBanner.classList.add("show");
+          if (alreadyNote) alreadyNote.style.display = "none";
+
+          if (downloadBtn) {
+            downloadBtn.style.background = "linear-gradient(135deg, #10b981, #22d3ee)";
+            downloadBtn.style.boxShadow = "0 6px 30px rgba(16,185,129,0.4)";
+          }
+          if (downloadText) {
+            downloadText.textContent = "Nova Agent is running — re-download if needed";
+          }
+        }
+      })
+      .catch(function () {
+        // Agent not running — normal page stays
+      });
+  })();
 </script>
 </body>
 </html>
