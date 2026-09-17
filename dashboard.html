@@ -493,7 +493,7 @@ async function fetchCount(intent, dataKey) {
         "Authorization": "Bearer " + token
       },
       body: JSON.stringify({ intent: intent, data: { user_id: userId } })
-    }, 8000);
+    }, 60000);
     if (res.status === 401) return 0;
     var data = await res.json();
     if (!data.success) return 0;
