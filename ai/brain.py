@@ -6,7 +6,7 @@
 # + Load chat history from backend
 # + CREATE_GOAL auto-date rule + normalize_date() for ISO YYYY-MM-DD
 # + DELETE_* intents wired to backend
-# + SET_VOLUME / SET_BRIGHTNESS level safety net
+# + SET_VOLUME / SET_BRIGHTNESS level safety net + value mirror for agent.py
 
 import os
 import sys
@@ -531,7 +531,7 @@ def normalize_result(raw_result, user_text=""):
         else:
             d["folder"] = folder
 
-    # SET_VOLUME / SET_BRIGHTNESS: must have a numeric "level"
+    # SET_VOLUME / SET_BRIGHTNESS: must have a numeric "level", mirror to "value"
     if normalized["intent"] in ("SET_VOLUME", "SET_BRIGHTNESS"):
         d = normalized["data"]
         if "level" not in d:
@@ -548,6 +548,8 @@ def normalize_result(raw_result, user_text=""):
                 d["level"] = max(0, min(100, int(d["level"])))
             except (ValueError, TypeError):
                 pass
+            # Mirror to "value" for backward compat with agent.py
+            d["value"] = d["level"]
         if "level" not in d:
             normalized["intent"] = "GENERAL_CHAT"
             normalized["reply"] = "What level would you like? Say a number between 0 and 100."
