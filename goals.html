@@ -10,7 +10,6 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #05060f; color: #f1f5f9; min-height: 100vh; }
   .dashboard-layout { display: flex; min-height: 100vh; }
-
   .sidebar { width: 260px; background: rgba(10,12,26,0.85); border-right: 1px solid rgba(255,255,255,0.06); padding: 20px 12px; position: fixed; top: 0; left: 0; height: 100vh; overflow-y: auto; }
   .sidebar-header { display: flex; align-items: center; gap: 12px; padding: 8px 12px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); margin-bottom: 12px; }
   .sidebar-logo-img { width: 40px; height: 40px; border-radius: 12px; box-shadow: 0 4px 16px rgba(34,211,238,0.3); }
@@ -35,7 +34,6 @@
   .notification-dot { position: absolute; top: 8px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: #22d3ee; box-shadow: 0 0 8px rgba(34,211,238,0.6); }
   .avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg,#22d3ee,#8b5cf6); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; color: #fff; cursor: pointer; transition: transform 0.2s ease; user-select: none; }
   .avatar:hover { transform: scale(1.05); }
-
   .profile-menu { position: absolute; top: calc(100% + 8px); right: 0; width: 200px; background: rgba(18,21,45,0.95); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 6px; backdrop-filter: blur(20px); box-shadow: 0 10px 40px rgba(0,0,0,0.5); z-index: 100; animation: menuFadeIn 0.15s ease; }
   .profile-menu[hidden] { display: none; }
   @keyframes menuFadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
@@ -49,7 +47,6 @@
   .profile-menu hr { border: 0; height: 1px; background: rgba(255,255,255,0.08); margin: 6px 4px; }
 
   .page-content { padding: 32px; }
-
   .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
   .toolbar-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .count-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; background: rgba(34,211,238,0.08); border: 1px solid rgba(34,211,238,0.2); border-radius: 9999px; font-size: 0.8rem; font-weight: 600; color: #22d3ee; }
@@ -58,62 +55,44 @@
   .btn-ghost:hover { background: rgba(255,255,255,0.07); color: #f1f5f9; border-color: rgba(34,211,238,0.3); }
   .btn-ghost svg { width: 16px; height: 16px; stroke-width: 2; }
 
-  .goals-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
-  .goal-card { background: rgba(18,21,45,0.65); border: 1px solid rgba(255,255,255,0.06); border-radius: 18px; padding: 24px; transition: all 0.3s ease; position: relative; overflow: hidden; }
-  .goal-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(135deg,#22d3ee,#8b5cf6); }
-  .goal-card.violet::before { background: linear-gradient(135deg,#8b5cf6,#ec4899); }
-  .goal-card.pink::before   { background: linear-gradient(135deg,#ec4899,#f59e0b); }
-  .goal-card.green::before  { background: linear-gradient(135deg,#10b981,#22d3ee); }
-  .goal-card:hover { border-color: rgba(255,255,255,0.1); transform: translateY(-4px); box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
-  .goal-header { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
-  .goal-icon { width: 48px; height: 48px; border-radius: 14px; background: linear-gradient(135deg, rgba(34,211,238,0.15), rgba(139,92,246,0.15)); border: 1px solid rgba(34,211,238,0.2); display: flex; align-items: center; justify-content: center; color: #22d3ee; flex-shrink: 0; }
-  .goal-icon svg { width: 22px; height: 22px; stroke-width: 1.8; }
-  .goal-title { font-size: 1.1rem; font-weight: 700; color: #f1f5f9; margin-bottom: 4px; word-break: break-word; line-height: 1.3; }
-  .goal-id { font-size: 0.7rem; color: #475569; font-weight: 600; letter-spacing: 0.05em; }
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 32px; }
+  .summary-card { background: rgba(18,21,45,0.65); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 20px; position: relative; overflow: hidden; transition: all 0.3s ease; }
+  .summary-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(135deg,#22d3ee,#8b5cf6); }
+  .summary-card.green::before { background: linear-gradient(135deg,#10b981,#22d3ee); }
+  .summary-card.violet::before { background: linear-gradient(135deg,#8b5cf6,#ec4899); }
+  .summary-card:hover { transform: translateY(-4px); border-color: rgba(255,255,255,0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+  .summary-label { font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .summary-label svg { width: 14px; height: 14px; stroke-width: 2; }
+  .summary-value { font-size: 2rem; font-weight: 800; color: #f1f5f9; line-height: 1; margin-bottom: 6px; }
+  .summary-sub { font-size: 0.78rem; color: #64748b; }
 
-  .goal-detail { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; font-size: 0.85rem; margin-bottom: 12px; }
-  .goal-detail svg { width: 16px; height: 16px; stroke-width: 2; color: #22d3ee; flex-shrink: 0; }
-  .goal-detail-label { color: #64748b; margin-right: 6px; }
-  .goal-detail-value { color: #f1f5f9; font-weight: 600; }
-  .goal-detail .days-left { margin-left: auto; color: #22d3ee; font-weight: 700; font-size: 0.75rem; }
-  .goal-detail .days-left.urgent { color: #ef4444; }
-  .goal-detail .days-left.past { color: #94a3b8; }
+  .list-section-title { font-size: 1rem; font-weight: 700; margin-bottom: 16px; color: #f1f5f9; }
+  .goal-list { display: flex; flex-direction: column; gap: 12px; }
+  .goal-item { background: rgba(18,21,45,0.65); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 20px; transition: all 0.3s ease; position: relative; overflow: hidden; }
+  .goal-item:hover { border-color: rgba(255,255,255,0.1); box-shadow: 0 8px 30px rgba(0,0,0,0.3); transform: translateY(-2px); }
+  .goal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 12px; flex-wrap: wrap; }
+  .goal-title { font-size: 1.05rem; font-weight: 700; color: #f1f5f9; display: flex; align-items: center; gap: 10px; }
+  .goal-title svg { width: 20px; height: 20px; color: #22d3ee; stroke-width: 2; }
+  .goal-status { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+  .status-active { background: rgba(34,211,238,0.1); color: #22d3ee; border: 1px solid rgba(34,211,238,0.2); }
+  .status-completed { background: rgba(16,185,129,0.1); color: #10b981; border: 1px solid rgba(16,185,129,0.2); }
+  .goal-desc { font-size: 0.88rem; color: #94a3b8; margin-bottom: 16px; line-height: 1.5; }
+  .goal-meta { display: flex; align-items: center; gap: 20px; font-size: 0.78rem; color: #64748b; flex-wrap: wrap; }
+  .goal-meta-item { display: flex; align-items: center; gap: 6px; }
+  .goal-meta-item svg { width: 14px; height: 14px; stroke-width: 2; }
 
-  /* EDIT BUTTON */
-  .edit-btn { width: 36px; height: 36px; border-radius: 10px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: #94a3b8; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease; opacity: 0; flex-shrink: 0; margin-left: auto; }
-  .goal-card:hover .edit-btn { opacity: 1; }
-  .edit-btn:hover { background: rgba(34,211,238,0.1); border-color: rgba(34,211,238,0.3); color: #22d3ee; transform: scale(1.05); }
-  .edit-btn svg { width: 16px; height: 16px; stroke-width: 2; }
+  .progress-container { margin-top: 16px; }
+  .progress-labels { display: flex; justify-content: space-between; font-size: 0.75rem; color: #64748b; margin-bottom: 6px; font-weight: 600; }
+  .progress-bar { height: 8px; background: rgba(255,255,255,0.06); border-radius: 9999px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 9999px; background: linear-gradient(90deg, #22d3ee, #8b5cf6); transition: width 0.6s ease; }
+  .progress-fill.complete { background: linear-gradient(90deg, #10b981, #22d3ee); }
 
-  .state-box { padding: 48px 32px; text-align: center; color: #64748b; font-size: 0.95rem; grid-column: 1 / -1; }
+  .state-box { padding: 48px 32px; text-align: center; color: #64748b; font-size: 0.95rem; }
   .state-box .state-icon { font-size: 3rem; opacity: 0.5; margin-bottom: 16px; }
   .state-box.error { color: #ef4444; }
   .state-box.loading { display: flex; flex-direction: column; align-items: center; gap: 16px; }
   .spinner { width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.08); border-top-color: #22d3ee; border-radius: 50%; animation: spin 0.9s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* MODAL */
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; opacity: 0; visibility: hidden; transition: all 0.3s ease; }
-  .modal-overlay.active { opacity: 1; visibility: visible; }
-  .modal { background: #0a0c1a; border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; transform: translateY(20px); transition: transform 0.3s ease; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
-  .modal-overlay.active .modal { transform: translateY(0); }
-  .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.06); }
-  .modal-title { font-size: 1.15rem; font-weight: 700; color: #f1f5f9; }
-  .modal-close { width: 36px; height: 36px; border-radius: 8px; background: transparent; border: 0; color: #64748b; cursor: pointer; font-size: 1.2rem; transition: all 0.2s ease; }
-  .modal-close:hover { background: rgba(239,68,68,0.1); color: #ef4444; }
-  .modal-body { padding: 24px; }
-  .modal-footer { display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 20px 24px; border-top: 1px solid rgba(255,255,255,0.06); }
-  .form-group { margin-bottom: 20px; }
-  .form-group:last-child { margin-bottom: 0; }
-  .form-label { display: block; font-size: 0.85rem; font-weight: 600; color: #94a3b8; margin-bottom: 8px; }
-  .form-input { width: 100%; padding: 12px 16px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: #f1f5f9; font-size: 0.95rem; font-family: inherit; outline: none; transition: all 0.2s ease; }
-  .form-input:focus { border-color: #22d3ee; background: rgba(34,211,238,0.05); box-shadow: 0 0 0 3px rgba(34,211,238,0.1); }
-  .form-input::-webkit-calendar-picker-indicator { filter: invert(0.6); cursor: pointer; }
-  .btn-primary { background: linear-gradient(135deg,#22d3ee,#8b5cf6); color: #fff; padding: 10px 24px; border-radius: 9999px; border: 0; cursor: pointer; font-weight: 600; font-size: 0.9rem; font-family: inherit; transition: all 0.2s ease; }
-  .btn-primary:hover:not(:disabled) { box-shadow: 0 6px 30px rgba(34,211,238,0.4); transform: translateY(-2px); }
-  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
-  .btn-secondary { background: transparent; color: #94a3b8; padding: 10px 24px; border-radius: 9999px; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; font-weight: 600; font-size: 0.9rem; font-family: inherit; transition: all 0.2s ease; }
-  .btn-secondary:hover { background: rgba(255,255,255,0.04); color: #f1f5f9; }
 
   .toast-container { position: fixed; top: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
 
@@ -122,9 +101,7 @@
     .main-content { margin-left: 0; }
     .page-content { padding: 20px 16px; }
     .toolbar { flex-direction: column; align-items: stretch; }
-    .toolbar-left { flex-direction: column; align-items: stretch; }
-    .goals-grid { grid-template-columns: 1fr; }
-    .edit-btn { opacity: 1; }
+    .summary-value { font-size: 1.6rem; }
   }
 </style>
 </head>
@@ -149,6 +126,9 @@
       <a href="study_plans.html" class="nav-item"><i data-lucide="book-open" class="nav-icon"></i><span>Study Plans</span></a>
       <a href="goals.html" class="nav-item active"><i data-lucide="target" class="nav-icon"></i><span>Goals</span></a>
       <div class="nav-divider"></div>
+      <a href="download-agent.html" class="nav-item">
+        <i data-lucide="zap" class="nav-icon"></i><span>Nova Agent</span>
+      </a>
       <a href="profile.html" class="nav-item"><i data-lucide="settings" class="nav-icon"></i><span>Profile</span></a>
       <a href="login.html" class="nav-item" id="sidebarLogout"><i data-lucide="log-out" class="nav-icon"></i><span>Logout</span></a>
     </nav>
@@ -157,8 +137,8 @@
   <div class="main-content">
     <header class="topbar">
       <div>
-        <div class="greeting-title">Your Goals</div>
-        <div class="greeting-subtitle">Turn ambitions into achievements.</div>
+        <div class="greeting-title">Goals</div>
+        <div class="greeting-subtitle">Track your progress and achieve more.</div>
       </div>
       <div class="topbar-right">
         <button class="topbar-icon-btn" id="notifBtn"><i data-lucide="bell"></i><span class="notification-dot"></span></button>
@@ -173,6 +153,7 @@
     </header>
 
     <div class="page-content">
+
       <div class="toolbar">
         <div class="toolbar-left">
           <div class="count-badge">
@@ -183,31 +164,27 @@
         <button class="btn btn-ghost" id="refreshBtn"><i data-lucide="refresh-cw"></i> Refresh</button>
       </div>
 
-      <div class="goals-grid" id="data-list"></div>
-    </div>
-  </div>
-</div>
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="summary-label"><i data-lucide="target"></i> Total Goals</div>
+          <div class="summary-value" id="totalGoals">0</div>
+          <div class="summary-sub">All time</div>
+        </div>
+        <div class="summary-card green">
+          <div class="summary-label"><i data-lucide="check-circle"></i> Completed</div>
+          <div class="summary-value" id="completedGoals">0</div>
+          <div class="summary-sub">Achieved</div>
+        </div>
+        <div class="summary-card violet">
+          <div class="summary-label"><i data-lucide="activity"></i> Active</div>
+          <div class="summary-value" id="activeGoals">0</div>
+          <div class="summary-sub">In progress</div>
+        </div>
+      </div>
 
-<!-- EDIT MODAL -->
-<div class="modal-overlay" id="editModal">
-  <div class="modal">
-    <div class="modal-header">
-      <h3 class="modal-title">Edit Goal</h3>
-      <button class="modal-close" id="modalCloseBtn" type="button">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">Goal</label>
-        <input type="text" id="editGoal" class="form-input" placeholder="e.g. Complete Python course">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Target Date</label>
-        <input type="date" id="editTargetDate" class="form-input">
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-secondary" id="modalCancelBtn" type="button">Cancel</button>
-      <button class="btn-primary" id="modalSaveBtn" type="button">Save Changes</button>
+      <div class="list-section-title">Your Goals</div>
+      <div class="goal-list" id="data-list"></div>
+
     </div>
   </div>
 </div>
@@ -217,7 +194,6 @@ var API_BASE = "https://nova-voice-assistant-6vve.onrender.com";
 var INTENT   = "GET_GOALS";
 var DATA_KEY = "goals";
 var lastItems = [];
-var editingId = null;
 
 document.addEventListener("DOMContentLoaded", function () {
   var name = localStorage.getItem("nova-user-name") || "User";
@@ -228,7 +204,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
   initLogout();
   initProfileMenu();
-  initEditModal();
 
   var notifBtn = document.getElementById("notifBtn");
   if (notifBtn) notifBtn.addEventListener("click", function () {
@@ -279,17 +254,18 @@ async function loadData() {
 
     if (countText) countText.textContent = items.length + (items.length === 1 ? " goal" : " goals");
 
+    updateSummaries(items);
+
     if (items.length === 0) {
       container.innerHTML = '<div class="state-box"><div class="state-icon">🎯</div><div>No goals yet. Ask NOVA to set one!</div></div>';
       return;
     }
 
     var html = "";
-    items.forEach(function (g, idx) { html += renderRow(g, idx); });
+    items.forEach(function (g) { html += renderRow(g); });
     container.innerHTML = html;
 
     if (window.lucide) lucide.createIcons();
-    attachEditListeners();
   } catch (err) {
     console.error("Load error:", err);
     container.innerHTML = '<div class="state-box error">⚠️ Could not connect to server.<br><span style="font-size:0.85rem;color:#94a3b8;">If the server is cold, wait 30 seconds and click Refresh.</span></div>';
@@ -297,154 +273,46 @@ async function loadData() {
   }
 }
 
-function renderRow(g, idx) {
-  var goal = g.goal || "(untitled goal)";
-  var targetDate = g.target_date || "";
-  var created = g.created_at || "";
-  var id = g.id || "";
+function updateSummaries(items) {
+  var total = items.length;
+  var completed = items.filter(function(g) { return (g.status || "").toLowerCase() === "completed" || g.progress >= 100; }).length;
+  var active = total - completed;
 
-  var colors = ["cyan", "violet", "pink", "green"];
-  var color = colors[idx % colors.length];
+  document.getElementById("totalGoals").textContent = total;
+  document.getElementById("completedGoals").textContent = completed;
+  document.getElementById("activeGoals").textContent = active;
+}
 
-  var daysLeft = "";
-  var daysClass = "";
-  if (targetDate) {
-    var target = new Date(targetDate);
-    var today = new Date();
-    today.setHours(0, 0, 0, 0);
-    var diff = Math.ceil((target - today) / (1000 * 60 * 60 * 24));
-    if (!isNaN(diff)) {
-      if (diff > 30) {
-        daysLeft = diff + " days left";
-      } else if (diff > 0) {
-        daysLeft = diff + (diff === 1 ? " day left" : " days left");
-        daysClass = "urgent";
-      } else if (diff === 0) {
-        daysLeft = "Target today";
-        daysClass = "urgent";
-      } else {
-        daysLeft = Math.abs(diff) + " days past";
-        daysClass = "past";
-      }
-    }
-  }
+function renderRow(g) {
+  var title = g.title || g.goal || "Untitled Goal";
+  var desc = g.description || "";
+  var status = (g.status || "active").toLowerCase();
+  var progress = Number(g.progress) || 0;
+  var deadline = g.deadline || g.target_date || "";
+  var category = g.category || "General";
+
+  var statusClass = status === "completed" || progress >= 100 ? "status-completed" : "status-active";
+  var statusLabel = status === "completed" || progress >= 100 ? "Completed" : "Active";
+
+  var progressClass = progress >= 100 ? "progress-fill complete" : "progress-fill";
 
   return (
-    '<div class="goal-card ' + color + '">' +
+    '<div class="goal-item">' +
       '<div class="goal-header">' +
-        '<div class="goal-icon"><i data-lucide="target"></i></div>' +
-        '<div style="flex:1;min-width:0;">' +
-          '<div class="goal-title">' + escapeHtml(goal) + '</div>' +
-          (id ? '<div class="goal-id">GOAL #' + escapeHtml(String(id)) + '</div>' : '') +
-        '</div>' +
-        (id ?
-          '<button class="edit-btn" data-edit-id="' + id + '" title="Edit">' +
-            '<i data-lucide="pencil"></i>' +
-          '</button>' : ''
-        ) +
+        '<div class="goal-title"><i data-lucide="target"></i> ' + escapeHtml(title) + '</div>' +
+        '<span class="goal-status ' + statusClass + '">' + statusLabel + '</span>' +
       '</div>' +
-
-      (targetDate ?
-        '<div class="goal-detail">' +
-          '<i data-lucide="flag"></i>' +
-          '<span class="goal-detail-label">Target:</span>' +
-          '<span class="goal-detail-value">' + escapeHtml(targetDate) + '</span>' +
-          (daysLeft ? '<span class="days-left ' + daysClass + '">' + daysLeft + '</span>' : '') +
-        '</div>' : ''
-      ) +
-
-      (created ?
-        '<div class="goal-detail">' +
-          '<i data-lucide="clock"></i>' +
-          '<span class="goal-detail-label">Created:</span>' +
-          '<span class="goal-detail-value">' + escapeHtml(created) + '</span>' +
-        '</div>' : ''
-      ) +
+      (desc ? '<div class="goal-desc">' + escapeHtml(desc) + '</div>' : '') +
+      '<div class="goal-meta">' +
+        '<div class="goal-meta-item"><i data-lucide="tag"></i> ' + escapeHtml(category) + '</div>' +
+        (deadline ? '<div class="goal-meta-item"><i data-lucide="calendar"></i> ' + escapeHtml(deadline) + '</div>' : '') +
+      '</div>' +
+      '<div class="progress-container">' +
+        '<div class="progress-labels"><span>Progress</span><span>' + progress + '%</span></div>' +
+        '<div class="progress-bar"><div class="' + progressClass + '" style="width:' + progress + '%"></div></div>' +
+      '</div>' +
     '</div>'
   );
-}
-
-function attachEditListeners() {
-  document.querySelectorAll("[data-edit-id]").forEach(function (btn) {
-    btn.addEventListener("click", function (e) {
-      e.stopPropagation();
-      openEditModal(Number(btn.dataset.editId));
-    });
-  });
-}
-
-function initEditModal() {
-  document.getElementById("modalCloseBtn").addEventListener("click", closeEditModal);
-  document.getElementById("modalCancelBtn").addEventListener("click", closeEditModal);
-  document.getElementById("modalSaveBtn").addEventListener("click", saveEdit);
-  document.getElementById("editModal").addEventListener("click", function (e) {
-    if (e.target === this) closeEditModal();
-  });
-  document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") {
-      var m = document.getElementById("editModal");
-      if (m.classList.contains("active")) closeEditModal();
-    }
-  });
-}
-
-function openEditModal(id) {
-  var item = lastItems.find(function (x) { return x.id === id; });
-  if (!item) return;
-  editingId = id;
-  document.getElementById("editGoal").value = item.goal || "";
-  document.getElementById("editTargetDate").value = item.target_date || "";
-  document.getElementById("editModal").classList.add("active");
-  document.body.style.overflow = "hidden";
-  setTimeout(function () { document.getElementById("editGoal").focus(); }, 100);
-}
-
-function closeEditModal() {
-  document.getElementById("editModal").classList.remove("active");
-  document.body.style.overflow = "";
-  editingId = null;
-}
-
-async function saveEdit() {
-  if (!editingId) return;
-
-  var goal = document.getElementById("editGoal").value.trim();
-  var targetDate = document.getElementById("editTargetDate").value;
-
-  if (!goal) { showToast("warning", "Goal is required", ""); return; }
-  if (!targetDate) { showToast("warning", "Target date is required", ""); return; }
-
-  var saveBtn = document.getElementById("modalSaveBtn");
-  saveBtn.disabled = true;
-  saveBtn.textContent = "Saving...";
-
-  try {
-    var token = localStorage.getItem("nova-auth-token") || localStorage.getItem("access_token");
-    var res = await fetch(API_BASE + "/api/assistant", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
-      body: JSON.stringify({
-        intent: "UPDATE_GOAL",
-        data: { id: editingId, goal: goal, target_date: targetDate }
-      })
-    });
-
-    var data = await res.json();
-
-    if (data.success) {
-      closeEditModal();
-      showToast("success", "Updated", "Goal saved successfully.");
-      loadData();
-    } else {
-      showToast("error", "Update failed", data.message || "Please try again.");
-    }
-  } catch (err) {
-    console.error(err);
-    showToast("error", "Network error", "Could not connect to server.");
-  } finally {
-    saveBtn.disabled = false;
-    saveBtn.textContent = "Save Changes";
-  }
 }
 
 function escapeHtml(str) {
