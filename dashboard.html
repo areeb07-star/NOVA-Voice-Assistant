@@ -442,6 +442,11 @@
           <div class="stat-value loading" id="statGoals">—</div>
           <div class="stat-label">Goals</div>
         </a>
+        <a href="expenses.html" class="stat-card">
+          <div class="stat-icon"><i data-lucide="wallet"></i></div>
+          <div class="stat-value loading" id="statExpenses">—</div>
+          <div class="stat-label">Expenses</div>
+        </a>
       </div>
 
     </div>
@@ -452,6 +457,8 @@
 /* =========================================================
    NOVA — Dashboard (Overview only)
    FIX: sends user_id + uses `total` for accurate counts
+   + Added Expenses card
+   + Real notification count
    ========================================================= */
 
 var userName = localStorage.getItem("nova-user-name") || "User";
@@ -494,10 +501,65 @@ function showToast(type, title, message) {
   setTimeout(function () { t.remove(); }, 4000);
 }
 
-/* ---------- Notifications ---------- */
-document.getElementById("notifBtn").addEventListener("click", function () {
-  showToast("info", "🔔 Notifications", "You have 3 new notifications.");
+/* ---------- Notifications (REAL count) ---------- */
+document.getElementById("notifBtn").addEventListener("click", async function () {
+  var token = localStorage.getItem("nova-auth-token")
+           || localStorage.getItem("access_token")
+           || localStorage.getItem("nova-access-token");
+  var userId = localStorage.getItem("user_id")
+            || localStorage.getItem("nova-user-id");
+
+  if (!token || !userId) {
+    showToast("info", "🔔 Notifications", "You have no new notifications.");
+    return;
+  }
+
+  try {
+    var counts = await Promise.all([
+      fetchCountForNotif("GET_REMINDERS"),
+      fetchCountForNotif("GET_NOTES"),
+      fetchCountForNotif("GET_SHOPPING_LIST")
+    ]);
+    var total = counts.reduce(function (a, b) { return a + b; }, 0);
+    if (total === 0) {
+      showToast("info", "🔔 Notifications", "You have no new notifications.");
+    } else {
+      showToast("info", "🔔 Notifications",
+        "You have " + total + " item" + (total === 1 ? "" : "s") + " across reminders, notes and shopping.");
+    }
+  } catch (e) {
+    showToast("info", "🔔 Notifications", "Could not load notifications right now.");
+  }
 });
+
+async function fetchCountForNotif(intent) {
+  var token = localStorage.getItem("nova-auth-token")
+           || localStorage.getItem("access_token")
+           || localStorage.getItem("nova-access-token");
+  var userId = localStorage.getItem("user_id")
+            || localStorage.getItem("nova-user-id");
+  if (!token || !userId) return 0;
+  try {
+    var res = await fetch("https://nova-voice-assistant-6vve.onrender.com/api/assistant", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+      },
+      body: JSON.stringify({ intent: intent, data: { user_id: userId } })
+    });
+    var data = await res.json();
+    if (!data.success) return 0;
+    if (typeof data.total === "number") return data.total;
+    var keys = ["reminders", "notes", "shopping_items"];
+    for (var i = 0; i < keys.length; i++) {
+      if (Array.isArray(data[keys[i]])) return data[keys[i]].length;
+    }
+    return 0;
+  } catch (e) {
+    return 0;
+  }
+}
 
 /* ---------- Profile menu ---------- */
 var avatarCircle = document.getElementById("avatarCircle");
@@ -555,7 +617,7 @@ async function loadOverview() {
 
   if (!token || !userId) {
     console.log("[Overview] No token or user_id — skipping");
-    ["statReminders","statNotes","statShopping","statStudy","statGoals"].forEach(function (id) {
+    ["statReminders","statNotes","statShopping","statStudy","statGoals","statExpenses"].forEach(function (id) {
       var el = document.getElementById(id);
       if (el) { el.textContent = "0"; el.classList.remove("loading"); }
     });
@@ -567,7 +629,8 @@ async function loadOverview() {
     { intent: "GET_NOTES",         elId: "statNotes",     dataKey: "notes" },
     { intent: "GET_SHOPPING_LIST", elId: "statShopping",  dataKey: "shopping_items" },
     { intent: "GET_STUDY_PLANS",   elId: "statStudy",     dataKey: "study_plans" },
-    { intent: "GET_GOALS",         elId: "statGoals",     dataKey: "goals" }
+    { intent: "GET_GOALS",         elId: "statGoals",     dataKey: "goals" },
+    { intent: "GET_EXPENSES",      elId: "statExpenses",  dataKey: "expenses" }
   ];
 
   async function fetchCount(intent, dataKey) {
@@ -580,7 +643,7 @@ async function loadOverview() {
         },
         body: JSON.stringify({
           intent: intent,
-          data: { user_id: userId }   /* ⭐ sends user_id now */
+          data: { user_id: userId }
         })
       });
 
@@ -592,7 +655,6 @@ async function loadOverview() {
       var data = await res.json();
       if (!data.success) return 0;
 
-      /* ⭐ use `total` for accurate count — fallback to array length */
       if (typeof data.total === "number") return data.total;
       var arr = data[dataKey] || [];
       return arr.length;
