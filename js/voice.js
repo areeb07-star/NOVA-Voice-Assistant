@@ -3,11 +3,12 @@
    Mic button: 1st click stops Nova, 2nd click starts listening
    Bug 5 fix: reliable TTS stop (pause + cancel + ttsId guard)
    Multi-user: sends user_id + access_token to bridge.py
+   Deployed: AI_URL + SUMMARIZE_URL → Render bridge
    ============================================ */
 
 const CONFIG = {
-  AI_URL: 'http://127.0.0.1:5000/api/process',
-  SUMMARIZE_URL: 'http://127.0.0.1:5000/api/summarize',
+  AI_URL: 'https://nova-voice-assistant-bridge-f.onrender.com/api/process',
+  SUMMARIZE_URL: 'https://nova-voice-assistant-bridge-f.onrender.com/api/summarize',
   LOCAL_AGENT_URL: 'http://127.0.0.1:5050'
 };
 
@@ -114,16 +115,33 @@ function getBestVoiceForLanguage(lang) {
     'gu-IN': ['Google ગુજરાતી'],
     'pa-IN': ['Google ਪੰਜਾਬੀ']
   };
-  const preferred = voiceMap[lang] || voiceMap['en-GB'];
+
+  // 1) Try the exact match list
+  const preferred = voiceMap[lang] || [];
   for (const name of preferred) {
     const match = voices.find(v => v.name.includes(name));
     if (match) return match;
   }
-  return voices.find(v => v.lang === lang) ||
-         voices.find(v => v.lang.startsWith(lang.split('-')[0])) ||
-         voices.find(v => v.lang === 'en-GB') ||
-         voices.find(v => v.lang.startsWith('en')) ||
-         voices[0];
+
+  // 2) Try exact lang code
+  let v = voices.find(v => v.lang === lang);
+  if (v) return v;
+
+  // 3) Try lang prefix (e.g. 'hi' matches 'hi-IN')
+  const langPrefix = lang.split('-')[0];
+  v = voices.find(v => v.lang.startsWith(langPrefix));
+  if (v) return v;
+
+  // 4) Fall back to Indian English
+  v = voices.find(v => v.lang === 'en-IN' || v.name.includes('India'));
+  if (v) return v;
+
+  // 5) Fall back to any English
+  v = voices.find(v => v.lang.startsWith('en'));
+  if (v) return v;
+
+  // 6) Last resort — first voice
+  return voices[0] || null;
 }
 
 // ============================================================
@@ -214,7 +232,7 @@ function stopListening() {
 }
 
 // ============================================================
-// STOP SPEAKING — kills Nova mid-sentence
+// STOP SPEAKING
 // ============================================================
 function stopSpeaking() {
   if (!window.speechSynthesis) return;
@@ -247,9 +265,6 @@ function resumeSpeaking() {
 
 // ============================================================
 // SMART MIC HANDLER
-//   If speaking  → stop ONLY (no auto-listen)
-//   If listening → stop
-//   Else         → start listening
 // ============================================================
 function handleMicClick() {
   const speaking = window.speechSynthesis &&
@@ -290,7 +305,6 @@ async function handleVoiceInput(transcript) {
     const deviceId = await autoDetectDeviceId();
     console.log('[NOVA] Using device_id:', deviceId || '(none)');
 
-    // ⭐ Multi-user: read real user_id + access_token from browser storage
     const loggedInUserId =
       localStorage.getItem('nova-user-id') ||
       localStorage.getItem('user_id') ||
@@ -321,6 +335,9 @@ async function handleVoiceInput(transcript) {
     console.log('[NOVA] AI Response:', data);
 
     let reply = data.response || data.reply || 'No response';
+    if (Array.isArray(data.actions) && data.actions.length > 1) {
+  console.log('[NOVA] Multi-action executed:', data.actions.length, 'actions');
+}
 
     if (data.data && typeof data.data === 'object') {
       const extras = [];
@@ -344,7 +361,7 @@ async function handleVoiceInput(transcript) {
     console.error('[NOVA] AI error:', err);
     removeTypingIndicator();
 
-    const errMsg = '❌ Could not reach the AI. Please start bridge.py.';
+    const errMsg = '❌ Could not reach the AI. Please try again.';
     if (container) {
       const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       container.appendChild(createChatMessage('nova', errMsg, now));
