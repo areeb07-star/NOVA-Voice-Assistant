@@ -16,7 +16,6 @@
   }
   .dashboard-layout { display: flex; min-height: 100vh; }
 
-  /* ============ SIDEBAR ============ */
   .sidebar {
     width: 260px;
     background: rgba(10,12,26,0.85);
@@ -76,7 +75,6 @@
   .nav-icon svg { width: 18px; height: 18px; stroke-width: 1.8; }
   .nav-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 12px; }
 
-  /* ============ MAIN ============ */
   .main-content { flex: 1; margin-left: 260px; min-height: 100vh; }
   .topbar {
     height: 72px; display: flex; align-items: center; justify-content: space-between;
@@ -94,13 +92,16 @@
     background: transparent; border: 0; color: #94a3b8;
     cursor: pointer; display: flex; align-items: center; justify-content: center;
     position: relative; transition: all 0.2s ease;
+    pointer-events: auto;
+    z-index: 10;
   }
   .topbar-icon-btn:hover { background: rgba(255,255,255,0.05); color: #f1f5f9; }
-  .topbar-icon-btn svg { width: 20px; height: 20px; stroke-width: 1.8; }
+  .topbar-icon-btn svg { width: 20px; height: 20px; stroke-width: 1.8; pointer-events: none; }
   .notification-dot {
     position: absolute; top: 8px; right: 8px;
     width: 8px; height: 8px; border-radius: 50%;
     background: #22d3ee; box-shadow: 0 0 8px rgba(34,211,238,0.6);
+    pointer-events: none;
   }
   .avatar {
     width: 40px; height: 40px; border-radius: 50%;
@@ -112,7 +113,6 @@
   }
   .avatar:hover { transform: scale(1.05); }
 
-  /* ============ PROFILE DROPDOWN ============ */
   .profile-menu {
     position: absolute;
     top: calc(100% + 8px);
@@ -148,27 +148,13 @@
     text-align: left;
     font-family: inherit;
   }
-  .profile-menu-item:hover {
-    background: rgba(255,255,255,0.06);
-    color: #f1f5f9;
-  }
-  .profile-menu-item svg {
-    width: 16px; height: 16px; stroke-width: 2;
-    color: #94a3b8;
-  }
+  .profile-menu-item:hover { background: rgba(255,255,255,0.06); color: #f1f5f9; }
+  .profile-menu-item svg { width: 16px; height: 16px; stroke-width: 2; color: #94a3b8; }
   .profile-menu-item:hover svg { color: #22d3ee; }
   .profile-menu-item.danger { color: #f87171; }
   .profile-menu-item.danger svg { color: #f87171; }
-  .profile-menu-item.danger:hover {
-    background: rgba(239,68,68,0.1);
-    color: #ef4444;
-  }
-  .profile-menu hr {
-    border: 0;
-    height: 1px;
-    background: rgba(255,255,255,0.08);
-    margin: 6px 4px;
-  }
+  .profile-menu-item.danger:hover { background: rgba(239,68,68,0.1); color: #ef4444; }
+  .profile-menu hr { border: 0; height: 1px; background: rgba(255,255,255,0.08); margin: 6px 4px; }
 
   .page-content { padding: 32px; }
 
@@ -207,18 +193,10 @@
     box-shadow: 0 4px 20px rgba(34,211,238,0.25);
     transition: all 0.2s ease;
   }
-  .welcome-cta:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 30px rgba(34,211,238,0.4);
-  }
+  .welcome-cta:hover { transform: translateY(-2px); box-shadow: 0 6px 30px rgba(34,211,238,0.4); }
   .welcome-cta svg { width: 16px; height: 16px; stroke-width: 2.5; }
 
-  /* ============ OVERVIEW ============ */
-  .overview-title {
-    font-size: 1.1rem; font-weight: 700;
-    margin-bottom: 16px;
-    color: #f1f5f9;
-  }
+  .overview-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 16px; color: #f1f5f9; }
   .dashboard-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -277,10 +255,9 @@
     letter-spacing: 0.05em;
   }
 
-  /* ============ TOAST ============ */
   .toast-container {
     position: fixed; top: 20px; right: 20px;
-    z-index: 2000;
+    z-index: 99999;
     display: flex; flex-direction: column; gap: 8px;
     pointer-events: none;
   }
@@ -325,7 +302,6 @@
 
 <div class="dashboard-layout">
 
-  <!-- SIDEBAR -->
   <aside class="sidebar">
     <div class="sidebar-header">
       <img src="assets/images/nova-logo.svg" alt="NOVA" class="sidebar-logo-img">
@@ -360,8 +336,8 @@
       </a>
       <div class="nav-divider"></div>
       <a href="download-agent.html" class="nav-item">
-  <i data-lucide="zap" class="nav-icon"></i><span>Nova Agent</span>
-</a>
+        <i data-lucide="zap" class="nav-icon"></i><span>Nova Agent</span>
+      </a>
       <a href="profile.html" class="nav-item">
         <i data-lucide="settings" class="nav-icon"></i><span>Profile</span>
       </a>
@@ -371,7 +347,6 @@
     </nav>
   </aside>
 
-  <!-- MAIN -->
   <div class="main-content">
     <header class="topbar">
       <div>
@@ -379,13 +354,12 @@
         <div class="greeting-subtitle">Here's your overview.</div>
       </div>
       <div class="topbar-right">
-        <button class="topbar-icon-btn" id="notifBtn">
+        <button class="topbar-icon-btn" id="notifBtn" type="button" onclick="window.__novaNotif && window.__novaNotif(event)">
           <i data-lucide="bell"></i>
           <span class="notification-dot"></span>
         </button>
         <div class="avatar" id="avatarCircle">U</div>
 
-        <!-- Profile dropdown -->
         <div class="profile-menu" id="profileMenu" hidden>
           <a href="profile.html" class="profile-menu-item">
             <i data-lucide="user"></i> Profile
@@ -403,7 +377,6 @@
 
     <div class="page-content">
 
-      <!-- WELCOME -->
       <div class="welcome-banner">
         <div class="welcome-text">
           <h2 id="welcomeName">Welcome back!</h2>
@@ -414,7 +387,6 @@
         </a>
       </div>
 
-      <!-- OVERVIEW -->
       <h3 class="overview-title">Overview</h3>
       <div class="dashboard-grid">
         <a href="reminders.html" class="stat-card">
@@ -455,13 +427,118 @@
 
 <script>
 /* =========================================================
-   NOVA — Dashboard (Overview only)
-   Fixed: everything wrapped in DOMContentLoaded
+   NOVA — Dashboard (bulletproof)
    ========================================================= */
 
+var BACKEND = "https://nova-voice-assistant-6vve.onrender.com";
+
+/* ---------- Toast ---------- */
+function novaToast(type, title, message) {
+  var container = document.querySelector(".toast-container");
+  if (!container) {
+    container = document.createElement("div");
+    container.className = "toast-container";
+    document.body.appendChild(container);
+  }
+  var icons = { success: "✅", error: "❌", info: "ℹ️", warning: "⚠️" };
+  var t = document.createElement("div");
+  t.className = "toast toast-" + type;
+  t.innerHTML =
+    '<span>' + (icons[type] || "ℹ️") + '</span>' +
+    '<div>' +
+      '<div class="toast-title">' + title + '</div>' +
+      (message ? '<div class="toast-message">' + message + '</div>' : '') +
+    '</div>';
+  container.appendChild(t);
+  setTimeout(function () { t.remove(); }, 4500);
+}
+window.novaToast = novaToast;
+
+/* ---------- Helpers ---------- */
+function getToken() {
+  return localStorage.getItem("nova-auth-token")
+      || localStorage.getItem("access_token")
+      || localStorage.getItem("nova-access-token");
+}
+function getUserId() {
+  return localStorage.getItem("user_id")
+      || localStorage.getItem("nova-user-id");
+}
+
+async function fetchCount(intent, dataKey) {
+  var token = getToken();
+  var userId = getUserId();
+  if (!token || !userId) return 0;
+  try {
+    var res = await fetch(BACKEND + "/api/assistant", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+      },
+      body: JSON.stringify({ intent: intent, data: { user_id: userId } })
+    });
+    if (res.status === 401) return 0;
+    var data = await res.json();
+    if (!data.success) return 0;
+    if (typeof data.total === "number") return data.total;
+    var arr = data[dataKey] || [];
+    return Array.isArray(arr) ? arr.length : 0;
+  } catch (e) {
+    console.log("[Dashboard] fetch failed for", intent, e);
+    return 0;
+  }
+}
+
+/* ---------- Notification handler (exposed globally) ---------- */
+window.__novaNotif = async function (e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  console.log("[Dashboard] notif clicked");
+
+  if (!getToken() || !getUserId()) {
+    novaToast("info", "🔔 Notifications", "You have no new notifications.");
+    return;
+  }
+
+  novaToast("info", "🔔 Notifications", "Loading...");
+
+  try {
+    var counts = await Promise.all([
+      fetchCount("GET_REMINDERS", "reminders"),
+      fetchCount("GET_NOTES", "notes"),
+      fetchCount("GET_SHOPPING_LIST", "shopping_items")
+    ]);
+    var total = counts.reduce(function (a, b) { return a + b; }, 0);
+
+    /* Remove the "Loading..." toast */
+    var container = document.querySelector(".toast-container");
+    if (container) {
+      var toasts = container.querySelectorAll(".toast");
+      for (var i = toasts.length - 1; i >= 0; i--) {
+        var msg = toasts[i].querySelector(".toast-message");
+        if (msg && msg.textContent === "Loading...") {
+          toasts[i].remove();
+        }
+      }
+    }
+
+    if (total === 0) {
+      novaToast("info", "🔔 Notifications", "You have no new notifications.");
+    } else {
+      novaToast("info", "🔔 Notifications",
+        "You have " + total + " item" + (total === 1 ? "" : "s") +
+        " across reminders, notes and shopping.");
+    }
+  } catch (err) {
+    console.error("[Dashboard] notif error:", err);
+    novaToast("error", "🔔 Notifications", "Could not load right now.");
+  }
+};
+
+/* ---------- DOM ready stuff ---------- */
 document.addEventListener("DOMContentLoaded", function () {
 
-  /* ---------- Greeting ---------- */
+  /* Greeting */
   var userName = localStorage.getItem("nova-user-name") || "User";
   var firstName = userName.split(" ")[0];
 
@@ -478,138 +555,25 @@ document.addEventListener("DOMContentLoaded", function () {
   var avatarEl = document.getElementById("avatarCircle");
   if (avatarEl) avatarEl.textContent = (firstName.charAt(0) || "U").toUpperCase();
 
-  /* ---------- Toast ---------- */
-  function showToast(type, title, message) {
-    var container = document.querySelector(".toast-container");
-    if (!container) {
-      container = document.createElement("div");
-      container.className = "toast-container";
-      document.body.appendChild(container);
-    }
-    var icons = { success: "✅", error: "❌", info: "ℹ️", warning: "⚠️" };
-    var t = document.createElement("div");
-    t.className = "toast toast-" + type;
-    t.innerHTML =
-      '<span>' + (icons[type] || "ℹ️") + '</span>' +
-      '<div>' +
-        '<div class="toast-title">' + title + '</div>' +
-        (message ? '<div class="toast-message">' + message + '</div>' : '') +
-      '</div>';
-    container.appendChild(t);
-    setTimeout(function () { t.remove(); }, 4000);
-  }
-  window.NOVA = window.NOVA || {};
-  window.NOVA.showToast = showToast;
-
-  /* ---------- Helpers ---------- */
-  var BACKEND = "https://nova-voice-assistant-6vve.onrender.com";
-
-  function getToken() {
-    return localStorage.getItem("nova-auth-token")
-        || localStorage.getItem("access_token")
-        || localStorage.getItem("nova-access-token");
-  }
-  function getUserId() {
-    return localStorage.getItem("user_id")
-        || localStorage.getItem("nova-user-id");
-  }
-
-  async function fetchCount(intent, dataKey) {
-    var token = getToken();
-    var userId = getUserId();
-    if (!token || !userId) return 0;
-    try {
-      var res = await fetch(BACKEND + "/api/assistant", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer " + token
-        },
-        body: JSON.stringify({ intent: intent, data: { user_id: userId } })
-      });
-      if (res.status === 401) return 0;
-      var data = await res.json();
-      if (!data.success) return 0;
-      if (typeof data.total === "number") return data.total;
-      var arr = data[dataKey] || [];
-      return Array.isArray(arr) ? arr.length : 0;
-    } catch (e) {
-      console.log("[Dashboard] fetch failed for", intent, e);
-      return 0;
-    }
-  }
-
-  /* ---------- Notification button ---------- */
-  var notifBtn = document.getElementById("notifBtn");
-  if (notifBtn) {
-    notifBtn.addEventListener("click", async function (e) {
-      e.preventDefault();
-      console.log("[Dashboard] notifBtn clicked");
-
-      if (!getToken() || !getUserId()) {
-        showToast("info", "🔔 Notifications", "You have no new notifications.");
-        return;
-      }
-
-      var loadingToast = null;
-      var container = document.querySelector(".toast-container");
-      if (container) {
-        var t = document.createElement("div");
-        t.className = "toast toast-info";
-        t.innerHTML = '<span>🔔</span><div><div class="toast-title">Notifications</div><div class="toast-message">Loading...</div></div>';
-        container.appendChild(t);
-        loadingToast = t;
-      }
-
-      try {
-        var counts = await Promise.all([
-          fetchCount("GET_REMINDERS", "reminders"),
-          fetchCount("GET_NOTES", "notes"),
-          fetchCount("GET_SHOPPING_LIST", "shopping_items")
-        ]);
-        var total = counts.reduce(function (a, b) { return a + b; }, 0);
-
-        if (loadingToast) loadingToast.remove();
-
-        if (total === 0) {
-          showToast("info", "🔔 Notifications", "You have no new notifications.");
-        } else {
-          showToast("info", "🔔 Notifications",
-            "You have " + total + " item" + (total === 1 ? "" : "s") +
-            " across reminders, notes and shopping.");
-        }
-      } catch (err) {
-        if (loadingToast) loadingToast.remove();
-        console.error("[Dashboard] notification error:", err);
-        showToast("error", "🔔 Notifications", "Could not load right now.");
-      }
-    });
-  } else {
-    console.warn("[Dashboard] notifBtn not found!");
-  }
-
-  /* ---------- Profile menu ---------- */
+  /* Profile menu */
   var avatarCircle = document.getElementById("avatarCircle");
   var profileMenu = document.getElementById("profileMenu");
-
   if (avatarCircle && profileMenu) {
     avatarCircle.addEventListener("click", function (e) {
       e.stopPropagation();
       profileMenu.hidden = !profileMenu.hidden;
     });
-
     document.addEventListener("click", function (e) {
       if (!profileMenu.hidden && !profileMenu.contains(e.target) && e.target !== avatarCircle) {
         profileMenu.hidden = true;
       }
     });
-
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape") profileMenu.hidden = true;
     });
   }
 
-  /* ---------- Logout ---------- */
+  /* Logout */
   function doLogout() {
     localStorage.removeItem("nova-auth-token");
     localStorage.removeItem("access_token");
@@ -620,10 +584,8 @@ document.addEventListener("DOMContentLoaded", function () {
     localStorage.removeItem("nova-access-token");
     window.location.href = "login.html";
   }
-
   var logoutMenuBtn = document.getElementById("logoutMenuBtn");
   if (logoutMenuBtn) logoutMenuBtn.addEventListener("click", doLogout);
-
   var sidebarLogout = document.getElementById("sidebarLogout");
   if (sidebarLogout) {
     sidebarLogout.addEventListener("click", function (e) {
@@ -632,11 +594,10 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  /* ---------- Overview cards ---------- */
+  /* Overview cards */
   async function loadOverview() {
     var token = getToken();
     var userId = getUserId();
-
     var ids = ["statReminders","statNotes","statShopping","statStudy","statGoals","statExpenses"];
 
     if (!token || !userId) {
@@ -662,16 +623,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
     STATS.forEach(function (s, i) {
       var el = document.getElementById(s.elId);
-      if (el) {
-        el.textContent = results[i];
-        el.classList.remove("loading");
-      }
+      if (el) { el.textContent = results[i]; el.classList.remove("loading"); }
     });
   }
-
   loadOverview();
 
-  /* ---------- Lucide icons ---------- */
+  /* Lucide icons */
   if (window.lucide) lucide.createIcons();
 });
 </script>
