@@ -8,6 +8,7 @@
 # + DELETE_* intents wired to backend
 # + SET_VOLUME / SET_BRIGHTNESS level safety net + value mirror for agent.py
 # + MULTI_ACTION support (device actions only) — single-action logic unchanged
+# + Fix duplicate reply in multi-action
 
 import os
 import sys
@@ -946,9 +947,11 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         if result.get("reply"):
             replies.append(result["reply"])
 
-    final_reply = "\n".join(replies) if replies else (
-        raw.get("reply", "Done!") if isinstance(raw, dict) else "Done!"
-    )
+    # FIX: For multi-action, use the LLM's top-level reply ONCE (avoid duplicates)
+    if len(raw_actions) > 1 and isinstance(raw, dict) and raw.get("reply"):
+        final_reply = raw["reply"]
+    else:
+        final_reply = "\n".join(replies) if replies else "Done!"
 
     save_chat_message(user_id, "assistant", final_reply, token)
 
