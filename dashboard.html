@@ -354,7 +354,7 @@
         <div class="greeting-subtitle">Here's your overview.</div>
       </div>
       <div class="topbar-right">
-        <button class="topbar-icon-btn" id="notifBtn" type="button" onclick="window.__novaNotif && window.__novaNotif(event)">
+        <button class="topbar-icon-btn" id="notifBtn" type="button">
           <i data-lucide="bell"></i>
           <span class="notification-dot"></span>
         </button>
@@ -427,13 +427,12 @@
 
 <script>
 /* =========================================================
-   NOVA — Dashboard (bulletproof)
+   NOVA — Dashboard (bulletproof v2)
    ========================================================= */
 
 var BACKEND = "https://nova-voice-assistant-6vve.onrender.com";
 
-/* ---------- Toast ---------- */
-function novaToast(type, title, message) {
+function novaToast(type, title, message, autoRemove) {
   var container = document.querySelector(".toast-container");
   if (!container) {
     container = document.createElement("div");
@@ -443,6 +442,7 @@ function novaToast(type, title, message) {
   var icons = { success: "✅", error: "❌", info: "ℹ️", warning: "⚠️" };
   var t = document.createElement("div");
   t.className = "toast toast-" + type;
+  if (autoRemove) t.dataset.autoremove = "true";
   t.innerHTML =
     '<span>' + (icons[type] || "ℹ️") + '</span>' +
     '<div>' +
@@ -450,11 +450,13 @@ function novaToast(type, title, message) {
       (message ? '<div class="toast-message">' + message + '</div>' : '') +
     '</div>';
   container.appendChild(t);
-  setTimeout(function () { t.remove(); }, 4500);
+  if (autoRemove !== false) {
+    setTimeout(function () { t.remove(); }, 4500);
+  }
+  return t;
 }
 window.novaToast = novaToast;
 
-/* ---------- Helpers ---------- */
 function getToken() {
   return localStorage.getItem("nova-auth-token")
       || localStorage.getItem("access_token")
@@ -465,19 +467,33 @@ function getUserId() {
       || localStorage.getItem("nova-user-id");
 }
 
+/* Timeout wrapper so fetch never hangs forever */
+function fetchWithTimeout(url, options, ms) {
+  return new Promise(function (resolve, reject) {
+    var timer = setTimeout(function () { reject(new Error("timeout")); }, ms || 8000);
+    fetch(url, options).then(function (res) {
+      clearTimeout(timer);
+      resolve(res);
+    }).catch(function (err) {
+      clearTimeout(timer);
+      reject(err);
+    });
+  });
+}
+
 async function fetchCount(intent, dataKey) {
   var token = getToken();
   var userId = getUserId();
   if (!token || !userId) return 0;
   try {
-    var res = await fetch(BACKEND + "/api/assistant", {
+    var res = await fetchWithTimeout(BACKEND + "/api/assistant", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": "Bearer " + token
       },
       body: JSON.stringify({ intent: intent, data: { user_id: userId } })
-    });
+    }, 8000);
     if (res.status === 401) return 0;
     var data = await res.json();
     if (!data.success) return 0;
@@ -485,13 +501,13 @@ async function fetchCount(intent, dataKey) {
     var arr = data[dataKey] || [];
     return Array.isArray(arr) ? arr.length : 0;
   } catch (e) {
-    console.log("[Dashboard] fetch failed for", intent, e);
+    console.log("[Dashboard] fetch failed for", intent, e.message);
     return 0;
   }
 }
 
-/* ---------- Notification handler (exposed globally) ---------- */
-window.__novaNotif = async function (e) {
+/* ---------- Notification handler ---------- */
+function handleNotifClick(e) {
   if (e) { e.preventDefault(); e.stopPropagation(); }
   console.log("[Dashboard] notif clicked");
 
@@ -500,27 +516,15 @@ window.__novaNotif = async function (e) {
     return;
   }
 
-  novaToast("info", "🔔 Notifications", "Loading...");
+  var loadingToast = novaToast("info", "Notifications", "Loading...", false);
 
-  try {
-    var counts = await Promise.all([
-      fetchCount("GET_REMINDERS", "reminders"),
-      fetchCount("GET_NOTES", "notes"),
-      fetchCount("GET_SHOPPING_LIST", "shopping_items")
-    ]);
+  Promise.all([
+    fetchCount("GET_REMINDERS", "reminders"),
+    fetchCount("GET_NOTES", "notes"),
+    fetchCount("GET_SHOPPING_LIST", "shopping_items")
+  ]).then(function (counts) {
     var total = counts.reduce(function (a, b) { return a + b; }, 0);
-
-    /* Remove the "Loading..." toast */
-    var container = document.querySelector(".toast-container");
-    if (container) {
-      var toasts = container.querySelectorAll(".toast");
-      for (var i = toasts.length - 1; i >= 0; i--) {
-        var msg = toasts[i].querySelector(".toast-message");
-        if (msg && msg.textContent === "Loading...") {
-          toasts[i].remove();
-        }
-      }
-    }
+    if (loadingToast && loadingToast.parentNode) loadingToast.remove();
 
     if (total === 0) {
       novaToast("info", "🔔 Notifications", "You have no new notifications.");
@@ -529,16 +533,16 @@ window.__novaNotif = async function (e) {
         "You have " + total + " item" + (total === 1 ? "" : "s") +
         " across reminders, notes and shopping.");
     }
-  } catch (err) {
+  }).catch(function (err) {
     console.error("[Dashboard] notif error:", err);
+    if (loadingToast && loadingToast.parentNode) loadingToast.remove();
     novaToast("error", "🔔 Notifications", "Could not load right now.");
-  }
-};
+  });
+}
 
-/* ---------- DOM ready stuff ---------- */
+/* ---------- DOM ready ---------- */
 document.addEventListener("DOMContentLoaded", function () {
 
-  /* Greeting */
   var userName = localStorage.getItem("nova-user-name") || "User";
   var firstName = userName.split(" ")[0];
 
@@ -554,6 +558,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
   var avatarEl = document.getElementById("avatarCircle");
   if (avatarEl) avatarEl.textContent = (firstName.charAt(0) || "U").toUpperCase();
+
+  /* Notification button wired with addEventListener */
+  var notifBtn = document.getElementById("notifBtn");
+  if (notifBtn) {
+    notifBtn.addEventListener("click", handleNotifClick);
+    console.log("[Dashboard] notifBtn wired");
+  } else {
+    console.warn("[Dashboard] notifBtn NOT FOUND");
+  }
 
   /* Profile menu */
   var avatarCircle = document.getElementById("avatarCircle");
@@ -573,7 +586,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  /* Logout */
   function doLogout() {
     localStorage.removeItem("nova-auth-token");
     localStorage.removeItem("access_token");
@@ -594,7 +606,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  /* Overview cards */
   async function loadOverview() {
     var token = getToken();
     var userId = getUserId();
@@ -628,7 +639,6 @@ document.addEventListener("DOMContentLoaded", function () {
   }
   loadOverview();
 
-  /* Lucide icons */
   if (window.lucide) lucide.createIcons();
 });
 </script>
