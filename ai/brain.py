@@ -6,6 +6,7 @@
 # + Load chat history from backend
 # + CREATE_GOAL auto-date rule + normalize_date() for ISO YYYY-MM-DD
 # + DELETE_* intents wired to backend
+# + SET_VOLUME / SET_BRIGHTNESS level safety net
 
 import os
 import sys
@@ -132,6 +133,21 @@ Output: {"intent":"DELETE_GOAL","mood":"neutral","emoji":"😐","data":{"id":1},
 User: "remove study plan 2"
 Output: {"intent":"DELETE_STUDY_PLAN","mood":"neutral","emoji":"😐","data":{"id":2},"reply":"Deleting study plan 2..."}
 
+User: "set volume to 100"
+Output: {"intent":"SET_VOLUME","mood":"neutral","emoji":"😐","data":{"level":100},"reply":"Volume set to 100%!"}
+
+User: "set volume to 50"
+Output: {"intent":"SET_VOLUME","mood":"neutral","emoji":"😐","data":{"level":50},"reply":"Volume set to 50%!"}
+
+User: "adjust it to 100"
+Output: {"intent":"SET_VOLUME","mood":"neutral","emoji":"😐","data":{"level":100},"reply":"Volume set to 100%!"}
+
+User: "set brightness to 70"
+Output: {"intent":"SET_BRIGHTNESS","mood":"neutral","emoji":"😐","data":{"level":70},"reply":"Brightness set to 70%!"}
+
+User: "volume up"
+Output: {"intent":"VOLUME_UP","mood":"neutral","emoji":"😐","data":{},"reply":"Volume increased!"}
+
 User: "my goal is to get a high paid job by the 25th of this month"
 Output: {"intent":"CREATE_GOAL","mood":"neutral","emoji":"😐","data":{"goal":"get a high paid job","target_date":"2026-09-25"},"reply":"Goal added!"}
 
@@ -193,22 +209,20 @@ Output: {"intent":"DELETE_NOTE","mood":"neutral","emoji":"😐","data":{"id":5},
 User: "remove reminder 3"
 Output: {"intent":"DELETE_REMINDER","mood":"neutral","emoji":"😐","data":{"id":3},"reply":"Deleting reminder 3..."}
 
-User: "delete expense 2"
-Output: {"intent":"DELETE_EXPENSE","mood":"neutral","emoji":"😐","data":{"id":2},"reply":"Deleting expense 2..."}
-
-User: "remove shopping item 4"
-Output: {"intent":"DELETE_SHOPPING_ITEM","mood":"neutral","emoji":"😐","data":{"id":4},"reply":"Deleting shopping item 4..."}
-
-User: "delete goal 1"
-Output: {"intent":"DELETE_GOAL","mood":"neutral","emoji":"😐","data":{"id":1},"reply":"Deleting goal 1..."}
-
-User: "remove study plan 2"
-Output: {"intent":"DELETE_STUDY_PLAN","mood":"neutral","emoji":"😐","data":{"id":2},"reply":"Deleting study plan 2..."}
-
 If the user does NOT provide an ID (e.g. "delete my python note"), ask:
 "Which note ID would you like to delete? You can check your notes first by saying 'show my notes'."
 
 NOTE: UPDATE_MOOD is NOT available. Use LOG_MOOD for new mood entries.
+
+CRITICAL DEVICE CONTROL RULE:
+For SET_VOLUME, "data" MUST include {"level": <number 0-100>}.
+For SET_BRIGHTNESS, "data" MUST include {"level": <number 0-100>}.
+NEVER leave data empty for these intents.
+"volume up" → VOLUME_UP (no data needed)
+"volume down" → VOLUME_DOWN (no data needed)
+"set volume to 50" → SET_VOLUME with {"level": 50}
+"set brightness to 70" → SET_BRIGHTNESS with {"level": 70}
+"mute" → MUTE, "unmute" → UNMUTE
 
 CRITICAL CLARIFICATION RULE:
 If the user's message is ambiguous, respond with a CLARIFYING QUESTION.
@@ -275,10 +289,6 @@ If the user does not specify a date, infer one:
 - "learn python" → 6 months from today
 NEVER ask the user for a date. ALWAYS compute one.
 
-Example:
-User: "my goal is to get a high paid job by the 25th of this month"
-Output: {"intent":"CREATE_GOAL","mood":"neutral","emoji":"😐","data":{"goal":"get a high paid job","target_date":"2026-09-25"},"reply":"Goal added!"}
-
 SAFE ACTION RULE: Only CLOSE_APP needs confirmation.
 
 GET intents support optional fields: "search", "limit", "offset", "date_from", "date_to".
@@ -333,11 +343,9 @@ def normalize_date(value):
     today = datetime.now().date()
     v = value.strip().lower()
 
-    # Already YYYY-MM-DD
     if re.fullmatch(r"\d{4}-\d{2}-\d{2}", v):
         return v
 
-    # Today / tomorrow / yesterday
     if v in ("today", "now"):
         return today.isoformat()
     if v == "tomorrow":
@@ -345,7 +353,6 @@ def normalize_date(value):
     if v == "yesterday":
         return (today - timedelta(days=1)).isoformat()
 
-    # "in N days/weeks/months/years"
     m = re.search(r"in\s+(\d+)\s+(day|days|week|weeks|month|months|year|years)", v)
     if m:
         n = int(m.group(1))
@@ -362,7 +369,6 @@ def normalize_date(value):
             delta = timedelta(0)
         return (today + delta).isoformat()
 
-    # "next week/month/year" / "this week/month/year"
     m = re.search(r"(next|this)\s+(week|month|year)", v)
     if m:
         when, unit = m.group(1), m.group(2)
@@ -374,7 +380,6 @@ def normalize_date(value):
             delta = timedelta(days=365 if when == "next" else 0)
         return (today + delta).isoformat()
 
-    # "end of term" / "end of month" / "end of year"
     if "end of" in v:
         if "term" in v or "month" in v:
             if today.month == 12:
@@ -385,7 +390,6 @@ def normalize_date(value):
         if "year" in v:
             return f"{today.year}-12-31"
 
-    # "25th of next month"
     m = re.search(r"(\d{1,2})(?:st|nd|rd|th)?\s*(?:of\s+)?next\s+month", v)
     if m:
         day = int(m.group(1))
@@ -395,7 +399,6 @@ def normalize_date(value):
             target = today.replace(month=today.month + 1, day=day)
         return target.isoformat()
 
-    # "on the 25th" / "on 25th of this month" / "25 of this month"
     m = re.search(r"(\d{1,2})(?:st|nd|rd|th)?\s*(?:of\s+)?(?:this\s+)?month", v)
     if m:
         day = int(m.group(1))
@@ -405,7 +408,6 @@ def normalize_date(value):
         except ValueError:
             pass
 
-    # Month name + day: "September 25", "25 September"
     month_names = {
         "january": 1, "february": 2, "march": 3, "april": 4, "may": 5, "june": 6,
         "july": 7, "august": 8, "september": 9, "october": 10, "november": 11, "december": 12,
@@ -430,12 +432,10 @@ def normalize_date(value):
             except Exception:
                 pass
 
-    # Last resort: leave as-is
     return value
 
 
 def extract_folder_from_text(user_text):
-    """Fallback: pull the folder name out of the user's message."""
     if not user_text:
         return ""
     text = user_text.strip().lower()
@@ -531,6 +531,27 @@ def normalize_result(raw_result, user_text=""):
         else:
             d["folder"] = folder
 
+    # SET_VOLUME / SET_BRIGHTNESS: must have a numeric "level"
+    if normalized["intent"] in ("SET_VOLUME", "SET_BRIGHTNESS"):
+        d = normalized["data"]
+        if "level" not in d:
+            for alt in ("value", "percent", "volume", "brightness", "amount", "to"):
+                if alt in d:
+                    d["level"] = d.pop(alt)
+                    break
+        if "level" not in d and user_text:
+            m = re.search(r"(\d{1,3})", user_text)
+            if m:
+                d["level"] = int(m.group(1))
+        if "level" in d:
+            try:
+                d["level"] = max(0, min(100, int(d["level"])))
+            except (ValueError, TypeError):
+                pass
+        if "level" not in d:
+            normalized["intent"] = "GENERAL_CHAT"
+            normalized["reply"] = "What level would you like? Say a number between 0 and 100."
+
     if not isinstance(normalized["reply"], str):
         normalized["reply"] = "Done!"
 
@@ -540,14 +561,11 @@ def normalize_result(raw_result, user_text=""):
 def extract_json_object(raw_text):
     if not raw_text:
         return "{}"
-
     cleaned = raw_text.replace("```json", "").replace("```", "").strip()
     start = cleaned.find("{")
     end = cleaned.rfind("}")
-
     if start != -1 and end != -1 and end > start:
         cleaned = cleaned[start:end + 1]
-
     cleaned = re.sub(r",\s*([}\]])", r"\1", cleaned)
     return cleaned
 
@@ -567,7 +585,6 @@ def save_chat_message(user_id, role, content, token):
 
 
 def load_chat_history(user_id, token, limit=HISTORY_LIMIT):
-    """Fetch recent chat history from backend when local cache is empty."""
     if not token or not user_id:
         return []
     try:
@@ -579,7 +596,6 @@ def load_chat_history(user_id, token, limit=HISTORY_LIMIT):
         )
         data = r.json()
         messages = data.get("messages") or data.get("history") or data.get("chat_history") or []
-
         history = []
         for m in messages:
             if isinstance(m, dict) and "role" in m and "content" in m:
@@ -592,12 +608,9 @@ def load_chat_history(user_id, token, limit=HISTORY_LIMIT):
 
 def process_user_input(user_text, user_id="default", token=None):
     today = datetime.now().strftime("%B %d, %Y")
-
     history = conversation_history.get(user_id, [])
-
     if not history and token:
         history = load_chat_history(user_id, token, HISTORY_LIMIT)
-
     history.append({"role": "user", "content": user_text})
     history = history[-HISTORY_LIMIT:]
     conversation_history[user_id] = history
@@ -617,10 +630,8 @@ def process_user_input(user_text, user_id="default", token=None):
                 )
                 ai_reply = response.choices[0].message.content
                 ai_reply = extract_json_object(ai_reply)
-
                 history.append({"role": "assistant", "content": ai_reply})
                 conversation_history[user_id] = history[-HISTORY_LIMIT:]
-
                 result = json.loads(ai_reply)
                 return normalize_result(result, user_text)
             except Exception as e:
@@ -693,13 +704,7 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
             pending_confirmations.pop(user_id, None)
             reply = "Okay, I cancelled that action."
             save_chat_message(user_id, "assistant", reply, token)
-            return {
-                "intent": "GENERAL_CHAT",
-                "mood": "neutral",
-                "emoji": "😐",
-                "data": {},
-                "reply": reply
-            }
+            return {"intent": "GENERAL_CHAT", "mood": "neutral", "emoji": "😐", "data": {}, "reply": reply}
         else:
             pending_confirmations.pop(user_id, None)
             result = process_user_input(user_text, user_id, token)
@@ -728,7 +733,6 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
             "reply": result.get("reply")
         }
 
-    # --- CREATE + UPDATE ---
     if result["intent"] in [
         "CREATE_NOTE", "CREATE_REMINDER", "ADD_EXPENSE", "ADD_SHOPPING_ITEM",
         "STUDY_PLAN", "CREATE_GOAL", "LOG_MOOD", "CREATE_MEMORY", "SAVE_CONTEXT",
@@ -738,19 +742,16 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         result["data"]["user_id"] = user_id
         backend_response = send_to_backend(result["intent"], result["data"], token)
         print("Backend says:", backend_response)
-
         if isinstance(backend_response, dict) and not backend_response.get("success"):
             error_msg = backend_response.get("message", "unknown error")
             result["reply"] = f"Sorry, I couldn't save that: {error_msg}"
 
-    # --- DELETE_* ---
     elif result["intent"] in [
         "DELETE_NOTE", "DELETE_REMINDER", "DELETE_EXPENSE",
         "DELETE_SHOPPING_ITEM", "DELETE_GOAL", "DELETE_STUDY_PLAN"
     ]:
         backend_response = send_to_backend(result["intent"], result["data"], token)
         print("Backend says:", backend_response)
-
         if isinstance(backend_response, dict):
             if backend_response.get("success"):
                 result["reply"] = backend_response.get("message", "Deleted successfully.")
@@ -760,14 +761,12 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         else:
             result["reply"] = "Sorry, I couldn't delete that right now."
 
-    # --- DRAFT_EMAIL ---
     elif result["intent"] == "DRAFT_EMAIL":
         result["data"]["user_id"] = user_id
         if not result["data"].get("subject"):
             result["data"]["subject"] = "Nova Message"
         backend_response = send_to_backend(result["intent"], result["data"], token)
         print("Backend says:", backend_response)
-
         if isinstance(backend_response, dict) and backend_response.get("success"):
             recipient = result["data"].get("recipient", "the recipient")
             result["reply"] = f"Email sent to {recipient}."
@@ -775,20 +774,16 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
             error_msg = backend_response.get("message", "unknown error") if isinstance(backend_response, dict) else "unknown"
             result["reply"] = f"Sorry, I couldn't send the email: {error_msg}"
 
-    # --- FIND_FILE ---
     elif result["intent"] == "FIND_FILE":
         result["data"]["user_id"] = user_id
         result["data"]["device_id"] = device_id
         backend_response = send_to_backend(result["intent"], result["data"], token)
         print("Backend says:", backend_response)
-
         search_term = result["data"].get("search_term", user_text)
         folder = result["data"].get("folder", "")
-
         if isinstance(backend_response, dict):
             files_found = backend_response.get("files_found", 0)
             files = backend_response.get("files", [])
-
             if not backend_response.get("success"):
                 result["reply"] = f"Sorry, I couldn't search for '{search_term}' right now."
             elif files_found == 0:
@@ -805,13 +800,9 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         else:
             result["reply"] = f"Sorry, I couldn't find '{search_term}'."
 
-    # --- CLOSE_APP ---
     elif result["intent"] == "CLOSE_APP":
         if not is_confirmation:
-            pending_confirmations[user_id] = {
-                "intent": "CLOSE_APP",
-                "data": result["data"].copy()
-            }
+            pending_confirmations[user_id] = {"intent": "CLOSE_APP", "data": result["data"].copy()}
             app_name = result["data"].get("app", "this app")
             result["reply"] = f"Are you sure you want to close {app_name}? Say yes to confirm."
             result["data"]["requires_confirmation"] = True
@@ -823,35 +814,29 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
                 "data": result.get("data"),
                 "reply": result.get("reply")
             }
-
         result["data"]["user_id"] = user_id
         result["data"]["device_id"] = device_id
         result["data"]["requires_confirmation"] = False
         backend_response = send_to_backend(result["intent"], result["data"], token)
         print("Backend says:", backend_response)
 
-    # --- OPEN_FOLDER ---
     elif result["intent"] == "OPEN_FOLDER":
         folder = result["data"].get("folder", "downloads")
         result["data"]["folder"] = folder
         result["data"]["user_id"] = user_id
         result["data"]["device_id"] = device_id
-
         backend_response = send_to_backend("OPEN_FOLDER", result["data"], token)
         print("Backend says:", backend_response)
-
         if isinstance(backend_response, dict) and backend_response.get("success"):
             result["reply"] = f"Opening {folder} folder!"
         else:
             result["reply"] = f"Trying to open {folder} folder..."
 
-    # --- OPEN_APP / OPEN_URL / CREATE_FOLDER ---
     elif result["intent"] in ["OPEN_APP", "OPEN_URL", "CREATE_FOLDER"]:
         result["data"]["user_id"] = user_id
         result["data"]["device_id"] = device_id
         backend_response = send_to_backend(result["intent"], result["data"], token)
         print("Backend says:", backend_response)
-
         if isinstance(backend_response, dict) and backend_response.get("success"):
             if result["intent"] == "OPEN_APP":
                 app = result["data"].get("app", "the app")
@@ -864,7 +849,6 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         else:
             result["reply"] = "Sorry, I couldn't complete that action right now."
 
-    # --- OTHER DEVICE ACTIONS ---
     elif result["intent"] in ["MUTE", "UNMUTE",
                               "VOLUME_UP", "VOLUME_DOWN", "SET_VOLUME",
                               "BRIGHTNESS_UP", "BRIGHTNESS_DOWN", "SET_BRIGHTNESS",
@@ -874,7 +858,6 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         backend_response = send_to_backend(result["intent"], result["data"], token)
         print("Backend says:", backend_response)
 
-    # --- SEMANTIC SEARCH ---
     elif result["intent"] == "SEARCH_NOTES":
         query = result["data"].get("query", user_text)
         search_payload = {"query": query, "user_id": user_id}
@@ -884,11 +867,9 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
             r = requests.post(url, json={"intent": "SEARCH_NOTES", "data": search_payload}, headers=headers)
             fetched_data = r.json()
             print("Semantic search result:", fetched_data)
-
             if fetched_data.get("success"):
                 results = fetched_data.get("results", [])
                 filtered = [item for item in results if item.get("similarity", 0) >= SIMILARITY_THRESHOLD]
-
                 if filtered:
                     formatted = [f"{i+1}. {item['text']} (similarity: {round(item['similarity'], 2)})"
                                  for i, item in enumerate(filtered)]
@@ -900,7 +881,6 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         except Exception as e:
             result["reply"] = f"Could not search: {e}"
 
-    # --- FETCHING DATA ---
     elif result["intent"] in ["GET_NOTES", "GET_REMINDERS", "GET_EXPENSES",
                               "GET_SHOPPING_LIST", "GET_STUDY_PLANS", "GET_GOALS",
                               "GET_MOODS", "GET_MEMORIES", "GET_CONTEXT", "SHOW_INFORMATION"]:
@@ -908,7 +888,6 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         fetch_params["user_id"] = user_id
         fetched_data = fetch_from_backend(result["intent"], fetch_params, token)
         print("Fetched from database:", fetched_data)
-
         if fetched_data.get("success"):
             formatted = (fetched_data.get("formatted_notes") or
                          fetched_data.get("formatted_reminders") or
@@ -918,7 +897,6 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
                          fetched_data.get("formatted_study_plans") or
                          fetched_data.get("formatted_moods") or
                          fetched_data.get("formatted_memories"))
-
             if formatted:
                 if result["intent"] == "GET_NOTES":
                     result["reply"] = "Here are your notes:\n" + "\n".join(formatted)
@@ -937,7 +915,6 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
                 elif result["intent"] == "GET_MEMORIES":
                     result["reply"] = "Here is what I remember:\n" + "\n".join(formatted)
 
-    # --- INSTANT MODULES ---
     elif result["intent"] in ["TRANSLATE_TEXT", "SUMMARIZE_TEXT", "GENERATE_FLASHCARDS", "GENERAL_CHAT"]:
         print("INSTANT MODULE: No backend needed. Just showing AI's answer!")
 
@@ -954,20 +931,16 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
 
 if __name__ == "__main__":
     print(">> Nova Brain is ready! Type 'exit' to quit.")
-
     test_email = "test@test.com"
     test_password = "TestPassword123"
     access_token, test_user_id = get_access_token(test_email, test_password)
-
     if not access_token:
         print("Exiting: Could not get access token.")
         exit()
-
     while True:
         user_input = input("\nYou: ")
         if user_input.lower() == "exit":
             break
-
         result = get_ai_response(user_input, access_token, test_user_id)
         print("\n>> AI Output (JSON):")
         print(json.dumps(result, indent=2, ensure_ascii=False))
