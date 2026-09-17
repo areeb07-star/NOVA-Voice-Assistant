@@ -335,6 +335,9 @@ async function handleVoiceInput(transcript) {
     console.log('[NOVA] AI Response:', data);
 
     let reply = data.response || data.reply || 'No response';
+    if (Array.isArray(data.actions) && data.actions.length > 1) {
+  console.log('[NOVA] Multi-action executed:', data.actions.length, 'actions');
+}
 
     if (data.data && typeof data.data === 'object') {
       const extras = [];
