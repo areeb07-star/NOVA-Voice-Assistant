@@ -456,184 +456,68 @@
 <script>
 /* =========================================================
    NOVA — Dashboard (Overview only)
-   FIX: sends user_id + uses `total` for accurate counts
-   + Added Expenses card
-   + Real notification count
+   Fixed: everything wrapped in DOMContentLoaded
    ========================================================= */
 
-var userName = localStorage.getItem("nova-user-name") || "User";
-var firstName = userName.split(" ")[0];
+document.addEventListener("DOMContentLoaded", function () {
 
-/* Greeting */
-var greetingEl = document.getElementById("greetingTitle");
-if (greetingEl) {
-  var h = new Date().getHours();
-  var g = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
-  greetingEl.textContent = g + ", " + firstName + " 👋";
-}
+  /* ---------- Greeting ---------- */
+  var userName = localStorage.getItem("nova-user-name") || "User";
+  var firstName = userName.split(" ")[0];
 
-/* Welcome name */
-var welcomeEl = document.getElementById("welcomeName");
-if (welcomeEl) welcomeEl.textContent = "Welcome back, " + firstName + "!";
-
-/* Avatar initial */
-var avatarEl = document.getElementById("avatarCircle");
-if (avatarEl) avatarEl.textContent = (firstName.charAt(0) || "U").toUpperCase();
-
-/* ---------- Toast ---------- */
-function showToast(type, title, message) {
-  var container = document.querySelector(".toast-container");
-  if (!container) {
-    container = document.createElement("div");
-    container.className = "toast-container";
-    document.body.appendChild(container);
-  }
-  var icons = { success: "✅", error: "❌", info: "ℹ️", warning: "⚠️" };
-  var t = document.createElement("div");
-  t.className = "toast toast-" + type;
-  t.innerHTML =
-    '<span>' + (icons[type] || "ℹ️") + '</span>' +
-    '<div>' +
-      '<div class="toast-title">' + title + '</div>' +
-      (message ? '<div class="toast-message">' + message + '</div>' : '') +
-    '</div>';
-  container.appendChild(t);
-  setTimeout(function () { t.remove(); }, 4000);
-}
-
-/* ---------- Notifications (REAL count) ---------- */
-document.getElementById("notifBtn").addEventListener("click", async function () {
-  var token = localStorage.getItem("nova-auth-token")
-           || localStorage.getItem("access_token")
-           || localStorage.getItem("nova-access-token");
-  var userId = localStorage.getItem("user_id")
-            || localStorage.getItem("nova-user-id");
-
-  if (!token || !userId) {
-    showToast("info", "🔔 Notifications", "You have no new notifications.");
-    return;
+  var greetingEl = document.getElementById("greetingTitle");
+  if (greetingEl) {
+    var h = new Date().getHours();
+    var g = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+    greetingEl.textContent = g + ", " + firstName + " 👋";
   }
 
-  try {
-    var counts = await Promise.all([
-      fetchCountForNotif("GET_REMINDERS"),
-      fetchCountForNotif("GET_NOTES"),
-      fetchCountForNotif("GET_SHOPPING_LIST")
-    ]);
-    var total = counts.reduce(function (a, b) { return a + b; }, 0);
-    if (total === 0) {
-      showToast("info", "🔔 Notifications", "You have no new notifications.");
-    } else {
-      showToast("info", "🔔 Notifications",
-        "You have " + total + " item" + (total === 1 ? "" : "s") + " across reminders, notes and shopping.");
+  var welcomeEl = document.getElementById("welcomeName");
+  if (welcomeEl) welcomeEl.textContent = "Welcome back, " + firstName + "!";
+
+  var avatarEl = document.getElementById("avatarCircle");
+  if (avatarEl) avatarEl.textContent = (firstName.charAt(0) || "U").toUpperCase();
+
+  /* ---------- Toast ---------- */
+  function showToast(type, title, message) {
+    var container = document.querySelector(".toast-container");
+    if (!container) {
+      container = document.createElement("div");
+      container.className = "toast-container";
+      document.body.appendChild(container);
     }
-  } catch (e) {
-    showToast("info", "🔔 Notifications", "Could not load notifications right now.");
+    var icons = { success: "✅", error: "❌", info: "ℹ️", warning: "⚠️" };
+    var t = document.createElement("div");
+    t.className = "toast toast-" + type;
+    t.innerHTML =
+      '<span>' + (icons[type] || "ℹ️") + '</span>' +
+      '<div>' +
+        '<div class="toast-title">' + title + '</div>' +
+        (message ? '<div class="toast-message">' + message + '</div>' : '') +
+      '</div>';
+    container.appendChild(t);
+    setTimeout(function () { t.remove(); }, 4000);
   }
-});
+  window.NOVA = window.NOVA || {};
+  window.NOVA.showToast = showToast;
 
-async function fetchCountForNotif(intent) {
-  var token = localStorage.getItem("nova-auth-token")
-           || localStorage.getItem("access_token")
-           || localStorage.getItem("nova-access-token");
-  var userId = localStorage.getItem("user_id")
-            || localStorage.getItem("nova-user-id");
-  if (!token || !userId) return 0;
-  try {
-    var res = await fetch("https://nova-voice-assistant-6vve.onrender.com/api/assistant", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + token
-      },
-      body: JSON.stringify({ intent: intent, data: { user_id: userId } })
-    });
-    var data = await res.json();
-    if (!data.success) return 0;
-    if (typeof data.total === "number") return data.total;
-    var keys = ["reminders", "notes", "shopping_items"];
-    for (var i = 0; i < keys.length; i++) {
-      if (Array.isArray(data[keys[i]])) return data[keys[i]].length;
-    }
-    return 0;
-  } catch (e) {
-    return 0;
+  /* ---------- Helpers ---------- */
+  var BACKEND = "https://nova-voice-assistant-6vve.onrender.com";
+
+  function getToken() {
+    return localStorage.getItem("nova-auth-token")
+        || localStorage.getItem("access_token")
+        || localStorage.getItem("nova-access-token");
   }
-}
-
-/* ---------- Profile menu ---------- */
-var avatarCircle = document.getElementById("avatarCircle");
-var profileMenu = document.getElementById("profileMenu");
-
-if (avatarCircle && profileMenu) {
-  avatarCircle.addEventListener("click", function (e) {
-    e.stopPropagation();
-    profileMenu.hidden = !profileMenu.hidden;
-  });
-
-  document.addEventListener("click", function (e) {
-    if (!profileMenu.hidden && !profileMenu.contains(e.target) && e.target !== avatarCircle) {
-      profileMenu.hidden = true;
-    }
-  });
-
-  document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") profileMenu.hidden = true;
-  });
-}
-
-/* ---------- Logout ---------- */
-function doLogout() {
-  localStorage.removeItem("nova-auth-token");
-  localStorage.removeItem("access_token");
-  localStorage.removeItem("nova-user-name");
-  localStorage.removeItem("nova-user-email");
-  localStorage.removeItem("nova-user-id");
-  localStorage.removeItem("user_id");
-  localStorage.removeItem("nova-access-token");
-  window.location.href = "login.html";
-}
-
-var logoutMenuBtn = document.getElementById("logoutMenuBtn");
-if (logoutMenuBtn) logoutMenuBtn.addEventListener("click", doLogout);
-
-var sidebarLogout = document.getElementById("sidebarLogout");
-if (sidebarLogout) {
-  sidebarLogout.addEventListener("click", function (e) {
-    e.preventDefault();
-    doLogout();
-  });
-}
-
-/* ---------- Overview ---------- */
-var BACKEND = "https://nova-voice-assistant-6vve.onrender.com";
-
-async function loadOverview() {
-  var token = localStorage.getItem("nova-auth-token")
-           || localStorage.getItem("access_token")
-           || localStorage.getItem("nova-access-token");
-  var userId = localStorage.getItem("user_id")
-            || localStorage.getItem("nova-user-id");
-
-  if (!token || !userId) {
-    console.log("[Overview] No token or user_id — skipping");
-    ["statReminders","statNotes","statShopping","statStudy","statGoals","statExpenses"].forEach(function (id) {
-      var el = document.getElementById(id);
-      if (el) { el.textContent = "0"; el.classList.remove("loading"); }
-    });
-    return;
+  function getUserId() {
+    return localStorage.getItem("user_id")
+        || localStorage.getItem("nova-user-id");
   }
-
-  var STATS = [
-    { intent: "GET_REMINDERS",     elId: "statReminders", dataKey: "reminders" },
-    { intent: "GET_NOTES",         elId: "statNotes",     dataKey: "notes" },
-    { intent: "GET_SHOPPING_LIST", elId: "statShopping",  dataKey: "shopping_items" },
-    { intent: "GET_STUDY_PLANS",   elId: "statStudy",     dataKey: "study_plans" },
-    { intent: "GET_GOALS",         elId: "statGoals",     dataKey: "goals" },
-    { intent: "GET_EXPENSES",      elId: "statExpenses",  dataKey: "expenses" }
-  ];
 
   async function fetchCount(intent, dataKey) {
+    var token = getToken();
+    var userId = getUserId();
+    if (!token || !userId) return 0;
     try {
       var res = await fetch(BACKEND + "/api/assistant", {
         method: "POST",
@@ -641,46 +525,155 @@ async function loadOverview() {
           "Content-Type": "application/json",
           "Authorization": "Bearer " + token
         },
-        body: JSON.stringify({
-          intent: intent,
-          data: { user_id: userId }
-        })
+        body: JSON.stringify({ intent: intent, data: { user_id: userId } })
       });
-
-      if (res.status === 401) {
-        console.log("[Overview] 401 — token invalid");
-        return 0;
-      }
-
+      if (res.status === 401) return 0;
       var data = await res.json();
       if (!data.success) return 0;
-
       if (typeof data.total === "number") return data.total;
       var arr = data[dataKey] || [];
-      return arr.length;
+      return Array.isArray(arr) ? arr.length : 0;
     } catch (e) {
-      console.log("[Overview] Failed for " + intent, e);
+      console.log("[Dashboard] fetch failed for", intent, e);
       return 0;
     }
   }
 
-  var results = await Promise.all(
-    STATS.map(function (s) { return fetchCount(s.intent, s.dataKey); })
-  );
+  /* ---------- Notification button ---------- */
+  var notifBtn = document.getElementById("notifBtn");
+  if (notifBtn) {
+    notifBtn.addEventListener("click", async function (e) {
+      e.preventDefault();
+      console.log("[Dashboard] notifBtn clicked");
 
-  STATS.forEach(function (s, i) {
-    var el = document.getElementById(s.elId);
-    if (el) {
-      el.textContent = results[i];
-      el.classList.remove("loading");
+      if (!getToken() || !getUserId()) {
+        showToast("info", "🔔 Notifications", "You have no new notifications.");
+        return;
+      }
+
+      var loadingToast = null;
+      var container = document.querySelector(".toast-container");
+      if (container) {
+        var t = document.createElement("div");
+        t.className = "toast toast-info";
+        t.innerHTML = '<span>🔔</span><div><div class="toast-title">Notifications</div><div class="toast-message">Loading...</div></div>';
+        container.appendChild(t);
+        loadingToast = t;
+      }
+
+      try {
+        var counts = await Promise.all([
+          fetchCount("GET_REMINDERS", "reminders"),
+          fetchCount("GET_NOTES", "notes"),
+          fetchCount("GET_SHOPPING_LIST", "shopping_items")
+        ]);
+        var total = counts.reduce(function (a, b) { return a + b; }, 0);
+
+        if (loadingToast) loadingToast.remove();
+
+        if (total === 0) {
+          showToast("info", "🔔 Notifications", "You have no new notifications.");
+        } else {
+          showToast("info", "🔔 Notifications",
+            "You have " + total + " item" + (total === 1 ? "" : "s") +
+            " across reminders, notes and shopping.");
+        }
+      } catch (err) {
+        if (loadingToast) loadingToast.remove();
+        console.error("[Dashboard] notification error:", err);
+        showToast("error", "🔔 Notifications", "Could not load right now.");
+      }
+    });
+  } else {
+    console.warn("[Dashboard] notifBtn not found!");
+  }
+
+  /* ---------- Profile menu ---------- */
+  var avatarCircle = document.getElementById("avatarCircle");
+  var profileMenu = document.getElementById("profileMenu");
+
+  if (avatarCircle && profileMenu) {
+    avatarCircle.addEventListener("click", function (e) {
+      e.stopPropagation();
+      profileMenu.hidden = !profileMenu.hidden;
+    });
+
+    document.addEventListener("click", function (e) {
+      if (!profileMenu.hidden && !profileMenu.contains(e.target) && e.target !== avatarCircle) {
+        profileMenu.hidden = true;
+      }
+    });
+
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") profileMenu.hidden = true;
+    });
+  }
+
+  /* ---------- Logout ---------- */
+  function doLogout() {
+    localStorage.removeItem("nova-auth-token");
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("nova-user-name");
+    localStorage.removeItem("nova-user-email");
+    localStorage.removeItem("nova-user-id");
+    localStorage.removeItem("user_id");
+    localStorage.removeItem("nova-access-token");
+    window.location.href = "login.html";
+  }
+
+  var logoutMenuBtn = document.getElementById("logoutMenuBtn");
+  if (logoutMenuBtn) logoutMenuBtn.addEventListener("click", doLogout);
+
+  var sidebarLogout = document.getElementById("sidebarLogout");
+  if (sidebarLogout) {
+    sidebarLogout.addEventListener("click", function (e) {
+      e.preventDefault();
+      doLogout();
+    });
+  }
+
+  /* ---------- Overview cards ---------- */
+  async function loadOverview() {
+    var token = getToken();
+    var userId = getUserId();
+
+    var ids = ["statReminders","statNotes","statShopping","statStudy","statGoals","statExpenses"];
+
+    if (!token || !userId) {
+      ids.forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) { el.textContent = "0"; el.classList.remove("loading"); }
+      });
+      return;
     }
-  });
-}
 
-document.addEventListener("DOMContentLoaded", loadOverview);
+    var STATS = [
+      { intent: "GET_REMINDERS",     elId: "statReminders", dataKey: "reminders" },
+      { intent: "GET_NOTES",         elId: "statNotes",     dataKey: "notes" },
+      { intent: "GET_SHOPPING_LIST", elId: "statShopping",  dataKey: "shopping_items" },
+      { intent: "GET_STUDY_PLANS",   elId: "statStudy",     dataKey: "study_plans" },
+      { intent: "GET_GOALS",         elId: "statGoals",     dataKey: "goals" },
+      { intent: "GET_EXPENSES",      elId: "statExpenses",  dataKey: "expenses" }
+    ];
 
-/* ---------- Render Lucide icons ---------- */
-if (window.lucide) lucide.createIcons();
+    var results = await Promise.all(
+      STATS.map(function (s) { return fetchCount(s.intent, s.dataKey); })
+    );
+
+    STATS.forEach(function (s, i) {
+      var el = document.getElementById(s.elId);
+      if (el) {
+        el.textContent = results[i];
+        el.classList.remove("loading");
+      }
+    });
+  }
+
+  loadOverview();
+
+  /* ---------- Lucide icons ---------- */
+  if (window.lucide) lucide.createIcons();
+});
 </script>
 
 </body>
