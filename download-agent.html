@@ -164,6 +164,8 @@
   }
   .faq-q { font-weight: 700; font-size: 0.92rem; margin-bottom: 8px; color: #f1f5f9; }
   .faq-a { font-size: 0.85rem; color: #94a3b8; line-height: 1.6; }
+  .faq-a code { background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; font-size: 0.82rem; color: #22d3ee; }
+  .faq-a strong { color: #22d3ee; }
 
   @media (max-width: 768px) {
     .sidebar { transform: translateX(-100%); }
@@ -240,7 +242,7 @@
         <div class="download-meta">
           30.5 MB · Windows 10/11 · v1.0
           <br>
-          <small>Only download once. After that, run the file from your laptop.</small>
+          <small>Only download once. After that, it starts with Windows automatically.</small>
         </div>
       </div>
 
@@ -257,8 +259,8 @@
         </div>
         <div class="step-card">
           <div class="step-num">3</div>
-          <div class="step-title">Sign in</div>
-          <div class="step-desc">Enter your Nova email + password once. The agent runs silently afterwards.</div>
+          <div class="step-title">Sign in once</div>
+          <div class="step-desc">Enter your Nova email + password once. The agent auto-starts with Windows from now on.</div>
         </div>
       </div>
 
@@ -293,12 +295,22 @@
 
         <div class="faq-item">
           <div class="faq-q">Do I need to keep it running?</div>
-          <div class="faq-a">Only when you want Nova to control your laptop. Close the window (or press Ctrl+C) to stop. Restart it anytime by double-clicking the .exe.</div>
+          <div class="faq-a">No. Once you sign in for the first time, Nova Agent <strong>registers itself to start automatically with Windows</strong>. Just reboot your laptop and it runs silently in the background — you never need to open it again.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">How do I know it's running?</div>
+          <div class="faq-a">Open Task Manager (<code>Ctrl + Shift + Esc</code>) → Startup apps tab → look for <strong>NovaAgent</strong> with status <strong>Enabled</strong>. Or open this page — if the green banner at the top says "running", it's active.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">How do I turn off auto-start?</div>
+          <div class="faq-a">Create an empty file called <code>nova.remove_startup</code> on your Desktop. Next time the agent runs, it removes itself from Windows startup and deletes the file. Or open Task Manager → Startup apps → right-click NovaAgent → Disable.</div>
         </div>
 
         <div class="faq-item">
           <div class="faq-q">Do I need to download it every time?</div>
-          <div class="faq-a">No. You only download NovaAgent.exe once. After that, just double-click the file wherever you saved it. If you lose the file, you can re-download it from this page.</div>
+          <div class="faq-a">No. You only download NovaAgent.exe once. After that it stays on your machine and auto-starts with Windows. If you lose the file, you can re-download from this page.</div>
         </div>
 
         <div class="faq-item">
@@ -308,7 +320,12 @@
 
         <div class="faq-item">
           <div class="faq-q">How do I stop it?</div>
-          <div class="faq-a">Close the black terminal window, or right-click the taskbar icon and close. You can also create an empty file called <code>nova.pause</code> on your Desktop to pause polling.</div>
+          <div class="faq-a">Open Task Manager → find <strong>NovaAgent.exe</strong> → End task. This stops it until next reboot. To fully disable, use the auto-start removal method above.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">Where is my login stored?</div>
+          <div class="faq-a">Locally at <code>%APPDATA%\Nova\config.json</code>. It contains your Nova user ID and access token. Never shared with anyone.</div>
         </div>
       </div>
 
