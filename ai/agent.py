@@ -2,6 +2,7 @@
 # Multi-user: asks user to sign in, stores their token, polls with their identity
 # Device ID + dynamic app paths + deep folder search
 # + Windows auto-start (registers once, runs silently on every reboot)
+# + 90s timeouts for Render free tier cold starts
 
 import os
 import sys
@@ -36,7 +37,6 @@ def add_to_startup():
     """Register agent to auto-start with Windows."""
     try:
         import winreg
-        # Only works from a compiled .exe (not from `python agent.py`)
         if not getattr(sys, "frozen", False):
             print(">> Running as .py — skipping auto-start registration")
             return
@@ -181,7 +181,7 @@ def save_config(cfg):
 CONFIG = load_config()
 
 # ============================================================
-# LOGIN
+# LOGIN  (timeout raised to 90s)
 # ============================================================
 def login(email, password):
     """Call backend /api/login → returns (user_id, token) or (None, None)."""
@@ -189,7 +189,7 @@ def login(email, password):
         r = requests.post(
             f"{BACKEND_URL}/api/login",
             json={"email": email, "password": password},
-            timeout=15
+            timeout=90
         )
         if r.status_code != 200:
             print(f">> Login failed: {r.status_code}")
@@ -601,7 +601,7 @@ def execute_action(action, data):
 
 
 # ============================================================
-# POLL / REPORT
+# POLL / REPORT  ← TIMEOUTS 10 → 90
 # ============================================================
 def parse_response(response):
     if not isinstance(response, dict): return None, {}, None
@@ -620,7 +620,7 @@ def poll_backend():
         payload = {"device_id": DEVICE_ID, "user_id": CONFIG.get("user_id")}
         headers = {"Authorization": f"Bearer {CONFIG.get('access_token', '')}"}
         r = requests.post(f"{BACKEND_URL}/api/agent/poll",
-                          json=payload, headers=headers, timeout=10)
+                          json=payload, headers=headers, timeout=90)
         response = r.json()
         print(f">> Poll: {response}")
         action, data, qid = parse_response(response)
