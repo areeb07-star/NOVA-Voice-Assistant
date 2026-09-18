@@ -1,6 +1,5 @@
-# agent.py — Nova Local Device Controller
-# Multi-user: asks user to sign in, stores their token, polls with their identity
-# Device ID + dynamic app paths + deep folder search
+# agent.py — Nova Local Device Controller (GUI Edition)
+# GUI login popup, hidden console, auto-start on Windows
 
 import os
 import sys
@@ -10,23 +9,87 @@ import json
 import socket
 import subprocess
 import threading
+import logging
 import requests
 import pyautogui
 import psutil
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify
 from flask_cors import CORS
 
 try:
     from pycaw.pycaw import AudioUtilities
 except ImportError:
-    print("Missing pycaw. Run: pip install pycaw")
-    sys.exit(1)
+    pass
 
 try:
     import screen_brightness_control as sbc
 except ImportError:
-    print("Missing screen-brightness-control. Run: pip install screen-brightness-control")
-    sys.exit(1)
+    pass
+
+# ============================================================
+# LOGGING
+# ============================================================
+CONFIG_DIR = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "Nova")
+os.makedirs(CONFIG_DIR, exist_ok=True)
+CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
+LOG_FILE = os.path.join(CONFIG_DIR, "agent.log")
+
+logging.basicConfig(
+    filename=LOG_FILE,
+    level=logging.INFO,
+    format="%(asctime)s  %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger("nova")
+
+def log(msg):
+    try:
+        print(msg)
+    except Exception:
+        pass
+    try:
+        logger.info(msg)
+    except Exception:
+        pass
+
+
+# ============================================================
+# AUTO-START ON WINDOWS
+# ============================================================
+def add_to_startup():
+    try:
+        import winreg
+        if not getattr(sys, "frozen", False):
+            log(">> Running as .py — skipping auto-start registration")
+            return
+        exe_path = sys.executable
+        key = winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Windows\CurrentVersion\Run",
+            0, winreg.KEY_SET_VALUE
+        )
+        winreg.SetValueEx(key, "NovaAgent", 0, winreg.REG_SZ, f'"{exe_path}"')
+        winreg.CloseKey(key)
+        log(">> [OK] Added to Windows startup")
+    except Exception as e:
+        log(f">> Could not add to startup: {e}")
+
+def remove_from_startup():
+    try:
+        import winreg
+        key = winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Windows\CurrentVersion\Run",
+            0, winreg.KEY_SET_VALUE
+        )
+        winreg.DeleteValue(key, "NovaAgent")
+        winreg.CloseKey(key)
+        log(">> Removed from Windows startup")
+    except FileNotFoundError:
+        pass
+    except Exception as e:
+        log(f">> Could not remove from startup: {e}")
+
 
 # ============================================================
 # DEVICE ID
@@ -36,10 +99,6 @@ def generate_device_id():
     mac_short = str(uuid.getnode())[-6:]
     return f"{hostname}-{mac_short}"
 
-CONFIG_DIR = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "Nova")
-os.makedirs(CONFIG_DIR, exist_ok=True)
-CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
-
 DEVICE_ID = generate_device_id()
 
 # ============================================================
@@ -48,6 +107,7 @@ DEVICE_ID = generate_device_id()
 BACKEND_URL = "https://nova-voice-assistant-6vve.onrender.com"
 POLL_INTERVAL = 2
 KILL_SWITCH = os.path.join(os.path.expanduser("~"), "Desktop", "nova.pause")
+REMOVE_STARTUP_FLAG = os.path.join(os.path.expanduser("~"), "Desktop", "nova.remove_startup")
 LOCAL_PORT = 5050
 
 USER_HOME = os.path.expanduser("~")
@@ -113,8 +173,9 @@ COMMON_FOLDERS = {
     "home": "",
 }
 
+
 # ============================================================
-# CONFIG FILE (device_id + user session)
+# CONFIG FILE
 # ============================================================
 def load_config():
     global DEVICE_ID
@@ -134,55 +195,111 @@ def save_config(cfg):
         with open(CONFIG_FILE, "w") as f:
             json.dump(cfg, f, indent=2)
     except Exception as e:
-        print(f">> Could not save config: {e}")
+        log(f">> Could not save config: {e}")
 
 CONFIG = load_config()
+
 
 # ============================================================
 # LOGIN
 # ============================================================
 def login(email, password):
-    """Call backend /api/login → returns (user_id, token) or (None, None)."""
     try:
         r = requests.post(
             f"{BACKEND_URL}/api/login",
             json={"email": email, "password": password},
-            timeout=15
+            timeout=90
         )
         if r.status_code != 200:
-            print(f">> Login failed: {r.status_code}")
+            log(f">> Login failed: {r.status_code}")
             return None, None
         data = r.json()
         if not data.get("success"):
-            print(f">> Login failed: {data}")
+            log(f">> Login failed: {data}")
             return None, None
         return data.get("user_id"), data.get("access_token")
     except Exception as e:
-        print(f">> Login error: {e}")
+        log(f">> Login error: {e}")
         return None, None
 
-def ensure_logged_in():
-    """Interactive login if no saved session."""
+
+def gui_login():
+    """Dark-themed tkinter login window. Returns True if login succeeds."""
+    import tkinter as tk
+
     if CONFIG.get("user_id") and CONFIG.get("access_token"):
-        print(f">> Logged in as: {CONFIG.get('user_id')}")
+        log(f">> Logged in as: {CONFIG.get('user_id')}")
         return True
 
-    print()
-    print("=" * 60)
-    print("  NOVA AGENT — SIGN IN")
-    print("=" * 60)
-    print("  Enter your Nova account to enable device control.")
-    print()
+    result = {"ok": False}
 
-    while True:
-        email = input("Email: ").strip()
-        if not email:
-            print("Email cannot be empty.")
-            continue
-        password = input("Password: ").strip()
-        if not password:
-            print("Password cannot be empty.")
-            continue
+    root = tk.Tk()
+    root.title("Nova Agent — Sign In")
+    root.geometry("420x460")
+    root.configure(bg="#0a0c1a")
+    root.resizable(False, False)
+
+    root.update_idletasks()
+    w, h = 420, 460
+    x = (root.winfo_screenwidth() // 2) - (w // 2)
+    y = (root.winfo_screenheight() // 2) - (h // 2)
+    root.geometry(f"{w}x{h}+{x}+{y}")
+
+    try:
+        if getattr(sys, "frozen", False):
+            base = sys._MEIPASS
+            ico = os.path.join(base, "nova.ico")
+            if os.path.exists(ico):
+                root.iconbitmap(ico)
+    except Exception:
+        pass
+
+    tk.Label(root, text="⚡", font=("Segoe UI Emoji", 36),
+             bg="#0a0c1a", fg="#22d3ee").pack(pady=(30, 5))
+
+    tk.Label(root, text="Nova Agent",
+             font=("Segoe UI", 18, "bold"),
+             bg="#0a0c1a", fg="#f1f5f9").pack()
+
+    tk.Label(root, text="Sign in to enable device control",
+             font=("Segoe UI", 10),
+             bg="#0a0c1a", fg="#94a3b8").pack(pady=(4, 20))
+
+    tk.Label(root, text="Email", font=("Segoe UI", 9, "bold"),
+             bg="#0a0c1a", fg="#cbd5e1", anchor="w").pack(fill="x", padx=50, pady=(0, 4))
+
+    email_var = tk.StringVar()
+    email_entry = tk.Entry(root, textvariable=email_var,
+                           font=("Segoe UI", 11),
+                           bg="#12152d", fg="#f1f5f9",
+                           insertbackground="#22d3ee",
+                           relief="flat", bd=0)
+    email_entry.pack(fill="x", padx=50, ipady=8)
+
+    tk.Label(root, text="Password", font=("Segoe UI", 9, "bold"),
+             bg="#0a0c1a", fg="#cbd5e1", anchor="w").pack(fill="x", padx=50, pady=(14, 4))
+
+    password_var = tk.StringVar()
+    password_entry = tk.Entry(root, textvariable=password_var, show="•",
+                              font=("Segoe UI", 11),
+                              bg="#12152d", fg="#f1f5f9",
+                              insertbackground="#22d3ee",
+                              relief="flat", bd=0)
+    password_entry.pack(fill="x", padx=50, ipady=8)
+
+    status_var = tk.StringVar(value="")
+    tk.Label(root, textvariable=status_var,
+             font=("Segoe UI", 9),
+             bg="#0a0c1a", fg="#f87171", wraplength=320).pack(pady=(12, 0))
+
+    def do_login(event=None):
+        email = email_var.get().strip()
+        password = password_var.get().strip()
+        if not email or not password:
+            status_var.set("Please enter email and password.")
+            return
+        status_var.set("Signing in...")
+        root.update()
 
         user_id, token = login(email, password)
         if user_id and token:
@@ -190,16 +307,30 @@ def ensure_logged_in():
             CONFIG["access_token"] = token
             CONFIG["email"] = email
             save_config(CONFIG)
-            print(f">> Login successful. Welcome, {email}")
-            print(f">> Config saved to: {CONFIG_FILE}")
-            return True
+            result["ok"] = True
+            root.destroy()
         else:
-            print(">> Login failed. Please try again.")
-            print()
+            status_var.set("Login failed. Check your email/password.")
+
+    tk.Button(root, text="Sign In",
+              font=("Segoe UI", 11, "bold"),
+              bg="#22d3ee", fg="#05060f",
+              activebackground="#8b5cf6", activeforeground="#fff",
+              relief="flat", bd=0, cursor="hand2",
+              command=do_login).pack(fill="x", padx=50, pady=(20, 10), ipady=10)
+
+    tk.Label(root, text="Stored locally at %APPDATA%\\Nova\\config.json",
+             font=("Segoe UI", 8),
+             bg="#0a0c1a", fg="#475569").pack(pady=(4, 0))
+
+    root.bind("<Return>", do_login)
+    email_entry.focus_set()
+    root.mainloop()
+    return result["ok"]
 
 
 # ============================================================
-# LOCAL SERVER (port 5050)
+# LOCAL SERVER
 # ============================================================
 local_app = Flask(__name__)
 CORS(local_app)
@@ -213,7 +344,10 @@ def local_health():
     return jsonify({'status': 'ok', 'device_id': DEVICE_ID})
 
 def run_local_server():
-    local_app.run(host='127.0.0.1', port=LOCAL_PORT, debug=False, use_reloader=False)
+    try:
+        local_app.run(host='127.0.0.1', port=LOCAL_PORT, debug=False, use_reloader=False)
+    except Exception as e:
+        log(f">> Local server error: {e}")
 
 
 # ============================================================
@@ -226,21 +360,17 @@ def find_app_path(app_name):
             "C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE",
             "C:\\Program Files (x86)\\Microsoft Office\\root\\Office16\\WINWORD.EXE",
             "C:\\Program Files\\Microsoft Office\\Office16\\WINWORD.EXE",
-            "C:\\Program Files (x86)\\Microsoft Office\\Office16\\WINWORD.EXE",
         ],
         "excel": [
             "C:\\Program Files\\Microsoft Office\\root\\Office16\\EXCEL.EXE",
             "C:\\Program Files (x86)\\Microsoft Office\\root\\Office16\\EXCEL.EXE",
-            "C:\\Program Files\\Microsoft Office\\Office16\\EXCEL.EXE",
         ],
         "powerpoint": [
             "C:\\Program Files\\Microsoft Office\\root\\Office16\\POWERPNT.EXE",
             "C:\\Program Files (x86)\\Microsoft Office\\root\\Office16\\POWERPNT.EXE",
-            "C:\\Program Files\\Microsoft Office\\Office16\\POWERPNT.EXE",
         ],
         "outlook": [
             "C:\\Program Files\\Microsoft Office\\root\\Office16\\OUTLOOK.EXE",
-            "C:\\Program Files (x86)\\Microsoft Office\\root\\Office16\\OUTLOOK.EXE",
         ],
         "whatsapp": [
             os.path.join(USER_APPDATA, "WhatsApp", "WhatsApp.exe"),
@@ -249,7 +379,6 @@ def find_app_path(app_name):
         "spotify": [os.path.join(USER_ROAMING, "Spotify", "Spotify.exe")],
         "teams": [
             os.path.join(USER_APPDATA, "Microsoft", "Teams", "current", "Teams.exe"),
-            os.path.join(USER_APPDATA, "Microsoft", "Teams", "Update.exe"),
         ],
         "vlc": [
             "C:\\Program Files\\VideoLAN\\VLC\\vlc.exe",
@@ -271,7 +400,7 @@ def open_app(app_name):
         return False, f"'{app_name}' cannot be opened"
     if app_name in APP_ALIASES:
         app_name = APP_ALIASES[app_name]
-    print(f">> open_app: '{app_name}'")
+    log(f">> open_app: '{app_name}'")
 
     if app_name == "settings":
         try: os.startfile("ms-settings:"); return True, "Opened Settings"
@@ -306,8 +435,6 @@ def open_app(app_name):
                 return True, f"Opened {app_name}"
             except Exception as e:
                 return False, str(e)
-        else:
-            print(f">> Path missing: {path}, trying dynamic search...")
 
     dynamic = find_app_path(app_name)
     if dynamic:
@@ -578,13 +705,13 @@ def poll_backend():
         payload = {"device_id": DEVICE_ID, "user_id": CONFIG.get("user_id")}
         headers = {"Authorization": f"Bearer {CONFIG.get('access_token', '')}"}
         r = requests.post(f"{BACKEND_URL}/api/agent/poll",
-                          json=payload, headers=headers, timeout=10)
+                          json=payload, headers=headers, timeout=90)
         response = r.json()
-        print(f">> Poll: {response}")
+        log(f">> Poll: {response}")
         action, data, qid = parse_response(response)
         return action, data, qid
     except Exception as e:
-        print(f">> Poll error: {e}")
+        log(f">> Poll error: {e}")
     return None, {}, None
 
 def report_result(action, data, success, message, qid):
@@ -596,58 +723,88 @@ def report_result(action, data, success, message, qid):
         if qid: payload["queue_id"] = qid
         headers = {"Authorization": f"Bearer {CONFIG.get('access_token', '')}"}
         r = requests.post(f"{BACKEND_URL}/api/agent/result", json=payload,
-                          headers=headers, timeout=10)
-        print(f">> Reported: {r.status_code}")
+                          headers=headers, timeout=90)
+        log(f">> Reported: {r.status_code}")
     except Exception as e:
-        print(f">> Report failed: {e}")
+        log(f">> Report failed: {e}")
 
 
 # ============================================================
 # MAIN
 # ============================================================
 def main():
-    # Save device_id on first run
     if not CONFIG.get("device_id"):
         CONFIG["device_id"] = DEVICE_ID
         save_config(CONFIG)
 
-    # Login prompt
-    try:
-        ensure_logged_in()
-    except (KeyboardInterrupt, EOFError):
-        print("\n>> Login cancelled. Exiting.")
+    if getattr(sys, "frozen", False):
+        ok = gui_login()
+    else:
+        print("=" * 60)
+        print("  NOVA AGENT — SIGN IN (console mode)")
+        print("=" * 60)
+        ok = False
+        if CONFIG.get("user_id") and CONFIG.get("access_token"):
+            print(f">> Logged in as: {CONFIG.get('user_id')}")
+            ok = True
+        else:
+            email = input("Email: ").strip()
+            password = input("Password: ").strip()
+            user_id, token = login(email, password)
+            if user_id and token:
+                CONFIG["user_id"] = user_id
+                CONFIG["access_token"] = token
+                CONFIG["email"] = email
+                save_config(CONFIG)
+                print(f">> Login successful. Welcome, {email}")
+                ok = True
+
+    if not ok:
+        log(">> Login cancelled or failed. Exiting.")
         return
 
-    # Start local server (for voice.js to fetch device_id)
+    if not CONFIG.get("startup_added"):
+        add_to_startup()
+        CONFIG["startup_added"] = True
+        save_config(CONFIG)
+
     threading.Thread(target=run_local_server, daemon=True).start()
     time.sleep(1)
 
-    print()
-    print("=" * 60)
-    print(f">> Nova Local Agent is running")
-    print(f">> Device ID: {DEVICE_ID}")
-    print(f">> User ID:   {CONFIG.get('user_id')}")
-    print(f">> Local server: http://127.0.0.1:{LOCAL_PORT}/device_id")
-    print("=" * 60)
-    print(f">> Kill switch: create '{KILL_SWITCH}' to pause")
-    print(">> Press Ctrl+C to stop\n")
+    log("=" * 60)
+    log(f">> Nova Local Agent is running")
+    log(f">> Device ID: {DEVICE_ID}")
+    log(f">> User ID:   {CONFIG.get('user_id')}")
+    log("=" * 60)
 
     while True:
         try:
             if os.path.exists(KILL_SWITCH):
                 time.sleep(5); continue
 
+            if os.path.exists(REMOVE_STARTUP_FLAG):
+                remove_from_startup()
+                try:
+                    os.remove(REMOVE_STARTUP_FLAG)
+                except Exception:
+                    pass
+                log(">> Auto-start disabled")
+                continue
+
             action, data, qid = poll_backend()
             if action:
-                print(f"\n>> Executing: {action}")
+                log(f"\n>> Executing: {action}")
                 success, message = execute_action(action, data)
-                print(f">> Result: {message}")
+                log(f">> Result: {message}")
                 report_result(action, data, success, message, qid)
 
             time.sleep(POLL_INTERVAL)
         except KeyboardInterrupt:
-            print("\n>> Agent stopped.")
+            log("\n>> Agent stopped.")
             break
+        except Exception as e:
+            log(f">> Loop error: {e}")
+            time.sleep(5)
 
 
 if __name__ == "__main__":

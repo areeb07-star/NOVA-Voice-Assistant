@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Expenses — NOVA</title>
+<title>Goals — NOVA</title>
 <link rel="icon" type="image/svg+xml" href="assets/images/nova-logo.svg">
 <script src="https://unpkg.com/lucide@latest"></script>
 <style>
@@ -66,36 +66,26 @@
   .summary-value { font-size: 2rem; font-weight: 800; color: #f1f5f9; line-height: 1; margin-bottom: 6px; }
   .summary-sub { font-size: 0.78rem; color: #64748b; }
 
-  .category-section { margin-bottom: 32px; }
-  .category-title { font-size: 1rem; font-weight: 700; margin-bottom: 16px; color: #f1f5f9; }
-  .category-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
-  .category-card { background: rgba(18,21,45,0.65); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 16px; text-align: center; transition: all 0.3s ease; }
-  .category-card:hover { transform: translateY(-3px); border-color: rgba(255,255,255,0.1); box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
-  .category-icon { width: 40px; height: 40px; border-radius: 10px; background: rgba(34,211,238,0.08); border: 1px solid rgba(34,211,238,0.15); display: flex; align-items: center; justify-content: center; color: #22d3ee; margin: 0 auto 10px; }
-  .category-icon svg { width: 18px; height: 18px; stroke-width: 1.8; }
-  .category-name { font-size: 0.75rem; color: #64748b; margin-bottom: 6px; text-transform: capitalize; }
-  .category-amount { font-size: 1.05rem; font-weight: 700; color: #f1f5f9; }
-
   .list-section-title { font-size: 1rem; font-weight: 700; margin-bottom: 16px; color: #f1f5f9; }
-  .expense-list { display: flex; flex-direction: column; gap: 10px; }
-  .expense-item { display: flex; align-items: center; gap: 16px; padding: 16px 20px; background: rgba(18,21,45,0.65); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; transition: all 0.3s ease; }
-  .expense-item:hover { border-color: rgba(255,255,255,0.1); transform: translateX(4px); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
-  .expense-icon { width: 44px; height: 44px; border-radius: 12px; background: rgba(34,211,238,0.08); border: 1px solid rgba(34,211,238,0.15); display: flex; align-items: center; justify-content: center; color: #22d3ee; flex-shrink: 0; }
-  .expense-icon svg { width: 20px; height: 20px; stroke-width: 1.8; }
-  .expense-content { flex: 1; min-width: 0; }
-  .expense-category-name { font-size: 0.95rem; font-weight: 600; color: #f1f5f9; margin-bottom: 4px; text-transform: capitalize; }
-  .expense-date { font-size: 0.78rem; color: #64748b; }
-  .expense-amount { font-size: 1.1rem; font-weight: 800; color: #f1f5f9; white-space: nowrap; }
-  .expense-amount::before { content: "₹"; opacity: 0.7; margin-right: 2px; }
+  .goal-list { display: flex; flex-direction: column; gap: 12px; }
+  .goal-item { background: rgba(18,21,45,0.65); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 20px; transition: all 0.3s ease; position: relative; overflow: hidden; }
+  .goal-item:hover { border-color: rgba(255,255,255,0.1); box-shadow: 0 8px 30px rgba(0,0,0,0.3); transform: translateY(-2px); }
+  .goal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 12px; flex-wrap: wrap; }
+  .goal-title { font-size: 1.05rem; font-weight: 700; color: #f1f5f9; display: flex; align-items: center; gap: 10px; }
+  .goal-title svg { width: 20px; height: 20px; color: #22d3ee; stroke-width: 2; }
+  .goal-status { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+  .status-active { background: rgba(34,211,238,0.1); color: #22d3ee; border: 1px solid rgba(34,211,238,0.2); }
+  .status-completed { background: rgba(16,185,129,0.1); color: #10b981; border: 1px solid rgba(16,185,129,0.2); }
+  .goal-desc { font-size: 0.88rem; color: #94a3b8; margin-bottom: 16px; line-height: 1.5; }
+  .goal-meta { display: flex; align-items: center; gap: 20px; font-size: 0.78rem; color: #64748b; flex-wrap: wrap; }
+  .goal-meta-item { display: flex; align-items: center; gap: 6px; }
+  .goal-meta-item svg { width: 14px; height: 14px; stroke-width: 2; }
 
-  .edit-btn { width: 36px; height: 36px; border-radius: 10px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: #94a3b8; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease; opacity: 0; flex-shrink: 0; }
-  .expense-item:hover .edit-btn { opacity: 1; }
-  .edit-btn:hover { background: rgba(34,211,238,0.1); border-color: rgba(34,211,238,0.3); color: #22d3ee; transform: scale(1.05); }
-  .edit-btn svg { width: 16px; height: 16px; stroke-width: 2; }
-  .delete-btn { width: 36px; height: 36px; border-radius: 10px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: #94a3b8; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease; opacity: 0; flex-shrink: 0; }
-  .expense-item:hover .delete-btn { opacity: 1; }
-  .delete-btn:hover { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: #ef4444; transform: scale(1.05); }
-  .delete-btn svg { width: 16px; height: 16px; stroke-width: 2; }
+  .progress-container { margin-top: 16px; }
+  .progress-labels { display: flex; justify-content: space-between; font-size: 0.75rem; color: #64748b; margin-bottom: 6px; font-weight: 600; }
+  .progress-bar { height: 8px; background: rgba(255,255,255,0.06); border-radius: 9999px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 9999px; background: linear-gradient(90deg, #22d3ee, #8b5cf6); transition: width 0.6s ease; }
+  .progress-fill.complete { background: linear-gradient(90deg, #10b981, #22d3ee); }
 
   .state-box { padding: 48px 32px; text-align: center; color: #64748b; font-size: 0.95rem; }
   .state-box .state-icon { font-size: 3rem; opacity: 0.5; margin-bottom: 16px; }
@@ -104,29 +94,6 @@
   .spinner { width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.08); border-top-color: #22d3ee; border-radius: 50%; animation: spin 0.9s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; opacity: 0; visibility: hidden; transition: all 0.3s ease; }
-  .modal-overlay.active { opacity: 1; visibility: visible; }
-  .modal { background: #0a0c1a; border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; transform: translateY(20px); transition: transform 0.3s ease; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
-  .modal-overlay.active .modal { transform: translateY(0); }
-  .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.06); }
-  .modal-title { font-size: 1.15rem; font-weight: 700; color: #f1f5f9; }
-  .modal-close { width: 36px; height: 36px; border-radius: 8px; background: transparent; border: 0; color: #64748b; cursor: pointer; font-size: 1.2rem; transition: all 0.2s ease; }
-  .modal-close:hover { background: rgba(239,68,68,0.1); color: #ef4444; }
-  .modal-body { padding: 24px; }
-  .modal-footer { display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 20px 24px; border-top: 1px solid rgba(255,255,255,0.06); }
-  .form-group { margin-bottom: 20px; }
-  .form-group:last-child { margin-bottom: 0; }
-  .form-label { display: block; font-size: 0.85rem; font-weight: 600; color: #94a3b8; margin-bottom: 8px; }
-  .form-input, .form-select { width: 100%; padding: 12px 16px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: #f1f5f9; font-size: 0.95rem; font-family: inherit; outline: none; transition: all 0.2s ease; }
-  .form-input:focus, .form-select:focus { border-color: #22d3ee; background: rgba(34,211,238,0.05); box-shadow: 0 0 0 3px rgba(34,211,238,0.1); }
-  .form-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 1rem center; padding-right: 2.5rem; cursor: pointer; }
-  .form-select option { background: #0a0c1a; color: #f1f5f9; }
-  .btn-primary { background: linear-gradient(135deg,#22d3ee,#8b5cf6); color: #fff; padding: 10px 24px; border-radius: 9999px; border: 0; cursor: pointer; font-weight: 600; font-size: 0.9rem; font-family: inherit; transition: all 0.2s ease; }
-  .btn-primary:hover:not(:disabled) { box-shadow: 0 6px 30px rgba(34,211,238,0.4); transform: translateY(-2px); }
-  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
-  .btn-secondary { background: transparent; color: #94a3b8; padding: 10px 24px; border-radius: 9999px; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; font-weight: 600; font-size: 0.9rem; font-family: inherit; transition: all 0.2s ease; }
-  .btn-secondary:hover { background: rgba(255,255,255,0.04); color: #f1f5f9; }
-
   .toast-container { position: fixed; top: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
 
   @media (max-width: 768px) {
@@ -134,9 +101,7 @@
     .main-content { margin-left: 0; }
     .page-content { padding: 20px 16px; }
     .toolbar { flex-direction: column; align-items: stretch; }
-    .toolbar-left { flex-direction: column; align-items: stretch; }
     .summary-value { font-size: 1.6rem; }
-    .edit-btn, .delete-btn { opacity: 1; }
   }
 </style>
 </head>
@@ -157,13 +122,13 @@
       <a href="reminders.html" class="nav-item"><i data-lucide="clock" class="nav-icon"></i><span>Reminders</span></a>
       <a href="notes.html" class="nav-item"><i data-lucide="file-text" class="nav-icon"></i><span>Notes</span></a>
       <a href="shopping.html" class="nav-item"><i data-lucide="shopping-cart" class="nav-icon"></i><span>Shopping</span></a>
-      <a href="expenses.html" class="nav-item active"><i data-lucide="wallet" class="nav-icon"></i><span>Expenses</span></a>
+      <a href="expenses.html" class="nav-item"><i data-lucide="wallet" class="nav-icon"></i><span>Expenses</span></a>
       <a href="study_plans.html" class="nav-item"><i data-lucide="book-open" class="nav-icon"></i><span>Study Plans</span></a>
-      <a href="goals.html" class="nav-item"><i data-lucide="target" class="nav-icon"></i><span>Goals</span></a>
+      <a href="goals.html" class="nav-item active"><i data-lucide="target" class="nav-icon"></i><span>Goals</span></a>
       <div class="nav-divider"></div>
       <a href="download-agent.html" class="nav-item">
-  <i data-lucide="zap" class="nav-icon"></i><span>Nova Agent</span>
-</a>
+        <i data-lucide="zap" class="nav-icon"></i><span>Nova Agent</span>
+      </a>
       <a href="profile.html" class="nav-item"><i data-lucide="settings" class="nav-icon"></i><span>Profile</span></a>
       <a href="login.html" class="nav-item" id="sidebarLogout"><i data-lucide="log-out" class="nav-icon"></i><span>Logout</span></a>
     </nav>
@@ -172,11 +137,14 @@
   <div class="main-content">
     <header class="topbar">
       <div>
-        <div class="greeting-title">Expenses</div>
-        <div class="greeting-subtitle">Understand your spending.</div>
+        <div class="greeting-title">Goals</div>
+        <div class="greeting-subtitle">Track your progress and achieve more.</div>
       </div>
       <div class="topbar-right">
-        <button class="topbar-icon-btn" id="notifBtn"><i data-lucide="bell"></i><span class="notification-dot"></span></button>
+        <a href="dashboard.html" class="topbar-icon-btn" title="View notifications">
+  <i data-lucide="bell"></i>
+  <span class="notification-dot"></span>
+</a>
         <div class="avatar" id="avatarInitial">U</div>
         <div class="profile-menu" id="profileMenu" hidden>
           <a href="profile.html" class="profile-menu-item"><i data-lucide="user"></i> Profile</a>
@@ -192,7 +160,7 @@
       <div class="toolbar">
         <div class="toolbar-left">
           <div class="count-badge">
-            <i data-lucide="wallet" style="width:14px;height:14px;"></i>
+            <i data-lucide="target" style="width:14px;height:14px;"></i>
             <span id="countText">Loading...</span>
           </div>
         </div>
@@ -201,72 +169,34 @@
 
       <div class="summary-grid">
         <div class="summary-card">
-          <div class="summary-label"><i data-lucide="trending-up"></i> Total Spent</div>
-          <div class="summary-value" id="totalSpent">₹0</div>
-          <div class="summary-sub" id="totalCount">0 transactions</div>
+          <div class="summary-label"><i data-lucide="target"></i> Total Goals</div>
+          <div class="summary-value" id="totalGoals">0</div>
+          <div class="summary-sub">All time</div>
         </div>
         <div class="summary-card green">
-          <div class="summary-label"><i data-lucide="calendar"></i> This Month</div>
-          <div class="summary-value" id="monthSpent">₹0</div>
-          <div class="summary-sub">Current month</div>
+          <div class="summary-label"><i data-lucide="check-circle"></i> Completed</div>
+          <div class="summary-value" id="completedGoals">0</div>
+          <div class="summary-sub">Achieved</div>
         </div>
         <div class="summary-card violet">
-          <div class="summary-label"><i data-lucide="clock"></i> Today</div>
-          <div class="summary-value" id="todaySpent">₹0</div>
-          <div class="summary-sub">Today's total</div>
+          <div class="summary-label"><i data-lucide="activity"></i> Active</div>
+          <div class="summary-value" id="activeGoals">0</div>
+          <div class="summary-sub">In progress</div>
         </div>
       </div>
 
-      <div class="category-section" id="categorySection" style="display:none;">
-        <div class="category-title">By Category</div>
-        <div class="category-grid" id="categoryGrid"></div>
-      </div>
+      <div class="list-section-title">Your Goals</div>
+      <div class="goal-list" id="data-list"></div>
 
-      <div class="list-section-title">Recent Expenses</div>
-      <div class="expense-list" id="data-list"></div>
-
-    </div>
-  </div>
-</div>
-
-<!-- EDIT MODAL -->
-<div class="modal-overlay" id="editModal">
-  <div class="modal">
-    <div class="modal-header">
-      <h3 class="modal-title">Edit Expense</h3>
-      <button class="modal-close" id="modalCloseBtn" type="button">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">Amount (₹)</label>
-        <input type="number" id="editAmount" class="form-input" placeholder="0" min="0" step="0.01">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Category</label>
-        <select id="editCategory" class="form-select">
-          <option value="Food">Food</option>
-          <option value="Travel">Travel</option>
-          <option value="Education">Education</option>
-          <option value="Shopping">Shopping</option>
-          <option value="Bills">Bills</option>
-          <option value="Other">Other</option>
-        </select>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-secondary" id="modalCancelBtn" type="button">Cancel</button>
-      <button class="btn-primary" id="modalSaveBtn" type="button">Save Changes</button>
     </div>
   </div>
 </div>
 
 <script>
 var API_BASE = "https://nova-voice-assistant-6vve.onrender.com";
-var INTENT   = "GET_EXPENSES";
-var DELETE_INTENT = "DELETE_EXPENSE";
-var DATA_KEY = "expenses";
+var INTENT   = "GET_GOALS";
+var DATA_KEY = "goals";
 var lastItems = [];
-var editingId = null;
 
 document.addEventListener("DOMContentLoaded", function () {
   var name = localStorage.getItem("nova-user-name") || "User";
@@ -277,12 +207,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
   initLogout();
   initProfileMenu();
-  initEditModal();
-
-  var notifBtn = document.getElementById("notifBtn");
-  if (notifBtn) notifBtn.addEventListener("click", function () {
-    showToast("info", "🔔 Notifications", "You have 3 new notifications.");
-  });
 
   var refreshBtn = document.getElementById("refreshBtn");
   if (refreshBtn) refreshBtn.addEventListener("click", loadData);
@@ -298,7 +222,7 @@ async function loadData() {
   var countText = document.getElementById("countText");
   if (!container) return;
 
-  container.innerHTML = '<div class="state-box loading"><div class="spinner"></div><div>Loading your expenses...</div></div>';
+  container.innerHTML = '<div class="state-box loading"><div class="spinner"></div><div>Loading your goals...</div></div>';
   if (countText) countText.textContent = "Loading...";
 
   try {
@@ -318,7 +242,7 @@ async function loadData() {
     var data = await res.json();
 
     if (!data.success) {
-      container.innerHTML = '<div class="state-box error">⚠️ ' + (data.error || "Could not load expenses.") + '</div>';
+      container.innerHTML = '<div class="state-box error">⚠️ ' + (data.error || "Could not load goals.") + '</div>';
       if (countText) countText.textContent = "Error";
       return;
     }
@@ -326,25 +250,20 @@ async function loadData() {
     var items = data[DATA_KEY] || [];
     lastItems = items;
 
-    if (countText) countText.textContent = items.length + (items.length === 1 ? " expense" : " expenses");
+    if (countText) countText.textContent = items.length + (items.length === 1 ? " goal" : " goals");
 
     updateSummaries(items);
 
     if (items.length === 0) {
-      container.innerHTML = '<div class="state-box"><div class="state-icon">💰</div><div>No expenses yet. Ask NOVA to log one!</div></div>';
-      var catSec = document.getElementById("categorySection");
-      if (catSec) catSec.style.display = "none";
+      container.innerHTML = '<div class="state-box"><div class="state-icon">🎯</div><div>No goals yet. Ask NOVA to set one!</div></div>';
       return;
     }
 
-    renderCategories(items);
-
     var html = "";
-    items.forEach(function (e) { html += renderRow(e); });
+    items.forEach(function (g) { html += renderRow(g); });
     container.innerHTML = html;
 
     if (window.lucide) lucide.createIcons();
-    attachListeners();
   } catch (err) {
     console.error("Load error:", err);
     container.innerHTML = '<div class="state-box error">⚠️ Could not connect to server.<br><span style="font-size:0.85rem;color:#94a3b8;">If the server is cold, wait 30 seconds and click Refresh.</span></div>';
@@ -353,202 +272,45 @@ async function loadData() {
 }
 
 function updateSummaries(items) {
-  var total = 0, monthTotal = 0, todayTotal = 0;
-  var now = new Date();
-  var thisMonthPrefix = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
-  var todayPrefix = thisMonthPrefix + "-" + String(now.getDate()).padStart(2, "0");
+  var total = items.length;
+  var completed = items.filter(function(g) { return (g.status || "").toLowerCase() === "completed" || g.progress >= 100; }).length;
+  var active = total - completed;
 
-  items.forEach(function (e) {
-    var amt = Number(e.amount) || 0;
-    total += amt;
-    var created = e.created_at || "";
-    if (created.indexOf(thisMonthPrefix) === 0) monthTotal += amt;
-    if (created.indexOf(todayPrefix) === 0) todayTotal += amt;
-  });
-
-  document.getElementById("totalSpent").textContent = "₹" + formatNumber(total);
-  document.getElementById("monthSpent").textContent = "₹" + formatNumber(monthTotal);
-  document.getElementById("todaySpent").textContent = "₹" + formatNumber(todayTotal);
-  document.getElementById("totalCount").textContent = items.length + (items.length === 1 ? " transaction" : " transactions");
+  document.getElementById("totalGoals").textContent = total;
+  document.getElementById("completedGoals").textContent = completed;
+  document.getElementById("activeGoals").textContent = active;
 }
 
-function formatNumber(n) {
-  return Number(n).toLocaleString("en-IN", { maximumFractionDigits: 2 });
-}
+function renderRow(g) {
+  var title = g.title || g.goal || "Untitled Goal";
+  var desc = g.description || "";
+  var status = (g.status || "active").toLowerCase();
+  var progress = Number(g.progress) || 0;
+  var deadline = g.deadline || g.target_date || "";
+  var category = g.category || "General";
 
-function renderCategories(items) {
-  var section = document.getElementById("categorySection");
-  var grid = document.getElementById("categoryGrid");
-  if (!section || !grid) return;
+  var statusClass = status === "completed" || progress >= 100 ? "status-completed" : "status-active";
+  var statusLabel = status === "completed" || progress >= 100 ? "Completed" : "Active";
 
-  var byCat = {};
-  items.forEach(function (e) {
-    var cat = (e.category || "Other").trim();
-    byCat[cat] = (byCat[cat] || 0) + (Number(e.amount) || 0);
-  });
-
-  var cats = Object.keys(byCat);
-  if (cats.length === 0) { section.style.display = "none"; return; }
-
-  var iconMap = { "Food": "utensils", "Travel": "bus", "Education": "graduation-cap", "Shopping": "shopping-bag", "Bills": "receipt", "Other": "package" };
-
-  var html = "";
-  cats.forEach(function (cat) {
-    var icon = iconMap[cat] || "package";
-    html +=
-      '<div class="category-card">' +
-        '<div class="category-icon"><i data-lucide="' + icon + '"></i></div>' +
-        '<div class="category-name">' + escapeHtml(cat) + '</div>' +
-        '<div class="category-amount">₹' + formatNumber(byCat[cat]) + '</div>' +
-      '</div>';
-  });
-  grid.innerHTML = html;
-  section.style.display = "block";
-}
-
-function renderRow(e) {
-  var amount = Number(e.amount) || 0;
-  var category = e.category || "Other";
-  var created = e.created_at || "";
-  var id = e.id || "";
-
-  var iconMap = { "Food": "utensils", "Travel": "bus", "Education": "graduation-cap", "Shopping": "shopping-bag", "Bills": "receipt", "Other": "package" };
-  var icon = iconMap[category] || "package";
+  var progressClass = progress >= 100 ? "progress-fill complete" : "progress-fill";
 
   return (
-    '<div class="expense-item" data-id="' + id + '">' +
-      '<div class="expense-icon"><i data-lucide="' + icon + '"></i></div>' +
-      '<div class="expense-content">' +
-        '<div class="expense-category-name">' + escapeHtml(category) + '</div>' +
-        (created ? '<div class="expense-date">' + escapeHtml(created) + '</div>' : '') +
+    '<div class="goal-item">' +
+      '<div class="goal-header">' +
+        '<div class="goal-title"><i data-lucide="target"></i> ' + escapeHtml(title) + '</div>' +
+        '<span class="goal-status ' + statusClass + '">' + statusLabel + '</span>' +
       '</div>' +
-      '<div class="expense-amount">' + formatNumber(amount) + '</div>' +
-      (id ?
-        '<button class="edit-btn" data-edit-id="' + id + '" title="Edit">' +
-          '<i data-lucide="pencil"></i>' +
-        '</button>' +
-        '<button class="delete-btn" data-delete-id="' + id + '" title="Delete">' +
-          '<i data-lucide="trash-2"></i>' +
-        '</button>' : ''
-      ) +
+      (desc ? '<div class="goal-desc">' + escapeHtml(desc) + '</div>' : '') +
+      '<div class="goal-meta">' +
+        '<div class="goal-meta-item"><i data-lucide="tag"></i> ' + escapeHtml(category) + '</div>' +
+        (deadline ? '<div class="goal-meta-item"><i data-lucide="calendar"></i> ' + escapeHtml(deadline) + '</div>' : '') +
+      '</div>' +
+      '<div class="progress-container">' +
+        '<div class="progress-labels"><span>Progress</span><span>' + progress + '%</span></div>' +
+        '<div class="progress-bar"><div class="' + progressClass + '" style="width:' + progress + '%"></div></div>' +
+      '</div>' +
     '</div>'
   );
-}
-
-function attachListeners() {
-  document.querySelectorAll("[data-edit-id]").forEach(function (btn) {
-    btn.addEventListener("click", function (e) {
-      e.stopPropagation();
-      openEditModal(Number(btn.dataset.editId));
-    });
-  });
-
-  document.querySelectorAll("[data-delete-id]").forEach(function (btn) {
-    btn.addEventListener("click", function (e) {
-      e.stopPropagation();
-      deleteItem(DELETE_INTENT, Number(btn.dataset.deleteId));
-    });
-  });
-}
-
-async function deleteItem(intent, id) {
-  if (!confirm("Delete this item? This cannot be undone.")) return;
-
-  var token = localStorage.getItem("nova-auth-token") || localStorage.getItem("access_token");
-  if (!token) { window.location.href = "login.html"; return; }
-
-  try {
-    var res = await fetch(API_BASE + "/api/assistant", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
-      body: JSON.stringify({ intent: intent, data: { id: id } })
-    });
-    var data = await res.json();
-
-    if (data.success) {
-      showToast("success", "Deleted", "Item removed.");
-      loadData();
-    } else {
-      showToast("error", "Delete failed", data.message || "Please try again.");
-    }
-  } catch (e) {
-    console.error(e);
-    showToast("error", "Network error", "Could not connect to server.");
-  }
-}
-
-function initEditModal() {
-  document.getElementById("modalCloseBtn").addEventListener("click", closeEditModal);
-  document.getElementById("modalCancelBtn").addEventListener("click", closeEditModal);
-  document.getElementById("modalSaveBtn").addEventListener("click", saveEdit);
-  document.getElementById("editModal").addEventListener("click", function (e) {
-    if (e.target === this) closeEditModal();
-  });
-  document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") {
-      var m = document.getElementById("editModal");
-      if (m.classList.contains("active")) closeEditModal();
-    }
-  });
-}
-
-function openEditModal(id) {
-  var item = lastItems.find(function (x) { return x.id === id; });
-  if (!item) return;
-  editingId = id;
-  document.getElementById("editAmount").value = item.amount || "";
-  document.getElementById("editCategory").value = item.category || "Other";
-  document.getElementById("editModal").classList.add("active");
-  document.body.style.overflow = "hidden";
-  setTimeout(function () { document.getElementById("editAmount").focus(); }, 100);
-}
-
-function closeEditModal() {
-  document.getElementById("editModal").classList.remove("active");
-  document.body.style.overflow = "";
-  editingId = null;
-}
-
-async function saveEdit() {
-  if (!editingId) return;
-
-  var amount = parseFloat(document.getElementById("editAmount").value);
-  var category = document.getElementById("editCategory").value;
-
-  if (!amount || amount <= 0) { showToast("warning", "Valid amount is required", ""); return; }
-  if (!category) { showToast("warning", "Category is required", ""); return; }
-
-  var saveBtn = document.getElementById("modalSaveBtn");
-  saveBtn.disabled = true;
-  saveBtn.textContent = "Saving...";
-
-  try {
-    var token = localStorage.getItem("nova-auth-token") || localStorage.getItem("access_token");
-    var res = await fetch(API_BASE + "/api/assistant", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
-      body: JSON.stringify({
-        intent: "UPDATE_EXPENSE",
-        data: { id: editingId, amount: amount, category: category }
-      })
-    });
-
-    var data = await res.json();
-
-    if (data.success) {
-      closeEditModal();
-      showToast("success", "Updated", "Expense saved successfully.");
-      loadData();
-    } else {
-      showToast("error", "Update failed", data.message || "Please try again.");
-    }
-  } catch (err) {
-    console.error(err);
-    showToast("error", "Network error", "Could not connect to server.");
-  } finally {
-    saveBtn.disabled = false;
-    saveBtn.textContent = "Save Changes";
-  }
 }
 
 function escapeHtml(str) {

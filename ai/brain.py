@@ -6,6 +6,10 @@
 # + Load chat history from backend
 # + CREATE_GOAL auto-date rule + normalize_date() for ISO YYYY-MM-DD
 # + DELETE_* intents wired to backend
+# + SET_VOLUME / SET_BRIGHTNESS level safety net + value mirror for agent.py
+# + MULTI_ACTION support for ALL actions (device + notes + reminders + expenses
+#   + shopping + goals + study plans + memories + moods + emails)
+# + Fix duplicate reply in multi-action
 
 import os
 import sys
@@ -62,7 +66,7 @@ PERSONALITY RULES (VERY IMPORTANT):
 
 Reply ONLY with STRICT JSON. Do not add any extra text.
 The JSON must have these 5 keys:
-1. "intent": Choose ONE: CREATE_REMINDER, CREATE_NOTE, ADD_EXPENSE, ADD_SHOPPING_ITEM, CREATE_GOAL, STUDY_PLAN, SHOW_INFORMATION, GET_NOTES, GET_REMINDERS, GET_EXPENSES, GET_SHOPPING_LIST, GET_STUDY_PLANS, GET_GOALS, GET_MOODS, GET_MEMORIES, SEARCH_NOTES, UPDATE_NOTE, UPDATE_REMINDER, UPDATE_EXPENSE, UPDATE_SHOPPING_ITEM, UPDATE_GOAL, UPDATE_STUDY_PLAN, DELETE_NOTE, DELETE_REMINDER, DELETE_EXPENSE, DELETE_SHOPPING_ITEM, DELETE_GOAL, DELETE_STUDY_PLAN, TRANSLATE_TEXT, SUMMARIZE_TEXT, GENERATE_FLASHCARDS, LOG_MOOD, CREATE_MEMORY, SAVE_CONTEXT, DRAFT_EMAIL, OPEN_APP, OPEN_FOLDER, OPEN_URL, CREATE_FOLDER, FIND_FILE, MUTE, UNMUTE, VOLUME_UP, VOLUME_DOWN, SET_VOLUME, BRIGHTNESS_UP, BRIGHTNESS_DOWN, SET_BRIGHTNESS, TAKE_SCREENSHOT, CLOSE_APP, SPEAK_LAST, or GENERAL_CHAT.
+1. "intent": Choose ONE: CREATE_REMINDER, CREATE_NOTE, ADD_EXPENSE, ADD_SHOPPING_ITEM, CREATE_GOAL, STUDY_PLAN, SHOW_INFORMATION, GET_NOTES, GET_REMINDERS, GET_EXPENSES, GET_SHOPPING_LIST, GET_STUDY_PLANS, GET_GOALS, GET_MOODS, GET_MEMORIES, SEARCH_NOTES, UPDATE_NOTE, UPDATE_REMINDER, UPDATE_EXPENSE, UPDATE_SHOPPING_ITEM, UPDATE_GOAL, UPDATE_STUDY_PLAN, DELETE_NOTE, DELETE_REMINDER, DELETE_EXPENSE, DELETE_SHOPPING_ITEM, DELETE_GOAL, DELETE_STUDY_PLAN, TRANSLATE_TEXT, SUMMARIZE_TEXT, GENERATE_FLASHCARDS, LOG_MOOD, CREATE_MEMORY, SAVE_CONTEXT, DRAFT_EMAIL, OPEN_APP, OPEN_FOLDER, OPEN_URL, CREATE_FOLDER, FIND_FILE, MUTE, UNMUTE, VOLUME_UP, VOLUME_DOWN, SET_VOLUME, BRIGHTNESS_UP, BRIGHTNESS_DOWN, SET_BRIGHTNESS, TAKE_SCREENSHOT, CLOSE_APP, SPEAK_LAST, MULTI_ACTION, or GENERAL_CHAT.
 2. "mood": Detect emotion: happy, sad, stressed, excited, neutral.
 3. "emoji": Pick ONE emoji that matches the mood.
 4. "data": An object with details.
@@ -132,6 +136,42 @@ Output: {"intent":"DELETE_GOAL","mood":"neutral","emoji":"😐","data":{"id":1},
 User: "remove study plan 2"
 Output: {"intent":"DELETE_STUDY_PLAN","mood":"neutral","emoji":"😐","data":{"id":2},"reply":"Deleting study plan 2..."}
 
+User: "set volume to 100"
+Output: {"intent":"SET_VOLUME","mood":"neutral","emoji":"😐","data":{"level":100},"reply":"Volume set to 100%!"}
+
+User: "set volume to 50"
+Output: {"intent":"SET_VOLUME","mood":"neutral","emoji":"😐","data":{"level":50},"reply":"Volume set to 50%!"}
+
+User: "adjust it to 100"
+Output: {"intent":"SET_VOLUME","mood":"neutral","emoji":"😐","data":{"level":100},"reply":"Volume set to 100%!"}
+
+User: "set brightness to 70"
+Output: {"intent":"SET_BRIGHTNESS","mood":"neutral","emoji":"😐","data":{"level":70},"reply":"Brightness set to 70%!"}
+
+User: "volume up"
+Output: {"intent":"VOLUME_UP","mood":"neutral","emoji":"😐","data":{},"reply":"Volume increased!"}
+
+User: "set volume to 100 and brightness to 50"
+Output: {"intent":"MULTI_ACTION","mood":"neutral","emoji":"😐","actions":[{"intent":"SET_VOLUME","data":{"level":100}},{"intent":"SET_BRIGHTNESS","data":{"level":50}}],"reply":"Setting volume to 100% and brightness to 50%."}
+
+User: "set brightness to 50 and volume to 50"
+Output: {"intent":"MULTI_ACTION","mood":"neutral","emoji":"😐","actions":[{"intent":"SET_BRIGHTNESS","data":{"level":50}},{"intent":"SET_VOLUME","data":{"level":50}}],"reply":"Setting brightness and volume to 50%."}
+
+User: "open chrome and take a screenshot"
+Output: {"intent":"MULTI_ACTION","mood":"neutral","emoji":"😐","actions":[{"intent":"OPEN_APP","data":{"app":"chrome"}},{"intent":"TAKE_SCREENSHOT","data":{}}],"reply":"Opening Chrome and taking a screenshot."}
+
+User: "mute and set brightness to 30"
+Output: {"intent":"MULTI_ACTION","mood":"neutral","emoji":"😐","actions":[{"intent":"MUTE","data":{}},{"intent":"SET_BRIGHTNESS","data":{"level":30}}],"reply":"Muting and setting brightness to 30%."}
+
+User: "remind me to call Mom at 5 and save a note to buy milk"
+Output: {"intent":"MULTI_ACTION","mood":"neutral","emoji":"😐","actions":[{"intent":"CREATE_REMINDER","data":{"task":"call Mom","time":"17:00"}},{"intent":"CREATE_NOTE","data":{"text":"buy milk"}}],"reply":"Reminder set for 5 PM and note saved!"}
+
+User: "add apples to shopping list and add 100 to food expenses"
+Output: {"intent":"MULTI_ACTION","mood":"neutral","emoji":"😐","actions":[{"intent":"ADD_SHOPPING_ITEM","data":{"items":["apples"]}},{"intent":"ADD_EXPENSE","data":{"amount":"100","category":"food"}}],"reply":"Added apples to shopping list and 100 to food expenses."}
+
+User: "create a goal to read 20 books this year and log my mood as happy"
+Output: {"intent":"MULTI_ACTION","mood":"neutral","emoji":"😐","actions":[{"intent":"CREATE_GOAL","data":{"goal":"read 20 books","target_date":"2026-12-31"}},{"intent":"LOG_MOOD","data":{"mood":"happy"}}],"reply":"Goal added and mood logged!"}
+
 User: "my goal is to get a high paid job by the 25th of this month"
 Output: {"intent":"CREATE_GOAL","mood":"neutral","emoji":"😐","data":{"goal":"get a high paid job","target_date":"2026-09-25"},"reply":"Goal added!"}
 
@@ -193,22 +233,55 @@ Output: {"intent":"DELETE_NOTE","mood":"neutral","emoji":"😐","data":{"id":5},
 User: "remove reminder 3"
 Output: {"intent":"DELETE_REMINDER","mood":"neutral","emoji":"😐","data":{"id":3},"reply":"Deleting reminder 3..."}
 
-User: "delete expense 2"
-Output: {"intent":"DELETE_EXPENSE","mood":"neutral","emoji":"😐","data":{"id":2},"reply":"Deleting expense 2..."}
-
-User: "remove shopping item 4"
-Output: {"intent":"DELETE_SHOPPING_ITEM","mood":"neutral","emoji":"😐","data":{"id":4},"reply":"Deleting shopping item 4..."}
-
-User: "delete goal 1"
-Output: {"intent":"DELETE_GOAL","mood":"neutral","emoji":"😐","data":{"id":1},"reply":"Deleting goal 1..."}
-
-User: "remove study plan 2"
-Output: {"intent":"DELETE_STUDY_PLAN","mood":"neutral","emoji":"😐","data":{"id":2},"reply":"Deleting study plan 2..."}
-
 If the user does NOT provide an ID (e.g. "delete my python note"), ask:
 "Which note ID would you like to delete? You can check your notes first by saying 'show my notes'."
 
 NOTE: UPDATE_MOOD is NOT available. Use LOG_MOOD for new mood entries.
+
+CRITICAL DEVICE CONTROL RULE:
+For SET_VOLUME, "data" MUST include {"level": <number 0-100>}.
+For SET_BRIGHTNESS, "data" MUST include {"level": <number 0-100>}.
+NEVER leave data empty for these intents.
+"volume up" → VOLUME_UP (no data needed)
+"volume down" → VOLUME_DOWN (no data needed)
+"set volume to 50" → SET_VOLUME with {"level": 50}
+"set brightness to 70" → SET_BRIGHTNESS with {"level": 70}
+"mute" → MUTE, "unmute" → UNMUTE
+
+CRITICAL MULTI-ACTION RULE:
+If the user asks for MORE THAN ONE action in a single message — whether device
+actions, notes, reminders, expenses, shopping items, goals, study plans, moods,
+memories, or emails — you MUST return the JSON in this special format:
+
+{
+  "intent": "MULTI_ACTION",
+  "mood": "<mood>",
+  "emoji": "<emoji>",
+  "actions": [
+    { "intent": "<INTENT_1>", "data": { ... } },
+    { "intent": "<INTENT_2>", "data": { ... } }
+  ],
+  "reply": "<short confirmation covering all actions>"
+}
+
+Use MULTI_ACTION for ANY combination — device + notes, notes + reminders, device + device,
+etc. Each action in the "actions" array must have its own "intent" and "data".
+NEVER ask "which first?" — just execute ALL.
+NEVER split a single action into multiple.
+Limit to at most 5 actions per message.
+
+Examples:
+User: "set volume to 100 and brightness to 50"
+Output: {"intent":"MULTI_ACTION","mood":"neutral","emoji":"😐","actions":[{"intent":"SET_VOLUME","data":{"level":100}},{"intent":"SET_BRIGHTNESS","data":{"level":50}}],"reply":"Setting volume to 100% and brightness to 50%."}
+
+User: "remind me to call Mom at 5 and save a note to buy milk"
+Output: {"intent":"MULTI_ACTION","mood":"neutral","emoji":"😐","actions":[{"intent":"CREATE_REMINDER","data":{"task":"call Mom","time":"17:00"}},{"intent":"CREATE_NOTE","data":{"text":"buy milk"}}],"reply":"Reminder set for 5 PM and note saved!"}
+
+User: "add apples to shopping list and add 100 to food expenses"
+Output: {"intent":"MULTI_ACTION","mood":"neutral","emoji":"😐","actions":[{"intent":"ADD_SHOPPING_ITEM","data":{"items":["apples"]}},{"intent":"ADD_EXPENSE","data":{"amount":"100","category":"food"}}],"reply":"Added apples to shopping list and 100 to food expenses."}
+
+User: "open chrome and take a screenshot"
+Output: {"intent":"MULTI_ACTION","mood":"neutral","emoji":"😐","actions":[{"intent":"OPEN_APP","data":{"app":"chrome"}},{"intent":"TAKE_SCREENSHOT","data":{}}],"reply":"Opening Chrome and taking a screenshot."}
 
 CRITICAL CLARIFICATION RULE:
 If the user's message is ambiguous, respond with a CLARIFYING QUESTION.
@@ -275,10 +348,6 @@ If the user does not specify a date, infer one:
 - "learn python" → 6 months from today
 NEVER ask the user for a date. ALWAYS compute one.
 
-Example:
-User: "my goal is to get a high paid job by the 25th of this month"
-Output: {"intent":"CREATE_GOAL","mood":"neutral","emoji":"😐","data":{"goal":"get a high paid job","target_date":"2026-09-25"},"reply":"Goal added!"}
-
 SAFE ACTION RULE: Only CLOSE_APP needs confirmation.
 
 GET intents support optional fields: "search", "limit", "offset", "date_from", "date_to".
@@ -301,7 +370,8 @@ VALID_INTENTS = {
     "BRIGHTNESS_UP", "BRIGHTNESS_DOWN", "SET_BRIGHTNESS",
     "TAKE_SCREENSHOT", "CLOSE_APP",
     "SPEAK_LAST",
-    "GENERAL_CHAT"
+    "GENERAL_CHAT",
+    "MULTI_ACTION"
 }
 
 INTENT_ALIASES = {
@@ -333,11 +403,9 @@ def normalize_date(value):
     today = datetime.now().date()
     v = value.strip().lower()
 
-    # Already YYYY-MM-DD
     if re.fullmatch(r"\d{4}-\d{2}-\d{2}", v):
         return v
 
-    # Today / tomorrow / yesterday
     if v in ("today", "now"):
         return today.isoformat()
     if v == "tomorrow":
@@ -345,7 +413,6 @@ def normalize_date(value):
     if v == "yesterday":
         return (today - timedelta(days=1)).isoformat()
 
-    # "in N days/weeks/months/years"
     m = re.search(r"in\s+(\d+)\s+(day|days|week|weeks|month|months|year|years)", v)
     if m:
         n = int(m.group(1))
@@ -362,7 +429,6 @@ def normalize_date(value):
             delta = timedelta(0)
         return (today + delta).isoformat()
 
-    # "next week/month/year" / "this week/month/year"
     m = re.search(r"(next|this)\s+(week|month|year)", v)
     if m:
         when, unit = m.group(1), m.group(2)
@@ -374,7 +440,6 @@ def normalize_date(value):
             delta = timedelta(days=365 if when == "next" else 0)
         return (today + delta).isoformat()
 
-    # "end of term" / "end of month" / "end of year"
     if "end of" in v:
         if "term" in v or "month" in v:
             if today.month == 12:
@@ -385,7 +450,6 @@ def normalize_date(value):
         if "year" in v:
             return f"{today.year}-12-31"
 
-    # "25th of next month"
     m = re.search(r"(\d{1,2})(?:st|nd|rd|th)?\s*(?:of\s+)?next\s+month", v)
     if m:
         day = int(m.group(1))
@@ -395,7 +459,6 @@ def normalize_date(value):
             target = today.replace(month=today.month + 1, day=day)
         return target.isoformat()
 
-    # "on the 25th" / "on 25th of this month" / "25 of this month"
     m = re.search(r"(\d{1,2})(?:st|nd|rd|th)?\s*(?:of\s+)?(?:this\s+)?month", v)
     if m:
         day = int(m.group(1))
@@ -405,7 +468,6 @@ def normalize_date(value):
         except ValueError:
             pass
 
-    # Month name + day: "September 25", "25 September"
     month_names = {
         "january": 1, "february": 2, "march": 3, "april": 4, "may": 5, "june": 6,
         "july": 7, "august": 8, "september": 9, "october": 10, "november": 11, "december": 12,
@@ -430,12 +492,10 @@ def normalize_date(value):
             except Exception:
                 pass
 
-    # Last resort: leave as-is
     return value
 
 
 def extract_folder_from_text(user_text):
-    """Fallback: pull the folder name out of the user's message."""
     if not user_text:
         return ""
     text = user_text.strip().lower()
@@ -531,6 +591,28 @@ def normalize_result(raw_result, user_text=""):
         else:
             d["folder"] = folder
 
+    # SET_VOLUME / SET_BRIGHTNESS: must have a numeric "level", mirror to "value"
+    if normalized["intent"] in ("SET_VOLUME", "SET_BRIGHTNESS"):
+        d = normalized["data"]
+        if "level" not in d:
+            for alt in ("value", "percent", "volume", "brightness", "amount", "to"):
+                if alt in d:
+                    d["level"] = d.pop(alt)
+                    break
+        if "level" not in d and user_text:
+            m = re.search(r"(\d{1,3})", user_text)
+            if m:
+                d["level"] = int(m.group(1))
+        if "level" in d:
+            try:
+                d["level"] = max(0, min(100, int(d["level"])))
+            except (ValueError, TypeError):
+                pass
+            d["value"] = d["level"]
+        if "level" not in d:
+            normalized["intent"] = "GENERAL_CHAT"
+            normalized["reply"] = "What level would you like? Say a number between 0 and 100."
+
     if not isinstance(normalized["reply"], str):
         normalized["reply"] = "Done!"
 
@@ -540,14 +622,11 @@ def normalize_result(raw_result, user_text=""):
 def extract_json_object(raw_text):
     if not raw_text:
         return "{}"
-
     cleaned = raw_text.replace("```json", "").replace("```", "").strip()
     start = cleaned.find("{")
     end = cleaned.rfind("}")
-
     if start != -1 and end != -1 and end > start:
         cleaned = cleaned[start:end + 1]
-
     cleaned = re.sub(r",\s*([}\]])", r"\1", cleaned)
     return cleaned
 
@@ -567,7 +646,6 @@ def save_chat_message(user_id, role, content, token):
 
 
 def load_chat_history(user_id, token, limit=HISTORY_LIMIT):
-    """Fetch recent chat history from backend when local cache is empty."""
     if not token or not user_id:
         return []
     try:
@@ -579,7 +657,6 @@ def load_chat_history(user_id, token, limit=HISTORY_LIMIT):
         )
         data = r.json()
         messages = data.get("messages") or data.get("history") or data.get("chat_history") or []
-
         history = []
         for m in messages:
             if isinstance(m, dict) and "role" in m and "content" in m:
@@ -592,12 +669,9 @@ def load_chat_history(user_id, token, limit=HISTORY_LIMIT):
 
 def process_user_input(user_text, user_id="default", token=None):
     today = datetime.now().strftime("%B %d, %Y")
-
     history = conversation_history.get(user_id, [])
-
     if not history and token:
         history = load_chat_history(user_id, token, HISTORY_LIMIT)
-
     history.append({"role": "user", "content": user_text})
     history = history[-HISTORY_LIMIT:]
     conversation_history[user_id] = history
@@ -617,12 +691,10 @@ def process_user_input(user_text, user_id="default", token=None):
                 )
                 ai_reply = response.choices[0].message.content
                 ai_reply = extract_json_object(ai_reply)
-
                 history.append({"role": "assistant", "content": ai_reply})
                 conversation_history[user_id] = history[-HISTORY_LIMIT:]
-
                 result = json.loads(ai_reply)
-                return normalize_result(result, user_text)
+                return result
             except Exception as e:
                 err_str = str(e)
                 print(f"[Model {model} failed: {err_str[:100]}]")
@@ -671,41 +743,37 @@ def fetch_from_backend(intent, data, token):
         return {"error": f"Could not fetch data: {e}"}
 
 
-def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
-    save_chat_message(user_id, "user", user_text, token)
+# ============================================================
+# MULTI-ACTION SUPPORT (ALL actions — device + personal)
+# ============================================================
+def _split_multi(raw_result):
+    """If LLM returned MULTI_ACTION, split into a list of single-intent dicts.
+    Otherwise return [single_action]."""
+    if not isinstance(raw_result, dict):
+        return [raw_result]
+    if raw_result.get("intent") != "MULTI_ACTION":
+        return [raw_result]
+    actions = raw_result.get("actions", [])
+    reply = raw_result.get("reply", "Done!")
+    out = []
+    for ra in actions:
+        if not isinstance(ra, dict):
+            continue
+        out.append({
+            "intent": ra.get("intent"),
+            "mood": raw_result.get("mood", "neutral"),
+            "emoji": raw_result.get("emoji", "😐"),
+            "data": ra.get("data", {}),
+            "reply": reply,
+        })
+    return out
 
-    pending = pending_confirmations.get(user_id)
-    is_confirmation = False
 
-    if pending:
-        lower = user_text.strip().lower().rstrip(".!?,")
-        if lower in ["yes", "yeah", "yep", "confirm", "yes please", "do it", "sure", "ok", "okay", "go ahead"]:
-            result = {
-                "intent": pending["intent"],
-                "mood": "neutral",
-                "emoji": "😐",
-                "data": pending["data"],
-                "reply": "Confirmed. Executing..."
-            }
-            pending_confirmations.pop(user_id, None)
-            is_confirmation = True
-        elif lower in ["no", "cancel", "nope", "stop", "don't", "dont", "nevermind", "never mind"]:
-            pending_confirmations.pop(user_id, None)
-            reply = "Okay, I cancelled that action."
-            save_chat_message(user_id, "assistant", reply, token)
-            return {
-                "intent": "GENERAL_CHAT",
-                "mood": "neutral",
-                "emoji": "😐",
-                "data": {},
-                "reply": reply
-            }
-        else:
-            pending_confirmations.pop(user_id, None)
-            result = process_user_input(user_text, user_id, token)
-    else:
-        result = process_user_input(user_text, user_id, token)
+def _run_single_action(normalized, user_text, token, user_id, device_id, is_confirmation=False):
+    """Run ONE already-normalized action through the backend."""
+    result = normalized
 
+    # SPEAK_LAST
     if result["intent"] == "SPEAK_LAST":
         history = conversation_history.get(user_id, [])
         last_reply = None
@@ -719,16 +787,9 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
                 except Exception:
                     continue
         result["reply"] = last_reply if last_reply else "I don't have anything to repeat yet."
-        save_chat_message(user_id, "assistant", result["reply"], token)
-        return {
-            "intent": result.get("intent"),
-            "mood": result.get("mood"),
-            "emoji": result.get("emoji"),
-            "data": result.get("data"),
-            "reply": result.get("reply")
-        }
+        return result
 
-    # --- CREATE + UPDATE ---
+    # CREATE / UPDATE
     if result["intent"] in [
         "CREATE_NOTE", "CREATE_REMINDER", "ADD_EXPENSE", "ADD_SHOPPING_ITEM",
         "STUDY_PLAN", "CREATE_GOAL", "LOG_MOOD", "CREATE_MEMORY", "SAVE_CONTEXT",
@@ -738,177 +799,107 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         result["data"]["user_id"] = user_id
         backend_response = send_to_backend(result["intent"], result["data"], token)
         print("Backend says:", backend_response)
-
         if isinstance(backend_response, dict) and not backend_response.get("success"):
-            error_msg = backend_response.get("message", "unknown error")
-            result["reply"] = f"Sorry, I couldn't save that: {error_msg}"
+            result["reply"] = f"Sorry, I couldn't save that: {backend_response.get('message', 'unknown error')}"
 
-    # --- DELETE_* ---
+    # DELETE
     elif result["intent"] in [
         "DELETE_NOTE", "DELETE_REMINDER", "DELETE_EXPENSE",
         "DELETE_SHOPPING_ITEM", "DELETE_GOAL", "DELETE_STUDY_PLAN"
     ]:
         backend_response = send_to_backend(result["intent"], result["data"], token)
         print("Backend says:", backend_response)
-
         if isinstance(backend_response, dict):
             if backend_response.get("success"):
                 result["reply"] = backend_response.get("message", "Deleted successfully.")
             else:
-                err = backend_response.get("message", "not found")
-                result["reply"] = f"Sorry, I couldn't delete that: {err}"
-        else:
-            result["reply"] = "Sorry, I couldn't delete that right now."
+                result["reply"] = f"Sorry, I couldn't delete that: {backend_response.get('message', 'not found')}"
 
-    # --- DRAFT_EMAIL ---
+    # EMAIL
     elif result["intent"] == "DRAFT_EMAIL":
         result["data"]["user_id"] = user_id
         if not result["data"].get("subject"):
             result["data"]["subject"] = "Nova Message"
         backend_response = send_to_backend(result["intent"], result["data"], token)
-        print("Backend says:", backend_response)
-
         if isinstance(backend_response, dict) and backend_response.get("success"):
-            recipient = result["data"].get("recipient", "the recipient")
-            result["reply"] = f"Email sent to {recipient}."
-        else:
-            error_msg = backend_response.get("message", "unknown error") if isinstance(backend_response, dict) else "unknown"
-            result["reply"] = f"Sorry, I couldn't send the email: {error_msg}"
+            result["reply"] = f"Email sent to {result['data'].get('recipient', 'the recipient')}."
 
-    # --- FIND_FILE ---
+    # FIND FILE
     elif result["intent"] == "FIND_FILE":
         result["data"]["user_id"] = user_id
         result["data"]["device_id"] = device_id
         backend_response = send_to_backend(result["intent"], result["data"], token)
-        print("Backend says:", backend_response)
-
         search_term = result["data"].get("search_term", user_text)
-        folder = result["data"].get("folder", "")
-
         if isinstance(backend_response, dict):
             files_found = backend_response.get("files_found", 0)
             files = backend_response.get("files", [])
-
-            if not backend_response.get("success"):
-                result["reply"] = f"Sorry, I couldn't search for '{search_term}' right now."
-            elif files_found == 0:
-                if folder:
-                    result["reply"] = f"Sorry, I couldn't find '{search_term}' in your {folder} folder."
-                else:
-                    result["reply"] = f"Sorry, I couldn't find any file or folder matching '{search_term}'."
+            if files_found == 0:
+                result["reply"] = f"Sorry, I couldn't find '{search_term}'."
             else:
-                file_names = [f.split("\\")[-1] for f in files[:5]]
-                if len(file_names) == 1:
-                    result["reply"] = f"Found 1 item: {file_names[0]}"
-                else:
-                    result["reply"] = f"Found {files_found} items:\n" + "\n".join(file_names)
-        else:
-            result["reply"] = f"Sorry, I couldn't find '{search_term}'."
+                names = [f.split("\\")[-1] for f in files[:5]]
+                result["reply"] = f"Found {files_found} items:\n" + "\n".join(names)
 
-    # --- CLOSE_APP ---
+    # CLOSE APP (only runs if already confirmed by caller)
     elif result["intent"] == "CLOSE_APP":
-        if not is_confirmation:
-            pending_confirmations[user_id] = {
-                "intent": "CLOSE_APP",
-                "data": result["data"].copy()
-            }
-            app_name = result["data"].get("app", "this app")
-            result["reply"] = f"Are you sure you want to close {app_name}? Say yes to confirm."
-            result["data"]["requires_confirmation"] = True
-            save_chat_message(user_id, "assistant", result["reply"], token)
-            return {
-                "intent": result.get("intent"),
-                "mood": result.get("mood"),
-                "emoji": result.get("emoji"),
-                "data": result.get("data"),
-                "reply": result.get("reply")
-            }
-
         result["data"]["user_id"] = user_id
         result["data"]["device_id"] = device_id
         result["data"]["requires_confirmation"] = False
-        backend_response = send_to_backend(result["intent"], result["data"], token)
-        print("Backend says:", backend_response)
+        send_to_backend(result["intent"], result["data"], token)
 
-    # --- OPEN_FOLDER ---
+    # OPEN FOLDER
     elif result["intent"] == "OPEN_FOLDER":
-        folder = result["data"].get("folder", "downloads")
-        result["data"]["folder"] = folder
         result["data"]["user_id"] = user_id
         result["data"]["device_id"] = device_id
+        send_to_backend("OPEN_FOLDER", result["data"], token)
+        result["reply"] = f"Opening {result['data'].get('folder', 'downloads')} folder!"
 
-        backend_response = send_to_backend("OPEN_FOLDER", result["data"], token)
-        print("Backend says:", backend_response)
-
-        if isinstance(backend_response, dict) and backend_response.get("success"):
-            result["reply"] = f"Opening {folder} folder!"
-        else:
-            result["reply"] = f"Trying to open {folder} folder..."
-
-    # --- OPEN_APP / OPEN_URL / CREATE_FOLDER ---
+    # OPEN APP / URL / CREATE FOLDER
     elif result["intent"] in ["OPEN_APP", "OPEN_URL", "CREATE_FOLDER"]:
         result["data"]["user_id"] = user_id
         result["data"]["device_id"] = device_id
-        backend_response = send_to_backend(result["intent"], result["data"], token)
-        print("Backend says:", backend_response)
+        send_to_backend(result["intent"], result["data"], token)
 
-        if isinstance(backend_response, dict) and backend_response.get("success"):
-            if result["intent"] == "OPEN_APP":
-                app = result["data"].get("app", "the app")
-                result["reply"] = f"Opening {app} on your laptop..."
-            elif result["intent"] == "OPEN_URL":
-                result["reply"] = "Opening that website in your browser..."
-            elif result["intent"] == "CREATE_FOLDER":
-                folder = result["data"].get("folder_name", "the folder")
-                result["reply"] = f"Creating folder {folder} on your Desktop..."
-        else:
-            result["reply"] = "Sorry, I couldn't complete that action right now."
-
-    # --- OTHER DEVICE ACTIONS ---
-    elif result["intent"] in ["MUTE", "UNMUTE",
-                              "VOLUME_UP", "VOLUME_DOWN", "SET_VOLUME",
-                              "BRIGHTNESS_UP", "BRIGHTNESS_DOWN", "SET_BRIGHTNESS",
-                              "TAKE_SCREENSHOT"]:
+    # DEVICE CONTROL
+    elif result["intent"] in [
+        "MUTE", "UNMUTE", "VOLUME_UP", "VOLUME_DOWN", "SET_VOLUME",
+        "BRIGHTNESS_UP", "BRIGHTNESS_DOWN", "SET_BRIGHTNESS", "TAKE_SCREENSHOT"
+    ]:
         result["data"]["user_id"] = user_id
         result["data"]["device_id"] = device_id
-        backend_response = send_to_backend(result["intent"], result["data"], token)
-        print("Backend says:", backend_response)
+        send_to_backend(result["intent"], result["data"], token)
 
-    # --- SEMANTIC SEARCH ---
+    # SEARCH NOTES
     elif result["intent"] == "SEARCH_NOTES":
         query = result["data"].get("query", user_text)
-        search_payload = {"query": query, "user_id": user_id}
-        url = f"{BACKEND_URL}/api/assistant"
-        headers = {"Authorization": f"Bearer {token}"}
         try:
-            r = requests.post(url, json={"intent": "SEARCH_NOTES", "data": search_payload}, headers=headers)
+            r = requests.post(
+                f"{BACKEND_URL}/api/assistant",
+                json={"intent": "SEARCH_NOTES", "data": {"query": query, "user_id": user_id}},
+                headers={"Authorization": f"Bearer {token}"}
+            )
             fetched_data = r.json()
-            print("Semantic search result:", fetched_data)
-
             if fetched_data.get("success"):
                 results = fetched_data.get("results", [])
-                filtered = [item for item in results if item.get("similarity", 0) >= SIMILARITY_THRESHOLD]
-
+                filtered = [x for x in results if x.get("similarity", 0) >= SIMILARITY_THRESHOLD]
                 if filtered:
-                    formatted = [f"{i+1}. {item['text']} (similarity: {round(item['similarity'], 2)})"
-                                 for i, item in enumerate(filtered)]
+                    formatted = [f"{i+1}. {x['text']}" for i, x in enumerate(filtered)]
                     result["reply"] = "Here are the notes I found:\n" + "\n".join(formatted)
                 else:
                     result["reply"] = f"Sorry, I couldn't find any notes about '{query}'."
             else:
-                result["reply"] = f"Search failed: {fetched_data.get('message', 'unknown error')}"
+                result["reply"] = "Search failed."
         except Exception as e:
             result["reply"] = f"Could not search: {e}"
 
-    # --- FETCHING DATA ---
-    elif result["intent"] in ["GET_NOTES", "GET_REMINDERS", "GET_EXPENSES",
-                              "GET_SHOPPING_LIST", "GET_STUDY_PLANS", "GET_GOALS",
-                              "GET_MOODS", "GET_MEMORIES", "GET_CONTEXT", "SHOW_INFORMATION"]:
+    # GET*
+    elif result["intent"] in [
+        "GET_NOTES", "GET_REMINDERS", "GET_EXPENSES",
+        "GET_SHOPPING_LIST", "GET_STUDY_PLANS", "GET_GOALS",
+        "GET_MOODS", "GET_MEMORIES", "GET_CONTEXT", "SHOW_INFORMATION"
+    ]:
         fetch_params = result["data"].copy()
         fetch_params["user_id"] = user_id
         fetched_data = fetch_from_backend(result["intent"], fetch_params, token)
-        print("Fetched from database:", fetched_data)
-
         if fetched_data.get("success"):
             formatted = (fetched_data.get("formatted_notes") or
                          fetched_data.get("formatted_reminders") or
@@ -918,56 +909,99 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
                          fetched_data.get("formatted_study_plans") or
                          fetched_data.get("formatted_moods") or
                          fetched_data.get("formatted_memories"))
-
             if formatted:
-                if result["intent"] == "GET_NOTES":
-                    result["reply"] = "Here are your notes:\n" + "\n".join(formatted)
-                elif result["intent"] == "GET_REMINDERS":
-                    result["reply"] = "Here are your reminders:\n" + "\n".join(formatted)
-                elif result["intent"] == "GET_EXPENSES":
-                    result["reply"] = "Here are your expenses:\n" + "\n".join(formatted)
-                elif result["intent"] == "GET_SHOPPING_LIST":
-                    result["reply"] = "Here is your shopping list:\n" + "\n".join(formatted)
-                elif result["intent"] == "GET_GOALS":
-                    result["reply"] = "Here are your goals:\n" + "\n".join(formatted)
-                elif result["intent"] == "GET_STUDY_PLANS":
-                    result["reply"] = "Here are your study plans:\n" + "\n".join(formatted)
-                elif result["intent"] == "GET_MOODS":
-                    result["reply"] = "Here are your moods:\n" + "\n".join(formatted)
-                elif result["intent"] == "GET_MEMORIES":
-                    result["reply"] = "Here is what I remember:\n" + "\n".join(formatted)
+                result["reply"] = "Here:\n" + "\n".join(formatted)
 
-    # --- INSTANT MODULES ---
-    elif result["intent"] in ["TRANSLATE_TEXT", "SUMMARIZE_TEXT", "GENERATE_FLASHCARDS", "GENERAL_CHAT"]:
-        print("INSTANT MODULE: No backend needed. Just showing AI's answer!")
+    return result
 
-    save_chat_message(user_id, "assistant", result["reply"], token)
+
+def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
+    """Handles single AND multi-action user requests (all action types)."""
+    save_chat_message(user_id, "user", user_text, token)
+
+    # Handle pending CLOSE_APP confirmation
+    pending = pending_confirmations.get(user_id)
+    is_confirmation = False
+
+    if pending:
+        lower = user_text.strip().lower().rstrip(".!?,")
+        if lower in ["yes", "yeah", "yep", "confirm", "yes please", "do it", "sure", "ok", "okay", "go ahead"]:
+            raw = {
+                "intent": pending["intent"],
+                "mood": "neutral", "emoji": "😐",
+                "data": pending["data"], "reply": "Confirmed."
+            }
+            pending_confirmations.pop(user_id, None)
+            is_confirmation = True
+        elif lower in ["no", "cancel", "nope", "stop", "don't", "dont", "nevermind", "never mind"]:
+            pending_confirmations.pop(user_id, None)
+            reply = "Okay, I cancelled that action."
+            save_chat_message(user_id, "assistant", reply, token)
+            return {"intent": "GENERAL_CHAT", "mood": "neutral", "emoji": "😐", "data": {}, "reply": reply}
+        else:
+            pending_confirmations.pop(user_id, None)
+            raw = process_user_input(user_text, user_id, token)
+    else:
+        raw = process_user_input(user_text, user_id, token)
+
+    # ---- MULTI-ACTION split ----
+    raw_actions = _split_multi(raw)
+
+    # If single CLOSE_APP and not confirmed → ask confirmation
+    if len(raw_actions) == 1 and raw_actions[0].get("intent") == "CLOSE_APP" and not is_confirmation:
+        normalized = normalize_result(raw_actions[0], user_text)
+        pending_confirmations[user_id] = {
+            "intent": "CLOSE_APP",
+            "data": normalized["data"].copy()
+        }
+        app_name = normalized["data"].get("app", "this app")
+        reply = f"Are you sure you want to close {app_name}? Say yes to confirm."
+        save_chat_message(user_id, "assistant", reply, token)
+        return {
+            "intent": "CLOSE_APP", "mood": "neutral", "emoji": "😐",
+            "data": normalized["data"], "reply": reply
+        }
+
+    # Normalize + run each action
+    executed = []
+    replies = []
+    for act in raw_actions:
+        normalized = normalize_result(act, user_text)
+        result = _run_single_action(normalized, user_text, token, user_id, device_id, is_confirmation)
+        executed.append(result)
+        if result.get("reply"):
+            replies.append(result["reply"])
+
+    # For multi-action, use the LLM's top-level reply ONCE (avoid duplicates)
+    if len(raw_actions) > 1 and isinstance(raw, dict) and raw.get("reply"):
+        final_reply = raw["reply"]
+    else:
+        final_reply = "\n".join(replies) if replies else "Done!"
+
+    save_chat_message(user_id, "assistant", final_reply, token)
 
     return {
-        "intent": result.get("intent"),
-        "mood": result.get("mood"),
-        "emoji": result.get("emoji"),
-        "data": result.get("data"),
-        "reply": result.get("reply")
+        "intent": "MULTI_ACTION" if len(raw_actions) > 1 else executed[0].get("intent", "GENERAL_CHAT"),
+        "mood": raw.get("mood", "neutral") if isinstance(raw, dict) else "neutral",
+        "emoji": raw.get("emoji", "😐") if isinstance(raw, dict) else "😐",
+        "data": executed[0].get("data") if executed else {},
+        "reply": final_reply,
+        "actions": executed,
     }
 
 
 if __name__ == "__main__":
     print(">> Nova Brain is ready! Type 'exit' to quit.")
-
     test_email = "test@test.com"
     test_password = "TestPassword123"
     access_token, test_user_id = get_access_token(test_email, test_password)
-
     if not access_token:
         print("Exiting: Could not get access token.")
         exit()
-
     while True:
         user_input = input("\nYou: ")
         if user_input.lower() == "exit":
             break
-
         result = get_ai_response(user_input, access_token, test_user_id)
         print("\n>> AI Output (JSON):")
         print(json.dumps(result, indent=2, ensure_ascii=False))
