@@ -55,7 +55,17 @@ def create_notification(cur, user_id, title, message, icon="🔔"):
     """, (user_id, title, message, icon))
 
 app = Flask(__name__)
-CORS(app)
+CORS(
+    app,
+    origins=[
+        "http://127.0.0.1:5500",
+        "http://localhost:5500",
+        "https://nova-voice-assistant-three.vercel.app"
+    ],
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
+    supports_credentials=True
+)
 
 gemini_client = genai.Client(
     api_key=os.getenv("GEMINI_API_KEY")
@@ -321,6 +331,150 @@ def get_user_from_token(token):
 
     return None
 
+# ============================================================
+# CHAT HISTORY
+# ============================================================
+
+@app.route("/api/chat-history/save", methods=["POST"])
+def save_chat():
+    data = request.get_json() or {}
+
+    # Authentication
+    auth_header = request.headers.get("Authorization", "")
+
+    if not auth_header.startswith("Bearer "):
+        return jsonify({
+            "success": False,
+            "message": "Authorization token is required"
+        }), 401
+
+    token = auth_header.split(" ", 1)[1].strip()
+    authenticated_user_id = get_user_from_token(token)
+
+    if not authenticated_user_id:
+        return jsonify({
+            "success": False,
+            "message": "Invalid or expired authorization token"
+        }), 401
+
+    role = str(data.get("role", "")).strip()
+    content = str(data.get("content", "")).strip()
+
+    if not role or not content:
+        return jsonify({
+            "success": False,
+            "message": "role and content are required"
+        }), 400
+
+    if role not in ["user", "assistant"]:
+        return jsonify({
+            "success": False,
+            "message": "role must be 'user' or 'assistant'"
+        }), 400
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            INSERT INTO chat_history
+            (user_id, role, content)
+            VALUES (%s, %s, %s)
+        """, (
+            authenticated_user_id,
+            role,
+            content
+        ))
+
+        conn.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "Chat message saved"
+        })
+
+    except Exception as e:
+        conn.rollback()
+
+        print("CHAT HISTORY SAVE ERROR:", e)
+
+        return jsonify({
+            "success": False,
+            "message": "Failed to save chat message"
+        }), 500
+
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.route("/api/chat-history/get", methods=["POST"])
+def get_chat():
+    data = request.get_json() or {}
+
+    # Authentication
+    auth_header = request.headers.get("Authorization", "")
+
+    if not auth_header.startswith("Bearer "):
+        return jsonify({
+            "success": False,
+            "message": "Authorization token is required"
+        }), 401
+
+    token = auth_header.split(" ", 1)[1].strip()
+    authenticated_user_id = get_user_from_token(token)
+
+    if not authenticated_user_id:
+        return jsonify({
+            "success": False,
+            "message": "Invalid or expired authorization token"
+        }), 401
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            SELECT role, content, created_at
+            FROM chat_history
+            WHERE user_id = %s
+            ORDER BY created_at DESC
+            LIMIT 50
+        """, (authenticated_user_id,))
+
+        rows = cur.fetchall()
+
+        # Reverse so oldest → newest appears in chat UI
+        rows.reverse()
+
+        messages = [
+            {
+                "role": row[0],
+                "content": row[1],
+                "created_at": str(row[2])
+            }
+            for row in rows
+        ]
+
+        return jsonify({
+            "success": True,
+            "messages": messages,
+            "count": len(messages)
+        })
+
+    except Exception as e:
+
+        print("CHAT HISTORY GET ERROR:", e)
+
+        return jsonify({
+            "success": False,
+            "message": "Failed to fetch chat history"
+        }), 500
+
+    finally:
+        cur.close()
+        conn.close()
+        
 # ============================================================
 # HOME / HEALTH CHECK
 # ============================================================
@@ -1181,23 +1335,41 @@ def assistant():
                 details.get("subject", "")
             ).strip()
 
-            exam_date = details.get(
-                "exam_date"
-            )
+            exam_date = details.get("exam_date")
 
             if not user_id:
+               return jsonify({
+               "success": False,
+               "message": "User ID is required"
+               }), 400
 
-                return jsonify({
+            if not subject:
+               return jsonify({
                     "success": False,
-                    "message": "User ID is required"
-                }), 400
+                    "message": "Subject is required"
+               }), 400
 
-            if not subject or not exam_date:
+            if not exam_date or str(exam_date).strip().upper() in [
+         "TBD",
+         "UNKNOWN",
+         "N/A",
+         "NONE"
+            ]:
+              return jsonify({
+                 "success": False,
+                 "message": "Exam date is required. Please provide the exam date."
+               }), 400
 
-                return jsonify({
-                    "success": False,
-                    "message": "Subject and exam date are required"
-                }), 400
+            try:
+                exam_date = datetime.strptime(
+                str(exam_date).strip(),
+                "%Y-%m-%d"
+                ).date()
+            except ValueError:
+               return jsonify({
+                  "success": False,
+                  "message": "Invalid exam date. Use YYYY-MM-DD format."
+               }), 400
 
             cur.execute(
                 """
@@ -2144,6 +2316,814 @@ DOCUMENT:
                 "result": result
             })
 
+
+        # ============================================================
+        # UPDATE NOTE
+        # ============================================================
+
+        elif intent == "UPDATE_NOTE":
+
+            note_id = details.get("id")
+            text = str(details.get("text", "")).strip()
+
+            if not note_id:
+                return jsonify({
+                    "success": False,
+                    "message": "Note ID is required"
+                }), 400
+
+            if not text:
+                return jsonify({
+                    "success": False,
+                    "message": "Note text is required"
+                }), 400
+
+            conn = get_connection()
+            cur = conn.cursor()
+
+            try:
+                # Generate new embedding for updated note
+                embedding_values = generate_embedding(
+                    text,
+                    task_type="RETRIEVAL_DOCUMENT"
+                )
+
+                embedding_vector = Vector(embedding_values)
+
+                cur.execute("""
+                    UPDATE notes
+                    SET text = %s,
+                        embedding = %s
+                    WHERE id = %s
+                      AND user_id = %s
+                """, (
+                    text,
+                    embedding_vector,
+                    note_id,
+                    user_id
+                ))
+
+                if cur.rowcount == 0:
+                    conn.rollback()
+
+                    return jsonify({
+                        "success": False,
+                        "message": "Note not found"
+                    }), 404
+
+                conn.commit()
+
+                return jsonify({
+                    "success": True,
+                    "message": "Note updated successfully",
+                    "id": note_id,
+                    "text": text
+                })
+
+            except Exception as e:
+                conn.rollback()
+
+                print("UPDATE NOTE ERROR:", e)
+
+                return jsonify({
+                    "success": False,
+                    "message": "Failed to update note"
+                }), 500
+
+            finally:
+                cur.close()
+                conn.close()
+
+
+        # ============================================================
+        # UPDATE REMINDER
+        # ============================================================
+
+        elif intent == "UPDATE_REMINDER":
+
+            reminder_id = details.get("id")
+            task = str(details.get("task", "")).strip()
+            reminder_time = details.get("time")
+
+            if not reminder_id:
+                return jsonify({
+                    "success": False,
+                    "message": "Reminder ID is required"
+                }), 400
+
+            if not task:
+                return jsonify({
+                    "success": False,
+                    "message": "Reminder task is required"
+                }), 400
+
+            if not reminder_time:
+                return jsonify({
+                    "success": False,
+                    "message": "Reminder time is required"
+                }), 400
+
+            conn = get_connection()
+            cur = conn.cursor()
+
+            try:
+                cur.execute("""
+                    UPDATE reminders
+                    SET task = %s,
+                        time = %s
+                    WHERE id = %s
+                      AND user_id = %s
+                """, (
+                    task,
+                    reminder_time,
+                    reminder_id,
+                    user_id
+                ))
+
+                if cur.rowcount == 0:
+                    conn.rollback()
+
+                    return jsonify({
+                        "success": False,
+                        "message": "Reminder not found"
+                    }), 404
+
+                conn.commit()
+
+                return jsonify({
+                    "success": True,
+                    "message": "Reminder updated successfully",
+                    "id": reminder_id,
+                    "task": task,
+                    "time": str(reminder_time)
+                })
+
+            except Exception as e:
+                conn.rollback()
+
+                print("UPDATE REMINDER ERROR:", e)
+
+                return jsonify({
+                    "success": False,
+                    "message": "Failed to update reminder"
+                }), 500
+
+            finally:
+                cur.close()
+                conn.close()
+
+
+        # ============================================================
+        # UPDATE EXPENSE
+        # ============================================================
+
+        elif intent == "UPDATE_EXPENSE":
+
+            expense_id = details.get("id")
+            amount = details.get("amount")
+            category = str(details.get("category", "")).strip()
+
+            if not expense_id:
+                return jsonify({
+                    "success": False,
+                    "message": "Expense ID is required"
+                }), 400
+
+            if amount is None:
+                return jsonify({
+                    "success": False,
+                    "message": "Expense amount is required"
+                }), 400
+
+            if not category:
+                return jsonify({
+                    "success": False,
+                    "message": "Expense category is required"
+                }), 400
+
+            try:
+                amount = float(amount)
+
+                if amount < 0:
+                    return jsonify({
+                        "success": False,
+                        "message": "Expense amount cannot be negative"
+                    }), 400
+
+            except (TypeError, ValueError):
+                return jsonify({
+                    "success": False,
+                    "message": "Invalid expense amount"
+                }), 400
+
+            conn = get_connection()
+            cur = conn.cursor()
+
+            try:
+                cur.execute("""
+                    UPDATE expenses
+                    SET amount = %s,
+                        category = %s
+                    WHERE id = %s
+                      AND user_id = %s
+                """, (
+                    amount,
+                    category,
+                    expense_id,
+                    user_id
+                ))
+
+                if cur.rowcount == 0:
+                    conn.rollback()
+
+                    return jsonify({
+                        "success": False,
+                        "message": "Expense not found"
+                    }), 404
+
+                conn.commit()
+
+                return jsonify({
+                    "success": True,
+                    "message": "Expense updated successfully",
+                    "id": expense_id,
+                    "amount": amount,
+                    "category": category
+                })
+
+            except Exception as e:
+                conn.rollback()
+
+                print("UPDATE EXPENSE ERROR:", e)
+
+                return jsonify({
+                    "success": False,
+                    "message": "Failed to update expense"
+                }), 500
+
+            finally:
+                cur.close()
+                conn.close()
+
+
+        # ============================================================
+        # UPDATE SHOPPING ITEM
+        # ============================================================
+
+        elif intent == "UPDATE_SHOPPING_ITEM":
+
+            item_id = details.get("id")
+            item = str(details.get("item", "")).strip()
+
+            if not item_id:
+                return jsonify({
+                    "success": False,
+                    "message": "Shopping item ID is required"
+                }), 400
+
+            if not item:
+                return jsonify({
+                    "success": False,
+                    "message": "Shopping item is required"
+                }), 400
+
+            conn = get_connection()
+            cur = conn.cursor()
+
+            try:
+                cur.execute("""
+                    UPDATE shopping_items
+                    SET item = %s
+                    WHERE id = %s
+                      AND user_id = %s
+                """, (
+                    item,
+                    item_id,
+                    user_id
+                ))
+
+                if cur.rowcount == 0:
+                    conn.rollback()
+
+                    return jsonify({
+                        "success": False,
+                        "message": "Shopping item not found"
+                    }), 404
+
+                conn.commit()
+
+                return jsonify({
+                    "success": True,
+                    "message": "Shopping item updated successfully",
+                    "id": item_id,
+                    "item": item
+                })
+
+            except Exception as e:
+                conn.rollback()
+
+                print("UPDATE SHOPPING ITEM ERROR:", e)
+
+                return jsonify({
+                    "success": False,
+                    "message": "Failed to update shopping item"
+                }), 500
+
+            finally:
+                cur.close()
+                conn.close()
+
+
+        # ============================================================
+        # UPDATE STUDY PLAN
+        # ============================================================
+
+        elif intent == "UPDATE_STUDY_PLAN":
+
+            study_plan_id = details.get("id")
+            subject = str(details.get("subject", "")).strip()
+            exam_date = details.get("exam_date")
+
+            if not study_plan_id:
+                return jsonify({
+                    "success": False,
+                    "message": "Study plan ID is required"
+                }), 400
+
+            if not subject:
+                return jsonify({
+                    "success": False,
+                    "message": "Subject is required"
+                }), 400
+
+            if not exam_date:
+                return jsonify({
+                    "success": False,
+                    "message": "Exam date is required"
+                }), 400
+
+            conn = get_connection()
+            cur = conn.cursor()
+
+            try:
+                cur.execute("""
+                    UPDATE study_plans
+                    SET subject = %s,
+                        exam_date = %s
+                    WHERE id = %s
+                      AND user_id = %s
+                """, (
+                    subject,
+                    exam_date,
+                    study_plan_id,
+                    user_id
+                ))
+
+                if cur.rowcount == 0:
+                    conn.rollback()
+
+                    return jsonify({
+                        "success": False,
+                        "message": "Study plan not found"
+                    }), 404
+
+                conn.commit()
+
+                return jsonify({
+                    "success": True,
+                    "message": "Study plan updated successfully",
+                    "id": study_plan_id,
+                    "subject": subject,
+                    "exam_date": str(exam_date)
+                })
+
+            except Exception as e:
+                conn.rollback()
+
+                print("UPDATE STUDY PLAN ERROR:", e)
+
+                return jsonify({
+                    "success": False,
+                    "message": "Failed to update study plan"
+                }), 500
+
+            finally:
+                cur.close()
+                conn.close()
+
+
+        # ============================================================
+        # UPDATE GOAL
+        # ============================================================
+
+        elif intent == "UPDATE_GOAL":
+
+            goal_id = details.get("id")
+            goal = str(details.get("goal", "")).strip()
+            target_date = details.get("target_date")
+
+            if not goal_id:
+                return jsonify({
+                    "success": False,
+                    "message": "Goal ID is required"
+                }), 400
+
+            if not goal:
+                return jsonify({
+                    "success": False,
+                    "message": "Goal is required"
+                }), 400
+
+            if not target_date:
+                return jsonify({
+                    "success": False,
+                    "message": "Target date is required"
+                }), 400
+
+            conn = get_connection()
+            cur = conn.cursor()
+
+            try:
+                cur.execute("""
+                    UPDATE goals
+                    SET goal = %s,
+                        target_date = %s
+                    WHERE id = %s
+                      AND user_id = %s
+                """, (
+                    goal,
+                    target_date,
+                    goal_id,
+                    user_id
+                ))
+
+                if cur.rowcount == 0:
+                    conn.rollback()
+
+                    return jsonify({
+                        "success": False,
+                        "message": "Goal not found"
+                    }), 404
+
+                conn.commit()
+
+                return jsonify({
+                    "success": True,
+                    "message": "Goal updated successfully",
+                    "id": goal_id,
+                    "goal": goal,
+                    "target_date": str(target_date)
+                })
+
+            except Exception as e:
+                conn.rollback()
+
+                print("UPDATE GOAL ERROR:", e)
+
+                return jsonify({
+                    "success": False,
+                    "message": "Failed to update goal"
+                }), 500
+
+            finally:
+                cur.close()
+                conn.close()
+
+        # ============================================================
+        # DELETE NOTE
+        # ============================================================
+
+        elif intent == "DELETE_NOTE":
+
+            note_id = details.get("id")
+
+            if not note_id:
+                return jsonify({
+                    "success": False,
+                    "message": "Note ID is required"
+                }), 400
+
+            conn = get_connection()
+            cur = conn.cursor()
+
+            try:
+                cur.execute("""
+                    DELETE FROM notes
+                    WHERE id = %s
+                      AND user_id = %s
+                """, (
+                    note_id,
+                    user_id
+                ))
+
+                if cur.rowcount == 0:
+                    conn.rollback()
+
+                    return jsonify({
+                        "success": False,
+                        "message": "Note not found"
+                    }), 404
+
+                conn.commit()
+
+                return jsonify({
+                    "success": True,
+                    "message": "Note deleted",
+                    "id": note_id
+                })
+
+            except Exception as e:
+                conn.rollback()
+                print("DELETE NOTE ERROR:", e)
+
+                return jsonify({
+                    "success": False,
+                    "message": "Failed to delete note"
+                }), 500
+
+            finally:
+                cur.close()
+                conn.close()
+
+        # ============================================================
+        # DELETE REMINDER
+        # ============================================================
+
+        elif intent == "DELETE_REMINDER":
+
+            reminder_id = details.get("id")
+
+            if not reminder_id:
+                return jsonify({
+                    "success": False,
+                    "message": "Reminder ID is required"
+                }), 400
+
+            conn = get_connection()
+            cur = conn.cursor()
+
+            try:
+                cur.execute("""
+                    DELETE FROM reminders
+                    WHERE id = %s
+                      AND user_id = %s
+                """, (
+                    reminder_id,
+                    user_id
+                ))
+
+                if cur.rowcount == 0:
+                    conn.rollback()
+
+                    return jsonify({
+                        "success": False,
+                        "message": "Reminder not found"
+                    }), 404
+
+                conn.commit()
+
+                return jsonify({
+                    "success": True,
+                    "message": "Reminder deleted",
+                    "id": reminder_id
+                })
+
+            except Exception as e:
+                conn.rollback()
+                print("DELETE REMINDER ERROR:", e)
+
+                return jsonify({
+                    "success": False,
+                    "message": "Failed to delete reminder"
+                }), 500
+
+            finally:
+                cur.close()
+                conn.close()
+
+        # ============================================================
+        # DELETE EXPENSE
+        # ============================================================
+
+        elif intent == "DELETE_EXPENSE":
+
+            expense_id = details.get("id")
+
+            if not expense_id:
+                return jsonify({
+                    "success": False,
+                    "message": "Expense ID is required"
+                }), 400
+
+            conn = get_connection()
+            cur = conn.cursor()
+
+            try:
+                cur.execute("""
+                    DELETE FROM expenses
+                    WHERE id = %s
+                      AND user_id = %s
+                """, (
+                    expense_id,
+                    user_id
+                ))
+
+                if cur.rowcount == 0:
+                    conn.rollback()
+
+                    return jsonify({
+                        "success": False,
+                        "message": "Expense not found"
+                    }), 404
+
+                conn.commit()
+
+                return jsonify({
+                    "success": True,
+                    "message": "Expense deleted",
+                    "id": expense_id
+                })
+
+            except Exception as e:
+                conn.rollback()
+                print("DELETE EXPENSE ERROR:", e)
+
+                return jsonify({
+                    "success": False,
+                    "message": "Failed to delete expense"
+                }), 500
+
+            finally:
+                cur.close()
+                conn.close()
+
+        # ============================================================
+        # DELETE SHOPPING ITEM
+        # ============================================================
+
+        elif intent == "DELETE_SHOPPING_ITEM":
+
+            item_id = details.get("id")
+
+            if not item_id:
+                return jsonify({
+                    "success": False,
+                    "message": "Shopping item ID is required"
+                }), 400
+
+            conn = get_connection()
+            cur = conn.cursor()
+
+            try:
+                cur.execute("""
+                    DELETE FROM shopping_items
+                    WHERE id = %s
+                      AND user_id = %s
+                """, (
+                    item_id,
+                    user_id
+                ))
+
+                if cur.rowcount == 0:
+                    conn.rollback()
+
+                    return jsonify({
+                        "success": False,
+                        "message": "Shopping item not found"
+                    }), 404
+
+                conn.commit()
+
+                return jsonify({
+                    "success": True,
+                    "message": "Shopping item deleted",
+                    "id": item_id
+                })
+
+            except Exception as e:
+                conn.rollback()
+                print("DELETE SHOPPING ITEM ERROR:", e)
+
+                return jsonify({
+                    "success": False,
+                    "message": "Failed to delete shopping item"
+                }), 500
+
+            finally:
+                cur.close()
+                conn.close()
+
+        # ============================================================
+        # DELETE STUDY PLAN
+        # ============================================================
+
+        elif intent == "DELETE_STUDY_PLAN":
+
+            study_plan_id = details.get("id")
+
+            if not study_plan_id:
+                return jsonify({
+                    "success": False,
+                    "message": "Study plan ID is required"
+                }), 400
+
+            conn = get_connection()
+            cur = conn.cursor()
+
+            try:
+                cur.execute("""
+                    DELETE FROM study_plans
+                    WHERE id = %s
+                      AND user_id = %s
+                """, (
+                    study_plan_id,
+                    user_id
+                ))
+
+                if cur.rowcount == 0:
+                    conn.rollback()
+
+                    return jsonify({
+                        "success": False,
+                        "message": "Study plan not found"
+                    }), 404
+
+                conn.commit()
+
+                return jsonify({
+                    "success": True,
+                    "message": "Study plan deleted",
+                    "id": study_plan_id
+                })
+
+            except Exception as e:
+                conn.rollback()
+                print("DELETE STUDY PLAN ERROR:", e)
+
+                return jsonify({
+                    "success": False,
+                    "message": "Failed to delete study plan"
+                }), 500
+
+            finally:
+                cur.close()
+                conn.close()
+
+        # ============================================================
+        # DELETE GOAL
+        # ============================================================
+
+        elif intent == "DELETE_GOAL":
+
+            goal_id = details.get("id")
+
+            if not goal_id:
+                return jsonify({
+                    "success": False,
+                    "message": "Goal ID is required"
+                }), 400
+
+            conn = get_connection()
+            cur = conn.cursor()
+
+            try:
+                cur.execute("""
+                    DELETE FROM goals
+                    WHERE id = %s
+                      AND user_id = %s
+                """, (
+                    goal_id,
+                    user_id
+                ))
+
+                if cur.rowcount == 0:
+                    conn.rollback()
+
+                    return jsonify({
+                        "success": False,
+                        "message": "Goal not found"
+                    }), 404
+
+                conn.commit()
+
+                return jsonify({
+                    "success": True,
+                    "message": "Goal deleted",
+                    "id": goal_id
+                })
+
+            except Exception as e:
+                conn.rollback()
+                print("DELETE GOAL ERROR:", e)
+
+                return jsonify({
+                    "success": False,
+                    "message": "Failed to delete goal"
+                }), 500
+
+            finally:
+                cur.close()
+                conn.close()
 
         
         # =========================================
