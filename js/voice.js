@@ -4,6 +4,7 @@
    Bug 5 fix: reliable TTS stop (pause + cancel + ttsId guard)
    Multi-user: sends user_id + access_token to bridge.py
    Deployed: AI_URL + SUMMARIZE_URL → Render bridge
+   + Dedupe duplicate reply lines (fixes "shown twice" bug)
    ============================================ */
 
 const CONFIG = {
@@ -116,31 +117,25 @@ function getBestVoiceForLanguage(lang) {
     'pa-IN': ['Google ਪੰਜਾਬੀ']
   };
 
-  // 1) Try the exact match list
   const preferred = voiceMap[lang] || [];
   for (const name of preferred) {
     const match = voices.find(v => v.name.includes(name));
     if (match) return match;
   }
 
-  // 2) Try exact lang code
   let v = voices.find(v => v.lang === lang);
   if (v) return v;
 
-  // 3) Try lang prefix (e.g. 'hi' matches 'hi-IN')
   const langPrefix = lang.split('-')[0];
   v = voices.find(v => v.lang.startsWith(langPrefix));
   if (v) return v;
 
-  // 4) Fall back to Indian English
   v = voices.find(v => v.lang === 'en-IN' || v.name.includes('India'));
   if (v) return v;
 
-  // 5) Fall back to any English
   v = voices.find(v => v.lang.startsWith('en'));
   if (v) return v;
 
-  // 6) Last resort — first voice
   return voices[0] || null;
 }
 
@@ -285,6 +280,36 @@ function handleMicClick() {
 }
 
 // ============================================================
+// DEDUPE HELPERS
+// ============================================================
+/**
+ * Collapse repeated lines in a reply string.
+ * Example: "A\nA" → "A"
+ *          "A\nB\nA\nB" → "A\nB"
+ *          "A" → "A"
+ */
+function dedupeReply(text) {
+  if (typeof text !== 'string' || !text) return text;
+
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  if (lines.length <= 1) return text;
+
+  // Case 1: All lines are identical
+  if (lines.every(l => l === lines[0])) {
+    return lines[0];
+  }
+
+  // Case 2: Two consecutive duplicates (most common LLM output)
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (i === 0 || lines[i] !== lines[i - 1]) {
+      out.push(lines[i]);
+    }
+  }
+  return out.join('\n');
+}
+
+// ============================================================
 // MAIN HANDLER
 // ============================================================
 async function handleVoiceInput(transcript) {
@@ -335,9 +360,13 @@ async function handleVoiceInput(transcript) {
     console.log('[NOVA] AI Response:', data);
 
     let reply = data.response || data.reply || 'No response';
+
     if (Array.isArray(data.actions) && data.actions.length > 1) {
-  console.log('[NOVA] Multi-action executed:', data.actions.length, 'actions');
-}
+      console.log('[NOVA] Multi-action executed:', data.actions.length, 'actions');
+    }
+
+    // ---- Dedupe: collapse duplicate consecutive lines ----
+    reply = dedupeReply(reply);
 
     if (data.data && typeof data.data === 'object') {
       const extras = [];
