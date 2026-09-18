@@ -141,7 +141,10 @@
         <div class="greeting-subtitle">Track your progress and achieve more.</div>
       </div>
       <div class="topbar-right">
-        <button class="topbar-icon-btn" id="notifBtn"><i data-lucide="bell"></i><span class="notification-dot"></span></button>
+        <a href="dashboard.html" class="topbar-icon-btn" title="View notifications">
+  <i data-lucide="bell"></i>
+  <span class="notification-dot"></span>
+</a>
         <div class="avatar" id="avatarInitial">U</div>
         <div class="profile-menu" id="profileMenu" hidden>
           <a href="profile.html" class="profile-menu-item"><i data-lucide="user"></i> Profile</a>
@@ -204,11 +207,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
   initLogout();
   initProfileMenu();
-
-  var notifBtn = document.getElementById("notifBtn");
-  if (notifBtn) notifBtn.addEventListener("click", function () {
-    showToast("info", "🔔 Notifications", "You have 3 new notifications.");
-  });
 
   var refreshBtn = document.getElementById("refreshBtn");
   if (refreshBtn) refreshBtn.addEventListener("click", loadData);
