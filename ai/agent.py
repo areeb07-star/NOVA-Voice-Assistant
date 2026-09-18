@@ -638,7 +638,7 @@ def report_result(action, data, success, message, qid):
         if qid: payload["queue_id"] = qid
         headers = {"Authorization": f"Bearer {CONFIG.get('access_token', '')}"}
         r = requests.post(f"{BACKEND_URL}/api/agent/result", json=payload,
-                          headers=headers, timeout=10)
+                          headers=headers, timeout=90)
         print(f">> Reported: {r.status_code}")
     except Exception as e:
         print(f">> Report failed: {e}")
