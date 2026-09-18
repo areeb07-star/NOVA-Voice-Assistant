@@ -1,53 +1,95 @@
 # agent.py — Nova Local Device Controller
-# Person 4 — Final. No copy/move. Dynamic paths. Searches files AND folders.
+# Multi-user: asks user to sign in, stores their token, polls with their identity
+# Device ID + dynamic app paths + deep folder search
+# + Windows auto-start (registers once, runs silently on every reboot)
 
 import os
+import sys
 import time
 import uuid
+import json
 import socket
 import subprocess
 import threading
 import requests
 import pyautogui
 import psutil
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 
 try:
     from pycaw.pycaw import AudioUtilities
 except ImportError:
     print("Missing pycaw. Run: pip install pycaw")
-    exit()
+    sys.exit(1)
 
 try:
     import screen_brightness_control as sbc
 except ImportError:
     print("Missing screen-brightness-control. Run: pip install screen-brightness-control")
-    exit()
-
+    sys.exit(1)
 
 # ============================================================
-# AUTO-GENERATE UNIQUE DEVICE ID
+# AUTO-START ON WINDOWS
+# ============================================================
+def add_to_startup():
+    """Register agent to auto-start with Windows."""
+    try:
+        import winreg
+        # Only works from a compiled .exe (not from `python agent.py`)
+        if not getattr(sys, "frozen", False):
+            print(">> Running as .py — skipping auto-start registration")
+            return
+        exe_path = sys.executable
+        key = winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Windows\CurrentVersion\Run",
+            0, winreg.KEY_SET_VALUE
+        )
+        winreg.SetValueEx(key, "NovaAgent", 0, winreg.REG_SZ, f'"{exe_path}"')
+        winreg.CloseKey(key)
+        print(">> [OK] Added to Windows startup")
+    except Exception as e:
+        print(f">> Could not add to startup: {e}")
+
+def remove_from_startup():
+    """Remove agent from Windows startup."""
+    try:
+        import winreg
+        key = winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Windows\CurrentVersion\Run",
+            0, winreg.KEY_SET_VALUE
+        )
+        winreg.DeleteValue(key, "NovaAgent")
+        winreg.CloseKey(key)
+        print(">> Removed from Windows startup")
+    except FileNotFoundError:
+        pass
+    except Exception as e:
+        print(f">> Could not remove from startup: {e}")
+
+# ============================================================
+# DEVICE ID
 # ============================================================
 def generate_device_id():
     hostname = socket.gethostname().replace(" ", "-")[:15]
     mac_short = str(uuid.getnode())[-6:]
     return f"{hostname}-{mac_short}"
 
+CONFIG_DIR = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "Nova")
+os.makedirs(CONFIG_DIR, exist_ok=True)
+CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
+
 DEVICE_ID = generate_device_id()
 
-CONFIG_FILE = os.path.join(os.path.expanduser("~"), ".nova_device_id")
-if os.path.exists(CONFIG_FILE):
-    with open(CONFIG_FILE, "r") as f:
-        DEVICE_ID = f.read().strip()
-
-
 # ============================================================
-# CONFIGURATION
+# CONFIG
 # ============================================================
 BACKEND_URL = "https://nova-voice-assistant-6vve.onrender.com"
 POLL_INTERVAL = 2
 KILL_SWITCH = os.path.join(os.path.expanduser("~"), "Desktop", "nova.pause")
+REMOVE_STARTUP_FLAG = os.path.join(os.path.expanduser("~"), "Desktop", "nova.remove_startup")
 LOCAL_PORT = 5050
 
 USER_HOME = os.path.expanduser("~")
@@ -113,6 +155,90 @@ COMMON_FOLDERS = {
     "home": "",
 }
 
+# ============================================================
+# CONFIG FILE (device_id + user session + startup flag)
+# ============================================================
+def load_config():
+    global DEVICE_ID
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r") as f:
+                cfg = json.load(f)
+            if cfg.get("device_id"):
+                DEVICE_ID = cfg["device_id"]
+            return cfg
+        except Exception:
+            pass
+    return {}
+
+def save_config(cfg):
+    try:
+        with open(CONFIG_FILE, "w") as f:
+            json.dump(cfg, f, indent=2)
+    except Exception as e:
+        print(f">> Could not save config: {e}")
+
+CONFIG = load_config()
+
+# ============================================================
+# LOGIN
+# ============================================================
+def login(email, password):
+    """Call backend /api/login → returns (user_id, token) or (None, None)."""
+    try:
+        r = requests.post(
+            f"{BACKEND_URL}/api/login",
+            json={"email": email, "password": password},
+            timeout=15
+        )
+        if r.status_code != 200:
+            print(f">> Login failed: {r.status_code}")
+            return None, None
+        data = r.json()
+        if not data.get("success"):
+            print(f">> Login failed: {data}")
+            return None, None
+        return data.get("user_id"), data.get("access_token")
+    except Exception as e:
+        print(f">> Login error: {e}")
+        return None, None
+
+def ensure_logged_in():
+    """Interactive login if no saved session."""
+    if CONFIG.get("user_id") and CONFIG.get("access_token"):
+        print(f">> Logged in as: {CONFIG.get('user_id')}")
+        return True
+
+    print()
+    print("=" * 60)
+    print("  NOVA AGENT — SIGN IN")
+    print("=" * 60)
+    print("  Enter your Nova account to enable device control.")
+    print()
+
+    while True:
+        email = input("Email: ").strip()
+        if not email:
+            print("Email cannot be empty.")
+            continue
+        password = input("Password: ").strip()
+        if not password:
+            print("Password cannot be empty.")
+            continue
+
+        user_id, token = login(email, password)
+        if user_id and token:
+            CONFIG["user_id"] = user_id
+            CONFIG["access_token"] = token
+            CONFIG["email"] = email
+            save_config(CONFIG)
+            print(f">> Login successful. Welcome, {email}")
+            print(f">> Config saved to: {CONFIG_FILE}")
+            return True
+        else:
+            print(">> Login failed. Please try again.")
+            print()
+
 
 # ============================================================
 # LOCAL SERVER (port 5050)
@@ -122,10 +248,7 @@ CORS(local_app)
 
 @local_app.route('/device_id', methods=['GET'])
 def serve_device_id():
-    return jsonify({
-        'device_id': DEVICE_ID,
-        'hostname': socket.gethostname()
-    })
+    return jsonify({'device_id': DEVICE_ID, 'hostname': socket.gethostname()})
 
 @local_app.route('/health', methods=['GET'])
 def local_health():
@@ -140,7 +263,6 @@ def run_local_server():
 # ============================================================
 def find_app_path(app_name):
     app_name = app_name.lower()
-
     search_paths = {
         "word": [
             "C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE",
@@ -166,9 +288,7 @@ def find_app_path(app_name):
             os.path.join(USER_APPDATA, "WhatsApp", "WhatsApp.exe"),
             os.path.join(USER_APPDATA, "Programs", "WhatsApp", "WhatsApp.exe"),
         ],
-        "spotify": [
-            os.path.join(USER_ROAMING, "Spotify", "Spotify.exe"),
-        ],
+        "spotify": [os.path.join(USER_ROAMING, "Spotify", "Spotify.exe")],
         "teams": [
             os.path.join(USER_APPDATA, "Microsoft", "Teams", "current", "Teams.exe"),
             os.path.join(USER_APPDATA, "Microsoft", "Teams", "Update.exe"),
@@ -178,12 +298,9 @@ def find_app_path(app_name):
             "C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe",
         ],
     }
-
     for path in search_paths.get(app_name, []):
         if os.path.exists(path):
-            print(f">> Found {app_name} at: {path}")
             return path
-
     return None
 
 
@@ -198,7 +315,6 @@ def open_app(app_name):
         app_name = APP_ALIASES[app_name]
     print(f">> open_app: '{app_name}'")
 
-    # Windows Settings URIs
     if app_name == "settings":
         try: os.startfile("ms-settings:"); return True, "Opened Settings"
         except Exception as e: return False, str(e)
@@ -224,7 +340,6 @@ def open_app(app_name):
         try: os.startfile("ms-windows-store:"); return True, "Opened Store"
         except Exception as e: return False, str(e)
 
-    # Try known ALLOWED_APPS path
     if app_name in ALLOWED_APPS:
         path = ALLOWED_APPS[app_name]
         if os.path.exists(path):
@@ -236,7 +351,6 @@ def open_app(app_name):
         else:
             print(f">> Path missing: {path}, trying dynamic search...")
 
-    # Try dynamic detection
     dynamic = find_app_path(app_name)
     if dynamic:
         try:
@@ -245,7 +359,6 @@ def open_app(app_name):
         except Exception as e:
             return False, str(e)
 
-    # Fallback to Windows start
     try:
         result = subprocess.run(["cmd", "/c", "start", "", app_name],
                                 capture_output=True, timeout=5, shell=False)
@@ -266,7 +379,6 @@ def open_url(url, browser=None):
         return False, "No URL provided"
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
-    print(f">> open_url: '{url}' (browser: {browser})")
     try:
         if browser and browser.lower() == "chrome":
             chrome_path = ALLOWED_APPS.get("chrome")
@@ -280,14 +392,12 @@ def open_url(url, browser=None):
 
 
 # ============================================================
-# OPEN FOLDER (with explorer + startfile fallback)
+# OPEN FOLDER
 # ============================================================
 def open_folder(folder_name):
     if not folder_name:
         folder_name = "downloads"
-
     folder_name = folder_name.strip()
-    print(f">> open_folder: '{folder_name}'")
 
     lower = folder_name.lower()
     if lower in COMMON_FOLDERS:
@@ -298,12 +408,11 @@ def open_folder(folder_name):
                 subprocess.Popen(f'explorer "{path}"')
                 return True, f"Opened {folder_name}"
             except Exception as e:
-                print(f"explorer failed: {e}, trying startfile")
                 try:
                     os.startfile(path)
-                    return True, f"Opened {folder_name} via startfile"
+                    return True, f"Opened {folder_name}"
                 except Exception as e2:
-                    return False, f"Could not open: {e2}"
+                    return False, str(e2)
 
     candidates = [
         os.path.join(USER_HOME, folder_name),
@@ -316,13 +425,11 @@ def open_folder(folder_name):
         if os.path.exists(path):
             try:
                 subprocess.Popen(f'explorer "{path}"')
-                return True, f"Opened {folder_name} at {path}"
+                return True, f"Opened {folder_name}"
             except Exception as e:
                 return False, str(e)
 
-    print(f">> Searching for folder '{folder_name}' in home...")
-    skip = {"AppData", "node_modules", ".git", "__pycache__", "venv", ".venv",
-            "System Volume Information", "$Recycle.Bin"}
+    skip = {"AppData", "node_modules", ".git", "__pycache__", "venv", ".venv"}
     for root, dirs, files in os.walk(USER_HOME):
         dirs[:] = [d for d in dirs if d not in skip]
         for d in dirs:
@@ -330,10 +437,9 @@ def open_folder(folder_name):
                 path = os.path.join(root, d)
                 try:
                     subprocess.Popen(f'explorer "{path}"')
-                    return True, f"Found and opened {folder_name}"
+                    return True, f"Opened {folder_name}"
                 except Exception as e:
                     return False, str(e)
-
     return False, f"Folder '{folder_name}' not found"
 
 
@@ -349,10 +455,8 @@ def close_app(app_name):
         for proc in psutil.process_iter(['name']):
             try:
                 if proc.info['name'] and app_name in proc.info['name'].lower():
-                    proc.kill()
-                    killed = True
-            except:
-                continue
+                    proc.kill(); killed = True
+            except: continue
         return (True, f"Closed {app_name}") if killed else (False, f"{app_name} not running")
     except Exception as e:
         return False, str(e)
@@ -373,7 +477,7 @@ def create_folder(folder_name):
 
 
 # ============================================================
-# FIND FILE (files AND folders)
+# FIND FILE
 # ============================================================
 def find_file(search_term, folder=None):
     results = []
@@ -393,13 +497,8 @@ def find_file(search_term, folder=None):
     if not os.path.exists(base):
         return False, f"Folder '{folder}' not found"
 
-    print(f">> find_file: search='{search_term}' in base='{base}'")
-
-    skip_folders = {"AppData", "node_modules", ".git", "__pycache__",
-                    "venv", ".venv", "System Volume Information", "$Recycle.Bin"}
-
+    skip_folders = {"AppData", "node_modules", ".git", "__pycache__", "venv", ".venv"}
     term = search_term.lower()
-
     for root, dirs, files in os.walk(base):
         dirs[:] = [d for d in dirs if d not in skip_folders]
         for name in files + dirs:
@@ -407,7 +506,6 @@ def find_file(search_term, folder=None):
                 results.append(os.path.join(root, name))
                 if len(results) >= 5:
                     return True, results
-
     if not results:
         return True, f"No files or folders found matching '{search_term}'"
     return True, results
@@ -416,35 +514,34 @@ def find_file(search_term, folder=None):
 # ============================================================
 # AUDIO / BRIGHTNESS / SCREENSHOT
 # ============================================================
-def _get_volume_interface():
-    return AudioUtilities.GetSpeakers().EndpointVolume
+def _vol(): return AudioUtilities.GetSpeakers().EndpointVolume
 
 def mute():
-    try: _get_volume_interface().SetMute(1, None); return True, "Muted"
+    try: _vol().SetMute(1, None); return True, "Muted"
     except Exception as e: return False, str(e)
 
 def unmute():
-    try: _get_volume_interface().SetMute(0, None); return True, "Unmuted"
+    try: _vol().SetMute(0, None); return True, "Unmuted"
     except Exception as e: return False, str(e)
 
 def volume_up():
     try:
-        vol = _get_volume_interface(); c = vol.GetMasterVolumeLevelScalar()
-        new = min(1.0, c + 0.1); vol.SetMasterVolumeLevelScalar(new, None)
+        v = _vol(); c = v.GetMasterVolumeLevelScalar()
+        new = min(1.0, c + 0.1); v.SetMasterVolumeLevelScalar(new, None)
         return True, f"Volume up to {int(new * 100)}%"
     except Exception as e: return False, str(e)
 
 def volume_down():
     try:
-        vol = _get_volume_interface(); c = vol.GetMasterVolumeLevelScalar()
-        new = max(0.0, c - 0.1); vol.SetMasterVolumeLevelScalar(new, None)
+        v = _vol(); c = v.GetMasterVolumeLevelScalar()
+        new = max(0.0, c - 0.1); v.SetMasterVolumeLevelScalar(new, None)
         return True, f"Volume down to {int(new * 100)}%"
     except Exception as e: return False, str(e)
 
 def set_volume(value):
     try:
         value = max(0, min(100, int(value)))
-        _get_volume_interface().SetMasterVolumeLevelScalar(value / 100.0, None)
+        _vol().SetMasterVolumeLevelScalar(value / 100.0, None)
         return True, f"Volume set to {value}%"
     except Exception as e: return False, str(e)
 
@@ -479,7 +576,6 @@ def take_screenshot():
 # EXECUTOR
 # ============================================================
 def execute_action(action, data):
-    print(f">> execute_action: {action} | data: {data}")
     if action not in ALLOWED_ACTIONS:
         return False, f"Action '{action}' not allowed"
     try:
@@ -494,10 +590,10 @@ def execute_action(action, data):
         elif action == "UNMUTE": return unmute()
         elif action == "VOLUME_UP": return volume_up()
         elif action == "VOLUME_DOWN": return volume_down()
-        elif action == "SET_VOLUME": return set_volume(data.get("value", 50))
+        elif action == "SET_VOLUME": return set_volume(data.get("level", data.get("value", 50)))
         elif action == "BRIGHTNESS_UP": return brightness_up()
         elif action == "BRIGHTNESS_DOWN": return brightness_down()
-        elif action == "SET_BRIGHTNESS": return set_brightness(data.get("value", 50))
+        elif action == "SET_BRIGHTNESS": return set_brightness(data.get("level", data.get("value", 50)))
         elif action == "TAKE_SCREENSHOT": return take_screenshot()
     except Exception as e:
         return False, str(e)
@@ -505,84 +601,111 @@ def execute_action(action, data):
 
 
 # ============================================================
-# PARSING / POLLING / REPORTING
+# POLL / REPORT
 # ============================================================
 def parse_response(response):
-    if not isinstance(response, dict):
-        return None, {}, None
+    if not isinstance(response, dict): return None, {}, None
     if response.get("device_action"):
         da = response["device_action"]
         action = da.get("action") or da.get("type")
         data = da.get("data", {})
         qid = da.get("queue_id")
-        if action:
-            return action, data, qid
+        if action: return action, data, qid
     if response.get("action"):
         return response["action"], response.get("data", {}), response.get("queue_id")
     return None, {}, None
 
 def poll_backend():
     try:
+        payload = {"device_id": DEVICE_ID, "user_id": CONFIG.get("user_id")}
+        headers = {"Authorization": f"Bearer {CONFIG.get('access_token', '')}"}
         r = requests.post(f"{BACKEND_URL}/api/agent/poll",
-                          json={"device_id": DEVICE_ID}, timeout=10)
+                          json=payload, headers=headers, timeout=10)
         response = r.json()
-        print(f">> Poll [{DEVICE_ID}]: {response}")
+        print(f">> Poll: {response}")
         action, data, qid = parse_response(response)
         return action, data, qid
-    except requests.exceptions.RequestException as e:
-        print(f">> Poll error: {e}")
     except Exception as e:
-        print(f">> Unexpected error: {e}")
+        print(f">> Poll error: {e}")
     return None, {}, None
 
 def report_result(action, data, success, message, qid):
     try:
         payload = {
             "device_id": DEVICE_ID, "action": action, "success": success,
-            "message": message, "data": data, "user_id": data.get("user_id"),
+            "message": message, "data": data, "user_id": CONFIG.get("user_id"),
         }
-        if qid:
-            payload["queue_id"] = qid
-        r = requests.post(f"{BACKEND_URL}/api/agent/result", json=payload, timeout=10)
+        if qid: payload["queue_id"] = qid
+        headers = {"Authorization": f"Bearer {CONFIG.get('access_token', '')}"}
+        r = requests.post(f"{BACKEND_URL}/api/agent/result", json=payload,
+                          headers=headers, timeout=10)
         print(f">> Reported: {r.status_code}")
     except Exception as e:
         print(f">> Report failed: {e}")
 
 
 # ============================================================
-# MAIN LOOP
+# MAIN
 # ============================================================
 def main():
-    if not os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, "w") as f:
-            f.write(DEVICE_ID)
+    # Save device_id on first run
+    if not CONFIG.get("device_id"):
+        CONFIG["device_id"] = DEVICE_ID
+        save_config(CONFIG)
 
-    server_thread = threading.Thread(target=run_local_server, daemon=True)
-    server_thread.start()
+    # Login prompt
+    try:
+        ensure_logged_in()
+    except (KeyboardInterrupt, EOFError):
+        print("\n>> Login cancelled. Exiting.")
+        return
+
+    # Auto-start on Windows (once)
+    if not CONFIG.get("startup_added"):
+        add_to_startup()
+        CONFIG["startup_added"] = True
+        save_config(CONFIG)
+
+    # Start local server (for voice.js to fetch device_id)
+    threading.Thread(target=run_local_server, daemon=True).start()
     time.sleep(1)
 
+    print()
     print("=" * 60)
     print(f">> Nova Local Agent is running")
     print(f">> Device ID: {DEVICE_ID}")
+    print(f">> User ID:   {CONFIG.get('user_id')}")
     print(f">> Local server: http://127.0.0.1:{LOCAL_PORT}/device_id")
     print("=" * 60)
     print(f">> Kill switch: create '{KILL_SWITCH}' to pause")
+    print(f">> Remove auto-start: create '{REMOVE_STARTUP_FLAG}'")
     print(">> Press Ctrl+C to stop\n")
 
     while True:
-        if os.path.exists(KILL_SWITCH):
-            print(">> Kill switch active. Pausing...")
-            time.sleep(5)
-            continue
+        try:
+            if os.path.exists(KILL_SWITCH):
+                time.sleep(5); continue
 
-        action, data, qid = poll_backend()
-        if action:
-            print(f"\n>> Executing: {action}")
-            success, message = execute_action(action, data)
-            print(f">> Result: {message}")
-            report_result(action, data, success, message, qid)
+            if os.path.exists(REMOVE_STARTUP_FLAG):
+                remove_from_startup()
+                try:
+                    os.remove(REMOVE_STARTUP_FLAG)
+                except Exception:
+                    pass
+                print(">> Auto-start disabled")
+                continue
 
-        time.sleep(POLL_INTERVAL)
+            action, data, qid = poll_backend()
+            if action:
+                print(f"\n>> Executing: {action}")
+                success, message = execute_action(action, data)
+                print(f">> Result: {message}")
+                report_result(action, data, success, message, qid)
+
+            time.sleep(POLL_INTERVAL)
+        except KeyboardInterrupt:
+            print("\n>> Agent stopped.")
+            break
 
 
 if __name__ == "__main__":
