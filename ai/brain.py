@@ -7,7 +7,10 @@
 # + CREATE_GOAL auto-date rule + normalize_date() for ISO YYYY-MM-DD
 # + DELETE_* intents wired to backend
 # + SET_VOLUME / SET_BRIGHTNESS level safety net + value mirror for agent.py
-# + MULTI_ACTION support (device actions only) — single-action logic unchanged
+# + MULTI_ACTION support for ALL actions (device + notes + reminders + expenses
+#   + shopping + goals + study plans + memories + moods + emails)
+# + Fix duplicate reply in multi-action
+# + Third Groq API key fallback
 
 import os
 import sys
@@ -25,6 +28,7 @@ load_dotenv()
 API_KEYS = [
     os.getenv("GROQ_API_KEY"),
     os.getenv("GROQ_API_KEY_2"),
+    os.getenv("GROQ_API_KEY_3"),
 ]
 API_KEYS = [k for k in API_KEYS if k]
 
@@ -161,6 +165,15 @@ Output: {"intent":"MULTI_ACTION","mood":"neutral","emoji":"😐","actions":[{"in
 User: "mute and set brightness to 30"
 Output: {"intent":"MULTI_ACTION","mood":"neutral","emoji":"😐","actions":[{"intent":"MUTE","data":{}},{"intent":"SET_BRIGHTNESS","data":{"level":30}}],"reply":"Muting and setting brightness to 30%."}
 
+User: "remind me to call Mom at 5 and save a note to buy milk"
+Output: {"intent":"MULTI_ACTION","mood":"neutral","emoji":"😐","actions":[{"intent":"CREATE_REMINDER","data":{"task":"call Mom","time":"17:00"}},{"intent":"CREATE_NOTE","data":{"text":"buy milk"}}],"reply":"Reminder set for 5 PM and note saved!"}
+
+User: "add apples to shopping list and add 100 to food expenses"
+Output: {"intent":"MULTI_ACTION","mood":"neutral","emoji":"😐","actions":[{"intent":"ADD_SHOPPING_ITEM","data":{"items":["apples"]}},{"intent":"ADD_EXPENSE","data":{"amount":"100","category":"food"}}],"reply":"Added apples to shopping list and 100 to food expenses."}
+
+User: "create a goal to read 20 books this year and log my mood as happy"
+Output: {"intent":"MULTI_ACTION","mood":"neutral","emoji":"😐","actions":[{"intent":"CREATE_GOAL","data":{"goal":"read 20 books","target_date":"2026-12-31"}},{"intent":"LOG_MOOD","data":{"mood":"happy"}}],"reply":"Goal added and mood logged!"}
+
 User: "my goal is to get a high paid job by the 25th of this month"
 Output: {"intent":"CREATE_GOAL","mood":"neutral","emoji":"😐","data":{"goal":"get a high paid job","target_date":"2026-09-25"},"reply":"Goal added!"}
 
@@ -238,24 +251,39 @@ NEVER leave data empty for these intents.
 "mute" → MUTE, "unmute" → UNMUTE
 
 CRITICAL MULTI-ACTION RULE:
-If the user asks for MORE THAN ONE DEVICE action in a single message
-(e.g. "set brightness to 50 and volume to 50", "open chrome and take a screenshot",
-"mute and set brightness to 30"), you MUST return the JSON in this special format:
+If the user asks for MORE THAN ONE action in a single message — whether device
+actions, notes, reminders, expenses, shopping items, goals, study plans, moods,
+memories, or emails — you MUST return the JSON in this special format:
+
 {
   "intent": "MULTI_ACTION",
   "mood": "<mood>",
   "emoji": "<emoji>",
   "actions": [
-    { "intent": "SET_BRIGHTNESS", "data": { "level": 50 } },
-    { "intent": "SET_VOLUME", "data": { "level": 50 } }
+    { "intent": "<INTENT_1>", "data": { ... } },
+    { "intent": "<INTENT_2>", "data": { ... } }
   ],
   "reply": "<short confirmation covering all actions>"
 }
-ONLY use MULTI_ACTION for DEVICE actions (OPEN_APP, OPEN_FOLDER, OPEN_URL, CREATE_FOLDER,
-FIND_FILE, MUTE, UNMUTE, VOLUME_UP, VOLUME_DOWN, SET_VOLUME, BRIGHTNESS_UP, BRIGHTNESS_DOWN,
-SET_BRIGHTNESS, TAKE_SCREENSHOT, CLOSE_APP). For non-device multi-requests
-(notes, reminders, goals etc.) just handle the primary one normally.
-NEVER ask "brightness first or together?" — just execute ALL.
+
+Use MULTI_ACTION for ANY combination — device + notes, notes + reminders, device + device,
+etc. Each action in the "actions" array must have its own "intent" and "data".
+NEVER ask "which first?" — just execute ALL.
+NEVER split a single action into multiple.
+Limit to at most 5 actions per message.
+
+Examples:
+User: "set volume to 100 and brightness to 50"
+Output: {"intent":"MULTI_ACTION","mood":"neutral","emoji":"😐","actions":[{"intent":"SET_VOLUME","data":{"level":100}},{"intent":"SET_BRIGHTNESS","data":{"level":50}}],"reply":"Setting volume to 100% and brightness to 50%."}
+
+User: "remind me to call Mom at 5 and save a note to buy milk"
+Output: {"intent":"MULTI_ACTION","mood":"neutral","emoji":"😐","actions":[{"intent":"CREATE_REMINDER","data":{"task":"call Mom","time":"17:00"}},{"intent":"CREATE_NOTE","data":{"text":"buy milk"}}],"reply":"Reminder set for 5 PM and note saved!"}
+
+User: "add apples to shopping list and add 100 to food expenses"
+Output: {"intent":"MULTI_ACTION","mood":"neutral","emoji":"😐","actions":[{"intent":"ADD_SHOPPING_ITEM","data":{"items":["apples"]}},{"intent":"ADD_EXPENSE","data":{"amount":"100","category":"food"}}],"reply":"Added apples to shopping list and 100 to food expenses."}
+
+User: "open chrome and take a screenshot"
+Output: {"intent":"MULTI_ACTION","mood":"neutral","emoji":"😐","actions":[{"intent":"OPEN_APP","data":{"app":"chrome"}},{"intent":"TAKE_SCREENSHOT","data":{}}],"reply":"Opening Chrome and taking a screenshot."}
 
 CRITICAL CLARIFICATION RULE:
 If the user's message is ambiguous, respond with a CLARIFYING QUESTION.
@@ -718,10 +746,10 @@ def fetch_from_backend(intent, data, token):
 
 
 # ============================================================
-# MULTI-ACTION SUPPORT (device actions only)
+# MULTI-ACTION SUPPORT (ALL actions — device + personal)
 # ============================================================
 def _split_multi(raw_result):
-    """If LLM returned MULTI_ACTION, split into list of single-intent dicts.
+    """If LLM returned MULTI_ACTION, split into a list of single-intent dicts.
     Otherwise return [single_action]."""
     if not isinstance(raw_result, dict):
         return [raw_result]
@@ -890,7 +918,7 @@ def _run_single_action(normalized, user_text, token, user_id, device_id, is_conf
 
 
 def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
-    """Handles single AND multi-action user requests."""
+    """Handles single AND multi-action user requests (all action types)."""
     save_chat_message(user_id, "user", user_text, token)
 
     # Handle pending CLOSE_APP confirmation
@@ -946,9 +974,11 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         if result.get("reply"):
             replies.append(result["reply"])
 
-    final_reply = "\n".join(replies) if replies else (
-        raw.get("reply", "Done!") if isinstance(raw, dict) else "Done!"
-    )
+    # For multi-action, use the LLM's top-level reply ONCE (avoid duplicates)
+    if len(raw_actions) > 1 and isinstance(raw, dict) and raw.get("reply"):
+        final_reply = raw["reply"]
+    else:
+        final_reply = "\n".join(replies) if replies else "Done!"
 
     save_chat_message(user_id, "assistant", final_reply, token)
 
