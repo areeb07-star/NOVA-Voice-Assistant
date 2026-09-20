@@ -11,6 +11,7 @@
 #   + shopping + goals + study plans + memories + moods + emails)
 # + Fix duplicate reply in multi-action
 # + Third Groq API key fallback
+# + FLASHCARD generation rule + examples
 
 import os
 import sys
@@ -174,6 +175,12 @@ Output: {"intent":"MULTI_ACTION","mood":"neutral","emoji":"😐","actions":[{"in
 User: "create a goal to read 20 books this year and log my mood as happy"
 Output: {"intent":"MULTI_ACTION","mood":"neutral","emoji":"😐","actions":[{"intent":"CREATE_GOAL","data":{"goal":"read 20 books","target_date":"2026-12-31"}},{"intent":"LOG_MOOD","data":{"mood":"happy"}}],"reply":"Goal added and mood logged!"}
 
+User: "generate flashcards for Python"
+Output: {"intent":"GENERATE_FLASHCARDS","mood":"neutral","emoji":"😐","data":{"topic":"Python","cards":[{"question":"What is a Python list?","answer":"An ordered, mutable collection of items."},{"question":"What does len() do?","answer":"Returns the number of items in an object."},{"question":"What is a dictionary?","answer":"A collection of key-value pairs."},{"question":"What is PEP 8?","answer":"Python's official style guide."}]},"reply":"Here are 4 flashcards on Python!"}
+
+User: "make flashcards about the solar system"
+Output: {"intent":"GENERATE_FLASHCARDS","mood":"neutral","emoji":"😐","data":{"topic":"Solar System","cards":[{"question":"How many planets are in the solar system?","answer":"8 planets."},{"question":"Which planet is closest to the Sun?","answer":"Mercury."},{"question":"Which planet is known as the Red Planet?","answer":"Mars."},{"question":"What is the largest planet?","answer":"Jupiter."}]},"reply":"Here are 4 flashcards on the Solar System!"}
+
 User: "my goal is to get a high paid job by the 25th of this month"
 Output: {"intent":"CREATE_GOAL","mood":"neutral","emoji":"😐","data":{"goal":"get a high paid job","target_date":"2026-09-25"},"reply":"Goal added!"}
 
@@ -284,6 +291,34 @@ Output: {"intent":"MULTI_ACTION","mood":"neutral","emoji":"😐","actions":[{"in
 
 User: "open chrome and take a screenshot"
 Output: {"intent":"MULTI_ACTION","mood":"neutral","emoji":"😐","actions":[{"intent":"OPEN_APP","data":{"app":"chrome"}},{"intent":"TAKE_SCREENSHOT","data":{}}],"reply":"Opening Chrome and taking a screenshot."}
+
+CRITICAL FLASHCARD RULE (GENERATE_FLASHCARDS):
+When the user says "generate flashcards for X" or "make flashcards about X"
+or "create flashcards on X", you MUST return an array of 4-6 flashcards
+in the "data" field:
+
+{
+  "intent": "GENERATE_FLASHCARDS",
+  "mood": "neutral",
+  "emoji": "😐",
+  "data": {
+    "topic": "Python",
+    "cards": [
+      { "question": "What is a Python list?", "answer": "An ordered, mutable collection of items." },
+      { "question": "What does len() do?", "answer": "Returns the number of items in an object." },
+      { "question": "What is a dictionary?", "answer": "A collection of key-value pairs." },
+      { "question": "What is PEP 8?", "answer": "Python's official style guide for writing clean code." }
+    ]
+  },
+  "reply": "Here are 4 flashcards on Python!"
+}
+
+Rules:
+- ALWAYS include at least 4 flashcards.
+- "topic" must be the subject the user asked for.
+- Each card MUST have "question" and "answer" keys.
+- Keep answers short — one sentence.
+- NEVER return an empty cards array.
 
 CRITICAL CLARIFICATION RULE:
 If the user's message is ambiguous, respond with a CLARIFYING QUESTION.
