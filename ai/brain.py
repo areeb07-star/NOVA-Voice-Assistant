@@ -202,6 +202,15 @@ Output: {"intent":"DRAFT_EMAIL","mood":"neutral","emoji":"😐","data":{"recipie
 User: "open youtube"
 Output: {"intent":"OPEN_URL","mood":"neutral","emoji":"😐","data":{"url":"https://youtube.com"},"reply":"Opening YouTube!"}
 
+User: "search google for latest iphone 18"
+Output: {"intent":"OPEN_URL","mood":"neutral","emoji":"😐","data":{"url":"https://www.google.com/search?q=latest+iphone+18"},"reply":"Searching Google for 'latest iphone 18'!"}
+
+User: "google python tutorial"
+Output: {"intent":"OPEN_URL","mood":"neutral","emoji":"😐","data":{"url":"https://www.google.com/search?q=python+tutorial"},"reply":"Searching Google for 'python tutorial'!"}
+
+User: "search youtube for lofi music"
+Output: {"intent":"OPEN_URL","mood":"neutral","emoji":"😐","data":{"url":"https://www.youtube.com/results?search_query=lofi+music"},"reply":"Searching YouTube for 'lofi music'!"}
+
 User: "close calculator"
 Output: {"intent":"CLOSE_APP","mood":"neutral","emoji":"😐","data":{"app":"calc","requires_confirmation":true},"reply":"Are you sure you want to close Calculator?"}
 
@@ -366,7 +375,34 @@ CRITICAL FOLDER CREATION RULE (CREATE_FOLDER):
 "create folder [name]" → CREATE_FOLDER with {folder_name: name}
 
 CRITICAL WEBSITE OPENING RULE (OPEN_URL):
-youtube → https://youtube.com, google → https://google.com, gmail → https://mail.google.com
+youtube → https://youtube.com
+google → https://google.com
+gmail → https://mail.google.com
+
+CRITICAL GOOGLE SEARCH RULE:
+When the user says "search google for X" or "google X" or "search for X on google",
+you MUST open the Google search results URL for X — NOT just google.com.
+
+Format: https://www.google.com/search?q=<url-encoded-X>
+
+Examples:
+- "search google for latest iphone 18"
+  → OPEN_URL with url = "https://www.google.com/search?q=latest+iphone+18"
+- "google python tutorial"
+  → OPEN_URL with url = "https://www.google.com/search?q=python+tutorial"
+- "search for best laptops 2025 on google"
+  → OPEN_URL with url = "https://www.google.com/search?q=best+laptops+2025"
+
+NEVER just open https://google.com for a search request.
+ALWAYS include the query in the URL using ?q=.
+
+CRITICAL YOUTUBE SEARCH RULE:
+- "search youtube for X" or "youtube X"
+  → https://www.youtube.com/results?search_query=<url-encoded-X>
+
+CRITICAL AMAZON SEARCH RULE:
+- "search amazon for X"
+  → https://www.amazon.in/s?k=<url-encoded-X>
 
 CRITICAL APP NAME VALIDATION RULE (OPEN_APP):
 Only for: chrome, code, vscode, calc, calculator, notepad, explorer, cmd, terminal, paint, settings, sound_settings, whatsapp, spotify, word, excel, powerpoint, outlook, teams, telegram, zoom, vlc, steam.
