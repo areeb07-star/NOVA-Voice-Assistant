@@ -5,6 +5,7 @@
    Multi-user: sends user_id + access_token to bridge.py
    Deployed: AI_URL + SUMMARIZE_URL → Render bridge
    + Dedupe duplicate reply lines (fixes "shown twice" bug)
+   + Flashcard display (shows Q&A cards in chat)
    ============================================ */
 
 const CONFIG = {
@@ -310,6 +311,42 @@ function dedupeReply(text) {
 }
 
 // ============================================================
+// FLASHCARD FORMATTER
+// ============================================================
+/**
+ * If the LLM returned flashcards in data.cards, format them
+ * as Q&A text blocks for the chat.
+ *
+ * Expected shape:
+ *   data.data = {
+ *     topic: "Python",
+ *     cards: [
+ *       { question: "...", answer: "..." },
+ *       ...
+ *     ]
+ *   }
+ */
+function formatFlashcards(dataObj) {
+  if (!dataObj || typeof dataObj !== 'object') return null;
+
+  const cards = dataObj.cards;
+  if (!Array.isArray(cards) || cards.length === 0) return null;
+
+  const topic = dataObj.topic || 'Flashcards';
+  const lines = ['📚 ' + topic, ''];
+
+  cards.forEach(function (c, i) {
+    const q = (c && c.question) ? c.question : '(no question)';
+    const a = (c && c.answer) ? c.answer : '(no answer)';
+    lines.push('Q' + (i + 1) + ': ' + q);
+    lines.push('A' + (i + 1) + ': ' + a);
+    lines.push('');
+  });
+
+  return lines.join('\n').trim();
+}
+
+// ============================================================
 // MAIN HANDLER
 // ============================================================
 async function handleVoiceInput(transcript) {
@@ -365,15 +402,21 @@ async function handleVoiceInput(transcript) {
       console.log('[NOVA] Multi-action executed:', data.actions.length, 'actions');
     }
 
-    // ---- Dedupe: collapse duplicate consecutive lines ----
-    reply = dedupeReply(reply);
+    // ---- Flashcards: if LLM returned data.cards, format them ----
+    const flashcardText = formatFlashcards(data.data);
+    if (flashcardText) {
+      reply = flashcardText;
+    } else {
+      // ---- Dedupe: collapse duplicate consecutive lines ----
+      reply = dedupeReply(reply);
 
-    if (data.data && typeof data.data === 'object') {
-      const extras = [];
-      if (data.data.body) extras.push(data.data.body);
-      if (data.data.task) extras.push('📌 Task: ' + data.data.task);
-      if (data.data.time) extras.push('🕐 Time: ' + data.data.time);
-      if (extras.length > 0) reply = reply + '\n\n' + extras.join('\n');
+      if (data.data && typeof data.data === 'object') {
+        const extras = [];
+        if (data.data.body) extras.push(data.data.body);
+        if (data.data.task) extras.push('📌 Task: ' + data.data.task);
+        if (data.data.time) extras.push('🕐 Time: ' + data.data.time);
+        if (extras.length > 0) reply = reply + '\n\n' + extras.join('\n');
+      }
     }
 
     removeTypingIndicator();
