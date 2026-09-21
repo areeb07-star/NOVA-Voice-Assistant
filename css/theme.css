@@ -1,0 +1,114 @@
+/* ============================================================
+   NOVA - Theme System (Dark + Light)
+   ============================================================ */
+
+/* ---------- DARK THEME (default) ---------- */
+:root,
+html[data-theme="dark"] {
+  --bg-primary:        #05060f;
+  --bg-secondary:      rgba(10,12,26,0.85);
+  --bg-card:           rgba(18,21,45,0.65);
+  --bg-card-hover:     rgba(18,21,45,0.85);
+  --bg-input:          rgba(255,255,255,0.04);
+  --bg-input-focus:    rgba(34,211,238,0.05);
+  --bg-hover:          rgba(255,255,255,0.04);
+
+  --text-primary:      #f1f5f9;
+  --text-secondary:    #cbd5e1;
+  --text-muted:        #94a3b8;
+  --text-subtle:       #64748b;
+  --text-faint:        #475569;
+
+  --border-primary:    rgba(255,255,255,0.06);
+  --border-secondary:  rgba(255,255,255,0.10);
+  --border-strong:     rgba(255,255,255,0.15);
+
+  --accent-cyan:       #22d3ee;
+  --accent-purple:     #8b5cf6;
+  --accent-pink:       #ec4899;
+  --accent-blue:       #3b82f6;
+
+  --toast-bg:          #0a0c1a;
+  --modal-bg:          #0a0c1a;
+  --modal-overlay:     rgba(0,0,0,0.7);
+
+  --shadow-card:       0 10px 30px rgba(0,0,0,0.3);
+  --shadow-toast:      0 10px 40px rgba(0,0,0,0.4);
+  --shadow-modal:      0 20px 60px rgba(0,0,0,0.6);
+}
+
+/* ---------- LIGHT THEME ---------- */
+html[data-theme="light"] {
+  --bg-primary:        #f7f8fc;
+  --bg-secondary:      rgba(255,255,255,0.9);
+  --bg-card:           #ffffff;
+  --bg-card-hover:     #ffffff;
+  --bg-input:          #f1f5f9;
+  --bg-input-focus:    #e0f2fe;
+  --bg-hover:          rgba(0,0,0,0.03);
+
+  --text-primary:      #0f172a;
+  --text-secondary:    #334155;
+  --text-muted:        #64748b;
+  --text-subtle:       #94a3b8;
+  --text-faint:        #cbd5e1;
+
+  --border-primary:    #e2e8f0;
+  --border-secondary:  #cbd5e1;
+  --border-strong:     #94a3b8;
+
+  --accent-cyan:       #0891b2;
+  --accent-purple:     #7c3aed;
+  --accent-pink:       #db2777;
+  --accent-blue:       #2563eb;
+
+  --toast-bg:          #ffffff;
+  --modal-bg:          #ffffff;
+  --modal-overlay:     rgba(15,23,42,0.5);
+
+  --shadow-card:       0 4px 20px rgba(15,23,42,0.08);
+  --shadow-toast:      0 10px 30px rgba(15,23,42,0.12);
+  --shadow-modal:      0 20px 60px rgba(15,23,42,0.15);
+}
+
+/* ---------- BODY ---------- */
+html, body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background 0.25s ease, color 0.25s ease;
+}
+
+/* ---------- THEME TOGGLE BUTTON ---------- */
+.theme-toggle-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: transparent;
+  border: 0;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.theme-toggle-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.theme-toggle-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 1.8;
+}
+
+/* ---------- TRANSITION UTILITIES ---------- */
+.theme-transition,
+.theme-transition * {
+  transition: background-color 0.25s ease,
+              color 0.25s ease,
+              border-color 0.25s ease;
+}

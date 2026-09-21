@@ -1,5 +1,6 @@
 # agent.py — Nova Local Device Controller (GUI Edition)
 # GUI login popup, hidden console, auto-start on Windows
+# + Faster polling (0.5s) for snappier response
 
 import os
 import sys
@@ -105,7 +106,7 @@ DEVICE_ID = generate_device_id()
 # CONFIG
 # ============================================================
 BACKEND_URL = "https://nova-voice-assistant-6vve.onrender.com"
-POLL_INTERVAL = 2
+POLL_INTERVAL = 0.5          # ← was 2, now 0.5 for faster response
 KILL_SWITCH = os.path.join(os.path.expanduser("~"), "Desktop", "nova.pause")
 REMOVE_STARTUP_FLAG = os.path.join(os.path.expanduser("~"), "Desktop", "nova.remove_startup")
 LOCAL_PORT = 5050

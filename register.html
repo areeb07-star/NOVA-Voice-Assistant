@@ -5,12 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Register — NOVA</title>
 <link rel="icon" type="image/svg+xml" href="assets/images/nova-logo.svg">
+<link rel="stylesheet" href="css/theme.css">
+<script src="js/theme.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: #05060f;
-    color: #f1f5f9;
+    background: var(--bg-primary);
+    color: var(--text-primary);
     min-height: 100vh;
   }
   .auth-page {
@@ -30,9 +32,7 @@
   }
   .auth-left {
     flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: flex; align-items: center; justify-content: center;
     padding: 3rem;
     position: relative;
     z-index: 1;
@@ -40,47 +40,34 @@
   }
   .auth-left-content { text-align: center; max-width: 420px; }
   .auth-brand {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
-    margin-bottom: 2.5rem;
+    display: flex; align-items: center; justify-content: center;
+    gap: 0.75rem; margin-bottom: 2.5rem;
   }
   .auth-brand-logo {
-    width: 48px;
-    height: 48px;
+    width: 48px; height: 48px;
     border-radius: 12px;
     box-shadow: 0 4px 20px rgba(34,211,238,0.3);
   }
   .auth-brand-text {
-    font-size: 1.6rem;
-    font-weight: 700;
-    letter-spacing: 0.05em;
+    font-size: 1.6rem; font-weight: 700; letter-spacing: 0.05em;
     background: linear-gradient(135deg, #22d3ee, #8b5cf6, #ec4899);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     background-clip: text;
   }
   .auth-orb-wrapper {
     position: relative;
-    width: 180px;
-    height: 180px;
+    width: 180px; height: 180px;
     margin: 0 auto 2.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: flex; align-items: center; justify-content: center;
   }
   .auth-orb {
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
+    width: 120px; height: 120px; border-radius: 50%;
     background: radial-gradient(circle at 35% 35%, #22d3ee, #3b82f6 30%, #8b5cf6 65%, #1e1b4b 100%);
     box-shadow: 0 0 60px rgba(34,211,238,0.35), 0 0 120px rgba(139,92,246,0.25);
     animation: breathe 4s ease-in-out infinite;
   }
   .auth-orb-ring {
-    position: absolute;
-    border-radius: 50%;
+    position: absolute; border-radius: 50%;
     border: 1px solid rgba(139,92,246,0.15);
     pointer-events: none;
   }
@@ -90,142 +77,94 @@
     0%,100% { transform: scale(1); opacity: 0.85; }
     50%     { transform: scale(1.05); opacity: 1; }
   }
-  .auth-tagline {
-    font-size: 1.3rem;
-    font-weight: 600;
-    color: #f1f5f9;
-    margin-bottom: 0.5rem;
-  }
-  .auth-subtitle {
-    font-size: 0.95rem;
-    color: #64748b;
-    line-height: 1.6;
-  }
+  .auth-tagline { font-size: 1.3rem; font-weight: 600; color: #f1f5f9; margin-bottom: 0.5rem; }
+  .auth-subtitle { font-size: 0.95rem; color: #64748b; line-height: 1.6; }
+
   .auth-right {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 3rem;
-    position: relative;
-    z-index: 1;
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    padding: 3rem; position: relative; z-index: 1;
   }
   .auth-card {
-    width: 100%;
-    max-width: 440px;
-    background: rgba(18,21,45,0.65);
-    border: 1px solid rgba(255,255,255,0.1);
+    width: 100%; max-width: 440px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
     border-radius: 24px;
     padding: 2.5rem;
     backdrop-filter: blur(30px);
-    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    box-shadow: var(--shadow-card);
     position: relative;
   }
   .auth-card::before {
     content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 1px;
+    position: absolute; top: 0; left: 0; right: 0; height: 1px;
     background: linear-gradient(90deg, transparent, rgba(34,211,238,0.4), transparent);
   }
   .auth-card-header { text-align: center; margin-bottom: 2rem; }
-  .auth-card-title {
-    font-size: 1.8rem;
-    font-weight: 700;
-    color: #f1f5f9;
-    margin-bottom: 0.5rem;
-  }
-  .auth-card-subtitle { font-size: 0.9rem; color: #64748b; }
+  .auth-card-title { font-size: 1.8rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem; }
+  .auth-card-subtitle { font-size: 0.9rem; color: var(--text-subtle); }
+
   .auth-error {
     display: none;
-    align-items: center;
-    gap: 0.5rem;
+    align-items: center; gap: 0.5rem;
     padding: 0.85rem 1rem;
     background: rgba(239,68,68,0.1);
     border: 1px solid rgba(239,68,68,0.25);
     border-radius: 12px;
-    color: #ef4444;
-    font-size: 0.85rem;
+    color: #ef4444; font-size: 0.85rem;
     margin-bottom: 1rem;
   }
   .auth-error.show { display: flex; }
-  .auth-form {
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-  }
+
+  .auth-form { display: flex; flex-direction: column; gap: 1.25rem; }
   .form-group { position: relative; }
   .form-label {
-    display: block;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #94a3b8;
-    margin-bottom: 0.5rem;
+    display: block; font-size: 0.85rem; font-weight: 600;
+    color: var(--text-muted); margin-bottom: 0.5rem;
   }
   .input-group { position: relative; display: flex; align-items: center; }
   .input-icon {
-    position: absolute;
-    left: 1rem;
-    font-size: 1rem;
-    color: #64748b;
-    pointer-events: none;
-    z-index: 2;
+    position: absolute; left: 1rem; font-size: 1rem;
+    color: var(--text-subtle); pointer-events: none; z-index: 2;
   }
   .form-input {
     width: 100%;
     padding: 0.85rem 1rem 0.85rem 2.75rem;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.1);
+    background: var(--bg-input);
+    border: 1px solid var(--border-secondary);
     border-radius: 12px;
-    color: #f1f5f9;
-    font-size: 0.95rem;
-    font-family: inherit;
-    outline: none;
+    color: var(--text-primary); font-size: 0.95rem;
+    font-family: inherit; outline: none;
     transition: all 0.2s ease;
   }
-  .form-input::placeholder { color: #475569; }
+  .form-input::placeholder { color: var(--text-faint); }
   .form-input:focus {
-    border-color: #22d3ee;
-    background: rgba(34,211,238,0.05);
+    border-color: var(--accent-cyan);
+    background: var(--bg-input-focus);
     box-shadow: 0 0 0 3px rgba(34,211,238,0.1);
   }
-  .form-input.error {
-    border-color: #ef4444;
-    box-shadow: 0 0 0 3px rgba(239,68,68,0.1);
-  }
+  .form-input.error { border-color: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,0.1); }
   .input-toggle {
-    position: absolute;
-    right: 0.75rem;
-    background: none;
-    border: none;
-    color: #64748b;
-    cursor: pointer;
-    padding: 0.25rem;
-    font-size: 1.1rem;
-    z-index: 2;
+    position: absolute; right: 0.75rem;
+    background: none; border: none; color: var(--text-subtle);
+    cursor: pointer; padding: 0.25rem;
+    font-size: 1.1rem; z-index: 2;
   }
-  .input-toggle:hover { color: #22d3ee; }
+  .input-toggle:hover { color: var(--accent-cyan); }
   .form-error {
-    display: none;
-    font-size: 0.8rem;
-    color: #ef4444;
-    margin-top: 0.35rem;
+    display: none; font-size: 0.8rem;
+    color: #ef4444; margin-top: 0.35rem;
   }
   .form-error.show { display: block; }
+
   .auth-submit {
-    width: 100%;
-    padding: 0.95rem;
-    font-size: 1rem;
-    font-weight: 700;
+    width: 100%; padding: 0.95rem;
+    font-size: 1rem; font-weight: 700;
     color: #fff;
     background: linear-gradient(135deg, #22d3ee, #8b5cf6);
-    border: none;
-    border-radius: 9999px;
-    cursor: pointer;
-    transition: all 0.25s ease;
+    border: none; border-radius: 9999px;
+    cursor: pointer; transition: all 0.25s ease;
     box-shadow: 0 4px 20px rgba(34,211,238,0.25);
-    margin-top: 0.5rem;
-    font-family: inherit;
+    margin-top: 0.5rem; font-family: inherit;
     position: relative;
   }
   .auth-submit:hover:not(:disabled) {
@@ -237,8 +176,7 @@
   .auth-submit .btn-text { transition: opacity 0.2s ease; }
   .auth-submit.loading .btn-text { opacity: 0; }
   .auth-submit .btn-loader {
-    position: absolute;
-    top: 50%; left: 50%;
+    position: absolute; top: 50%; left: 50%;
     transform: translate(-50%, -50%);
     width: 20px; height: 20px;
     border: 2px solid rgba(255,255,255,0.3);
@@ -248,24 +186,20 @@
     display: none;
   }
   .auth-submit.loading .btn-loader { display: block; }
-  @keyframes spin {
-    to { transform: translate(-50%,-50%) rotate(360deg); }
-  }
+  @keyframes spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
+
   .auth-footer {
-    text-align: center;
-    margin-top: 1.5rem;
+    text-align: center; margin-top: 1.5rem;
     padding-top: 1.5rem;
-    border-top: 1px solid rgba(255,255,255,0.06);
-    font-size: 0.9rem;
-    color: #64748b;
+    border-top: 1px solid var(--border-primary);
+    font-size: 0.9rem; color: var(--text-subtle);
   }
   .auth-link {
-    color: #22d3ee;
-    text-decoration: none;
-    font-weight: 600;
-    margin-left: 4px;
+    color: var(--accent-cyan); text-decoration: none;
+    font-weight: 600; margin-left: 4px;
   }
   .auth-link:hover { text-decoration: underline; }
+
   @media (max-width: 768px) {
     .auth-page { flex-direction: column; }
     .auth-left { min-height: 32vh; padding: 2rem 1.5rem; }
@@ -277,6 +211,199 @@
     .auth-right { padding: 1.5rem 1rem; }
     .auth-card { padding: 1.75rem; }
     .auth-card-title { font-size: 1.4rem; }
+  }
+    /* ============================================================
+     LIGHT THEME UNIVERSAL OVERRIDES
+     ============================================================ */
+  html[data-theme="light"] body {
+    background: #f7f8fc !important;
+    color: #0f172a !important;
+  }
+  html[data-theme="light"] .sidebar {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+  }
+  html[data-theme="light"] .sidebar-header,
+  html[data-theme="light"] .nav-divider { border-color: #e2e8f0 !important; }
+  html[data-theme="light"] .nav-section-label { color: #94a3b8 !important; }
+  html[data-theme="light"] .nav-item { color: #64748b !important; }
+  html[data-theme="light"] .nav-item:hover {
+    background: rgba(0,0,0,0.04) !important;
+    color: #0f172a !important;
+  }
+  html[data-theme="light"] .nav-item.active {
+    background: rgba(8,145,178,0.1) !important;
+    color: #0891b2 !important;
+  }
+  html[data-theme="light"] .topbar {
+    background: rgba(255,255,255,0.9) !important;
+    border-bottom-color: #e2e8f0 !important;
+  }
+  html[data-theme="light"] .greeting-title { color: #0f172a !important; }
+  html[data-theme="light"] .greeting-subtitle { color: #64748b !important; }
+  html[data-theme="light"] .topbar-icon-btn { color: #64748b !important; }
+  html[data-theme="light"] .topbar-icon-btn:hover {
+    background: rgba(0,0,0,0.05) !important;
+    color: #0f172a !important;
+  }
+
+  /* Cards / panels / boxes — universal selectors */
+  html[data-theme="light"] .stat-card,
+  html[data-theme="light"] .summary-card,
+  html[data-theme="light"] .category-card,
+  html[data-theme="light"] .expense-item,
+  html[data-theme="light"] .shopping-item,
+  html[data-theme="light"] .note-item,
+  html[data-theme="light"] .reminder-item,
+  html[data-theme="light"] .goal-item,
+  html[data-theme="light"] .plan-item,
+  html[data-theme="light"] .study-plan-item,
+  html[data-theme="light"] .info-box,
+  html[data-theme="light"] .faq-item,
+  html[data-theme="light"] .step-card,
+  html[data-theme="light"] .assistant-area,
+  html[data-theme="light"] .welcome-banner,
+  html[data-theme="light"] .profile-card,
+  html[data-theme="light"] .setting-card {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+  }
+  html[data-theme="light"] .stat-card:hover,
+  html[data-theme="light"] .summary-card:hover,
+  html[data-theme="light"] .expense-item:hover,
+  html[data-theme="light"] .shopping-item:hover,
+  html[data-theme="light"] .note-item:hover {
+    border-color: #cbd5e1 !important;
+    box-shadow: 0 10px 30px rgba(15,23,42,0.08) !important;
+  }
+
+  /* Headings inside cards */
+  html[data-theme="light"] .stat-value,
+  html[data-theme="light"] .summary-value,
+  html[data-theme="light"] .category-amount,
+  html[data-theme="light"] .expense-amount,
+  html[data-theme="light"] .shopping-name,
+  html[data-theme="light"] .note-title,
+  html[data-theme="light"] .reminder-title,
+  html[data-theme="light"] .goal-title,
+  html[data-theme="light"] .list-section-title,
+  html[data-theme="light"] .category-title,
+  html[data-theme="light"] .overview-title,
+  html[data-theme="light"] .chat-section-title {
+    color: #0f172a !important;
+  }
+  html[data-theme="light"] .stat-label,
+  html[data-theme="light"] .summary-label,
+  html[data-theme="light"] .summary-sub,
+  html[data-theme="light"] .expense-date,
+  html[data-theme="light"] .shopping-meta,
+  html[data-theme="light"] .category-name,
+  html[data-theme="light"] .welcome-text p,
+  html[data-theme="light"] .chat-section-count {
+    color: #64748b !important;
+  }
+
+  /* Forms */
+  html[data-theme="light"] .form-input,
+  html[data-theme="light"] .form-select,
+  html[data-theme="light"] .assistant-input,
+  html[data-theme="light"] .assistant-input-group {
+    background: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+  }
+  html[data-theme="light"] .form-input::placeholder,
+  html[data-theme="light"] .assistant-input::placeholder {
+    color: #94a3b8 !important;
+  }
+  html[data-theme="light"] .form-label { color: #334155 !important; }
+
+  /* Modals */
+  html[data-theme="light"] .modal {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+  }
+  html[data-theme="light"] .modal-title { color: #0f172a !important; }
+  html[data-theme="light"] .modal-header,
+  html[data-theme="light"] .modal-footer { border-color: #e2e8f0 !important; }
+
+  /* Buttons */
+  html[data-theme="light"] .btn-ghost {
+    background: rgba(0,0,0,0.03) !important;
+    color: #64748b !important;
+    border-color: #cbd5e1 !important;
+  }
+  html[data-theme="light"] .btn-ghost:hover {
+    background: rgba(0,0,0,0.06) !important;
+    color: #0f172a !important;
+  }
+  html[data-theme="light"] .quick-action {
+    background: rgba(0,0,0,0.03) !important;
+    border-color: #e2e8f0 !important;
+    color: #64748b !important;
+  }
+  html[data-theme="light"] .quick-action:hover {
+    background: rgba(0,0,0,0.06) !important;
+    color: #0f172a !important;
+  }
+
+  /* Profile menu */
+  html[data-theme="light"] .profile-menu {
+    background: rgba(255,255,255,0.98) !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 10px 40px rgba(15,23,42,0.15) !important;
+  }
+  html[data-theme="light"] .profile-menu-item { color: #334155 !important; }
+  html[data-theme="light"] .profile-menu-item:hover {
+    background: rgba(0,0,0,0.04) !important;
+    color: #0f172a !important;
+  }
+
+  /* Toast */
+  html[data-theme="light"] .toast {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+  }
+  html[data-theme="light"] .toast-title { color: #0f172a !important; }
+  html[data-theme="light"] .toast-message { color: #64748b !important; }
+
+  /* Assistant orb/chat */
+  html[data-theme="light"] .orb-status-text { color: #64748b !important; }
+  html[data-theme="light"] .mic-label { color: #64748b !important; }
+  html[data-theme="light"] .chat-message.nova .chat-bubble {
+    background: #f1f5f9 !important;
+    border-color: #e2e8f0 !important;
+    color: #334155 !important;
+  }
+  html[data-theme="light"] .chat-message.user .chat-bubble {
+    background: rgba(59,130,246,0.12) !important;
+    color: #0f172a !important;
+  }
+  html[data-theme="light"] .chat-sender,
+  html[data-theme="light"] .chat-time,
+  html[data-theme="light"] .chat-divider { color: #94a3b8 !important; }
+  html[data-theme="light"] .chat-divider::before,
+  html[data-theme="light"] .chat-divider::after { background: #e2e8f0 !important; }
+  html[data-theme="light"] .chat-empty { color: #94a3b8 !important; }
+  html[data-theme="light"] .chat-empty svg { color: #cbd5e1 !important; }
+
+  /* Badges & pills */
+  html[data-theme="light"] .count-badge {
+    background: rgba(8,145,178,0.1) !important;
+    border-color: rgba(8,145,178,0.25) !important;
+    color: #0891b2 !important;
+  }
+  html[data-theme="light"] .shopping-meta .badge {
+    background: rgba(124,58,237,0.1) !important;
+    color: #7c3aed !important;
+    border-color: rgba(124,58,237,0.2) !important;
+  }
+  html[data-theme="light"] .stat-icon,
+  html[data-theme="light"] .category-icon,
+  html[data-theme="light"] .expense-icon,
+  html[data-theme="light"] .shopping-icon {
+    background: rgba(8,145,178,0.08) !important;
+    border-color: rgba(8,145,178,0.15) !important;
   }
 </style>
 </head>
@@ -375,13 +502,6 @@
 </div>
 
 <script>
-/* =========================================================
-   NOVA — Register (wired to backend)
-   Stores BOTH key conventions after successful registration:
-     - nova-auth-token / access_token
-     - nova-user-id / user_id
-     - nova-user-name / nova-user-email
-   ========================================================= */
 var API_BASE = "https://nova-voice-assistant-6vve.onrender.com";
 
 document.getElementById("register-form").addEventListener("submit", async function (e) {
@@ -434,13 +554,11 @@ document.getElementById("register-form").addEventListener("submit", async functi
     var data = await res.json();
 
     if (res.ok && data.success) {
-      /* ---------- Save token (both key conventions) ---------- */
       if (data.access_token) {
         localStorage.setItem("nova-auth-token", data.access_token);
         localStorage.setItem("access_token",     data.access_token);
       }
 
-      /* ---------- Save user info (both key conventions) ---------- */
       var user = data.user || {};
       var name = user.name || data.name || fullName;
       var userId = user.id || user.user_id || data.user_id || "";
@@ -453,9 +571,6 @@ document.getElementById("register-form").addEventListener("submit", async functi
         localStorage.setItem("user_id",      String(userId));
       }
 
-      /* ---------- Redirect ---------- */
-      // If backend returned a token, go straight to dashboard.
-      // If not, send them to login to get one.
       window.location.href = data.access_token ? "dashboard.html" : "login.html";
     } else {
       throw new Error(data.error || "Registration failed");

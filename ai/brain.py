@@ -1,15 +1,18 @@
-# brain.py — Nova AI Brain (Person 3 + Person 4 fixes)
+# brain.py — Nova AI Brain (Final)
 # Flat JSON response + UPDATE_*/DELETE_* intents + chat history
 # + Friendlier personality
 # + OPEN_FOLDER without pre-check
-# + Shopping list key fix (formatted_shopping_items)
+# + Shopping list key fix
 # + Load chat history from backend
-# + CREATE_GOAL auto-date rule + normalize_date() for ISO YYYY-MM-DD
-# + DELETE_* intents wired to backend
-# + SET_VOLUME / SET_BRIGHTNESS level safety net + value mirror for agent.py
-# + MULTI_ACTION support for ALL actions (device + notes + reminders + expenses
-#   + shopping + goals + study plans + memories + moods + emails)
+# + CREATE_GOAL auto-date rule
+# + DELETE_* intents wired
+# + SET_VOLUME / SET_BRIGHTNESS level safety net
+# + MULTI_ACTION support for ALL actions
 # + Fix duplicate reply in multi-action
+# + Third Groq API key fallback
+# + FLASHCARD generation
+# + Google/YouTube/Amazon search URL rules
+# + CLEAN ERROR MESSAGES (no "snag", no generic errors)
 
 import os
 import sys
@@ -27,6 +30,7 @@ load_dotenv()
 API_KEYS = [
     os.getenv("GROQ_API_KEY"),
     os.getenv("GROQ_API_KEY_2"),
+    os.getenv("GROQ_API_KEY_3"),
 ]
 API_KEYS = [k for k in API_KEYS if k]
 
@@ -51,6 +55,33 @@ MODELS = [
 
 SIMILARITY_THRESHOLD = 0.65
 
+# ============================================================
+# CLEAN ERROR MESSAGES
+# ============================================================
+ERR_DAILY_LIMIT = "⚠️ Daily AI limit reached. Please try again in a few hours."
+ERR_STARTING = "⏳ Service is warming up. Please try again in 10 seconds."
+ERR_CONNECTION = "📡 Connection issue. Please check your internet and try again."
+ERR_LLM = "⚠️ AI service unavailable right now. Please try again shortly."
+ERR_GENERIC = "⚠️ Something went wrong. Please try again."
+
+
+def classify_error(err_str):
+    """Map raw errors to clean user-facing messages."""
+    s = str(err_str).lower()
+    if "429" in s or "rate limit" in s or "rate_limit" in s or "quota" in s or "tokens per day" in s:
+        return ERR_DAILY_LIMIT
+    if "timeout" in s or "timed out" in s:
+        return ERR_STARTING
+    if "connection" in s or "unreachable" in s or "network" in s:
+        return ERR_CONNECTION
+    if "401" in s or "403" in s or "invalid api key" in s:
+        return ERR_LLM
+    return ERR_LLM
+
+
+# ============================================================
+# SYSTEM PROMPT (same as before — no trimming, tested & working)
+# ============================================================
 SYSTEM_PROMPT = """
 You are Nova, a friendly, warm, human-like personal voice assistant.
 
@@ -172,6 +203,12 @@ Output: {"intent":"MULTI_ACTION","mood":"neutral","emoji":"😐","actions":[{"in
 User: "create a goal to read 20 books this year and log my mood as happy"
 Output: {"intent":"MULTI_ACTION","mood":"neutral","emoji":"😐","actions":[{"intent":"CREATE_GOAL","data":{"goal":"read 20 books","target_date":"2026-12-31"}},{"intent":"LOG_MOOD","data":{"mood":"happy"}}],"reply":"Goal added and mood logged!"}
 
+User: "generate flashcards for Python"
+Output: {"intent":"GENERATE_FLASHCARDS","mood":"neutral","emoji":"😐","data":{"topic":"Python","cards":[{"question":"What is a Python list?","answer":"An ordered, mutable collection of items."},{"question":"What does len() do?","answer":"Returns the number of items in an object."},{"question":"What is a dictionary?","answer":"A collection of key-value pairs."},{"question":"What is PEP 8?","answer":"Python's official style guide."}]},"reply":"Here are 4 flashcards on Python!"}
+
+User: "make flashcards about the solar system"
+Output: {"intent":"GENERATE_FLASHCARDS","mood":"neutral","emoji":"😐","data":{"topic":"Solar System","cards":[{"question":"How many planets are in the solar system?","answer":"8 planets."},{"question":"Which planet is closest to the Sun?","answer":"Mercury."},{"question":"Which planet is known as the Red Planet?","answer":"Mars."},{"question":"What is the largest planet?","answer":"Jupiter."}]},"reply":"Here are 4 flashcards on the Solar System!"}
+
 User: "my goal is to get a high paid job by the 25th of this month"
 Output: {"intent":"CREATE_GOAL","mood":"neutral","emoji":"😐","data":{"goal":"get a high paid job","target_date":"2026-09-25"},"reply":"Goal added!"}
 
@@ -192,6 +229,15 @@ Output: {"intent":"DRAFT_EMAIL","mood":"neutral","emoji":"😐","data":{"recipie
 
 User: "open youtube"
 Output: {"intent":"OPEN_URL","mood":"neutral","emoji":"😐","data":{"url":"https://youtube.com"},"reply":"Opening YouTube!"}
+
+User: "search google for latest iphone 18"
+Output: {"intent":"OPEN_URL","mood":"neutral","emoji":"😐","data":{"url":"https://www.google.com/search?q=latest+iphone+18"},"reply":"Searching Google for 'latest iphone 18'!"}
+
+User: "google python tutorial"
+Output: {"intent":"OPEN_URL","mood":"neutral","emoji":"😐","data":{"url":"https://www.google.com/search?q=python+tutorial"},"reply":"Searching Google for 'python tutorial'!"}
+
+User: "search youtube for lofi music"
+Output: {"intent":"OPEN_URL","mood":"neutral","emoji":"😐","data":{"url":"https://www.youtube.com/results?search_query=lofi+music"},"reply":"Searching YouTube for 'lofi music'!"}
 
 User: "close calculator"
 Output: {"intent":"CLOSE_APP","mood":"neutral","emoji":"😐","data":{"app":"calc","requires_confirmation":true},"reply":"Are you sure you want to close Calculator?"}
@@ -283,6 +329,34 @@ Output: {"intent":"MULTI_ACTION","mood":"neutral","emoji":"😐","actions":[{"in
 User: "open chrome and take a screenshot"
 Output: {"intent":"MULTI_ACTION","mood":"neutral","emoji":"😐","actions":[{"intent":"OPEN_APP","data":{"app":"chrome"}},{"intent":"TAKE_SCREENSHOT","data":{}}],"reply":"Opening Chrome and taking a screenshot."}
 
+CRITICAL FLASHCARD RULE (GENERATE_FLASHCARDS):
+When the user says "generate flashcards for X" or "make flashcards about X"
+or "create flashcards on X", you MUST return an array of 4-6 flashcards
+in the "data" field:
+
+{
+  "intent": "GENERATE_FLASHCARDS",
+  "mood": "neutral",
+  "emoji": "😐",
+  "data": {
+    "topic": "Python",
+    "cards": [
+      { "question": "What is a Python list?", "answer": "An ordered, mutable collection of items." },
+      { "question": "What does len() do?", "answer": "Returns the number of items in an object." },
+      { "question": "What is a dictionary?", "answer": "A collection of key-value pairs." },
+      { "question": "What is PEP 8?", "answer": "Python's official style guide for writing clean code." }
+    ]
+  },
+  "reply": "Here are 4 flashcards on Python!"
+}
+
+Rules:
+- ALWAYS include at least 4 flashcards.
+- "topic" must be the subject the user asked for.
+- Each card MUST have "question" and "answer" keys.
+- Keep answers short — one sentence.
+- NEVER return an empty cards array.
+
 CRITICAL CLARIFICATION RULE:
 If the user's message is ambiguous, respond with a CLARIFYING QUESTION.
 
@@ -329,7 +403,34 @@ CRITICAL FOLDER CREATION RULE (CREATE_FOLDER):
 "create folder [name]" → CREATE_FOLDER with {folder_name: name}
 
 CRITICAL WEBSITE OPENING RULE (OPEN_URL):
-youtube → https://youtube.com, google → https://google.com, gmail → https://mail.google.com
+youtube → https://youtube.com
+google → https://google.com
+gmail → https://mail.google.com
+
+CRITICAL GOOGLE SEARCH RULE:
+When the user says "search google for X" or "google X" or "search for X on google",
+you MUST open the Google search results URL for X — NOT just google.com.
+
+Format: https://www.google.com/search?q=<url-encoded-X>
+
+Examples:
+- "search google for latest iphone 18"
+  → OPEN_URL with url = "https://www.google.com/search?q=latest+iphone+18"
+- "google python tutorial"
+  → OPEN_URL with url = "https://www.google.com/search?q=python+tutorial"
+- "search for best laptops 2025 on google"
+  → OPEN_URL with url = "https://www.google.com/search?q=best+laptops+2025"
+
+NEVER just open https://google.com for a search request.
+ALWAYS include the query in the URL using ?q=.
+
+CRITICAL YOUTUBE SEARCH RULE:
+- "search youtube for X" or "youtube X"
+  → https://www.youtube.com/results?search_query=<url-encoded-X>
+
+CRITICAL AMAZON SEARCH RULE:
+- "search amazon for X"
+  → https://www.amazon.in/s?k=<url-encoded-X>
 
 CRITICAL APP NAME VALIDATION RULE (OPEN_APP):
 Only for: chrome, code, vscode, calc, calculator, notepad, explorer, cmd, terminal, paint, settings, sound_settings, whatsapp, spotify, word, excel, powerpoint, outlook, teams, telegram, zoom, vlc, steam.
@@ -396,102 +497,42 @@ UPDATE_ID_KEY_ALIASES = {
 
 
 def normalize_date(value):
-    """Convert natural-language dates to YYYY-MM-DD. Returns original string if unparseable."""
     if not value or not isinstance(value, str):
         return value
-
     today = datetime.now().date()
     v = value.strip().lower()
-
     if re.fullmatch(r"\d{4}-\d{2}-\d{2}", v):
         return v
-
     if v in ("today", "now"):
         return today.isoformat()
     if v == "tomorrow":
         return (today + timedelta(days=1)).isoformat()
     if v == "yesterday":
         return (today - timedelta(days=1)).isoformat()
-
     m = re.search(r"in\s+(\d+)\s+(day|days|week|weeks|month|months|year|years)", v)
     if m:
         n = int(m.group(1))
         unit = m.group(2).rstrip("s")
-        if unit == "day":
-            delta = timedelta(days=n)
-        elif unit == "week":
-            delta = timedelta(weeks=n)
-        elif unit == "month":
-            delta = timedelta(days=30 * n)
-        elif unit == "year":
-            delta = timedelta(days=365 * n)
-        else:
-            delta = timedelta(0)
+        delta = timedelta(days=n) if unit == "day" else \
+                timedelta(weeks=n) if unit == "week" else \
+                timedelta(days=30*n) if unit == "month" else timedelta(days=365*n)
         return (today + delta).isoformat()
-
     m = re.search(r"(next|this)\s+(week|month|year)", v)
     if m:
         when, unit = m.group(1), m.group(2)
-        if unit == "week":
-            delta = timedelta(weeks=1 if when == "next" else 0)
-        elif unit == "month":
-            delta = timedelta(days=30 if when == "next" else 0)
-        else:
-            delta = timedelta(days=365 if when == "next" else 0)
+        delta = timedelta(weeks=1 if when == "next" else 0) if unit == "week" else \
+                timedelta(days=30 if when == "next" else 0) if unit == "month" else \
+                timedelta(days=365 if when == "next" else 0)
         return (today + delta).isoformat()
-
     if "end of" in v:
         if "term" in v or "month" in v:
             if today.month == 12:
-                last = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
+                last = today.replace(year=today.year+1, month=1, day=1) - timedelta(days=1)
             else:
-                last = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
+                last = today.replace(month=today.month+1, day=1) - timedelta(days=1)
             return last.isoformat()
         if "year" in v:
             return f"{today.year}-12-31"
-
-    m = re.search(r"(\d{1,2})(?:st|nd|rd|th)?\s*(?:of\s+)?next\s+month", v)
-    if m:
-        day = int(m.group(1))
-        if today.month == 12:
-            target = today.replace(year=today.year + 1, month=1, day=day)
-        else:
-            target = today.replace(month=today.month + 1, day=day)
-        return target.isoformat()
-
-    m = re.search(r"(\d{1,2})(?:st|nd|rd|th)?\s*(?:of\s+)?(?:this\s+)?month", v)
-    if m:
-        day = int(m.group(1))
-        try:
-            d = today.replace(day=day)
-            return d.isoformat()
-        except ValueError:
-            pass
-
-    month_names = {
-        "january": 1, "february": 2, "march": 3, "april": 4, "may": 5, "june": 6,
-        "july": 7, "august": 8, "september": 9, "october": 10, "november": 11, "december": 12,
-        "jan": 1, "feb": 2, "mar": 3, "apr": 4, "jun": 6, "jul": 7, "aug": 8,
-        "sep": 9, "sept": 9, "oct": 10, "nov": 11, "dec": 12,
-    }
-    for name, num in month_names.items():
-        m = re.search(rf"{name}\s+(\d{{1,2}})", v)
-        if m:
-            day = int(m.group(1))
-            year = today.year if today.month <= num else today.year + 1
-            try:
-                return f"{year}-{num:02d}-{day:02d}"
-            except Exception:
-                pass
-        m = re.search(rf"(\d{{1,2}})\s+{name}", v)
-        if m:
-            day = int(m.group(1))
-            year = today.year if today.month <= num else today.year + 1
-            try:
-                return f"{year}-{num:02d}-{day:02d}"
-            except Exception:
-                pass
-
     return value
 
 
@@ -507,8 +548,7 @@ def extract_folder_from_text(user_text):
     for pat in patterns:
         m = re.search(pat, text)
         if m:
-            folder = m.group(1).strip()
-            folder = re.sub(r"^(the|my|a|an)\s+", "", folder)
+            folder = re.sub(r"^(the|my|a|an)\s+", "", m.group(1).strip())
             if folder:
                 return folder
     return ""
@@ -516,7 +556,7 @@ def extract_folder_from_text(user_text):
 
 def normalize_result(raw_result, user_text=""):
     if not isinstance(raw_result, dict):
-        return {"intent": "GENERAL_CHAT", "mood": "neutral", "emoji": "😐", "data": {}, "reply": "Sorry, I hit a snag!"}
+        return {"intent": "GENERAL_CHAT", "mood": "neutral", "emoji": "😐", "data": {}, "reply": ERR_GENERIC}
 
     intent = raw_result.get("intent", "GENERAL_CHAT")
     intent = INTENT_ALIASES.get(intent, intent)
@@ -532,23 +572,19 @@ def normalize_result(raw_result, user_text=""):
     if normalized["intent"] not in VALID_INTENTS:
         normalized["intent"] = "GENERAL_CHAT"
 
-    # Normalize date fields
     if normalized["intent"] in ("CREATE_GOAL", "UPDATE_GOAL"):
         d = normalized["data"]
         if "target_date" in d:
             d["target_date"] = normalize_date(d["target_date"])
-
     if normalized["intent"] in ("STUDY_PLAN", "UPDATE_STUDY_PLAN"):
         d = normalized["data"]
         if "exam_date" in d:
             d["exam_date"] = normalize_date(d["exam_date"])
-
     if normalized["intent"] in ("CREATE_REMINDER", "UPDATE_REMINDER"):
         d = normalized["data"]
         if "date" in d:
             d["date"] = normalize_date(d["date"])
 
-    # Shopping: ensure "items" is always a list
     if normalized["intent"] == "ADD_SHOPPING_ITEM":
         d = normalized["data"]
         if "item" in d and "items" not in d:
@@ -558,7 +594,6 @@ def normalize_result(raw_result, user_text=""):
         elif "items" not in d:
             d["items"] = []
 
-    # UPDATE_*: force "id"
     if normalized["intent"].startswith("UPDATE_"):
         d = normalized["data"]
         for bad_key, good_key in UPDATE_ID_KEY_ALIASES.items():
@@ -568,7 +603,6 @@ def normalize_result(raw_result, user_text=""):
             normalized["intent"] = "GENERAL_CHAT"
             normalized["reply"] = "I need the ID of the item you want to update."
 
-    # DELETE_*: force "id"
     if normalized["intent"].startswith("DELETE_"):
         d = normalized["data"]
         for bad_key, good_key in UPDATE_ID_KEY_ALIASES.items():
@@ -577,9 +611,8 @@ def normalize_result(raw_result, user_text=""):
         d.pop("user_id", None)
         if "id" not in d:
             normalized["intent"] = "GENERAL_CHAT"
-            normalized["reply"] = "Which item ID would you like me to delete? You can say 'show my notes' first to check."
+            normalized["reply"] = "Which item ID would you like me to delete? You can say 'show my notes' first."
 
-    # OPEN_FOLDER: must always have a folder name
     if normalized["intent"] == "OPEN_FOLDER":
         d = normalized["data"]
         folder = (d.get("folder") or d.get("folder_name") or "").strip()
@@ -591,7 +624,6 @@ def normalize_result(raw_result, user_text=""):
         else:
             d["folder"] = folder
 
-    # SET_VOLUME / SET_BRIGHTNESS: must have a numeric "level", mirror to "value"
     if normalized["intent"] in ("SET_VOLUME", "SET_BRIGHTNESS"):
         d = normalized["data"]
         if "level" not in d:
@@ -662,8 +694,7 @@ def load_chat_history(user_id, token, limit=HISTORY_LIMIT):
             if isinstance(m, dict) and "role" in m and "content" in m:
                 history.append({"role": m["role"], "content": m["content"]})
         return history[-limit:]
-    except Exception as e:
-        print(f"[load_chat_history failed: {e}]")
+    except Exception:
         return []
 
 
@@ -693,16 +724,15 @@ def process_user_input(user_text, user_id="default", token=None):
                 ai_reply = extract_json_object(ai_reply)
                 history.append({"role": "assistant", "content": ai_reply})
                 conversation_history[user_id] = history[-HISTORY_LIMIT:]
-                result = json.loads(ai_reply)
-                return result
+                return json.loads(ai_reply)
             except Exception as e:
-                err_str = str(e)
-                print(f"[Model {model} failed: {err_str[:100]}]")
+                print(f"[Model {model} failed: {str(e)[:120]}]")
                 last_error = e
                 continue
 
-    print(f"All models failed. Last error: {last_error}")
-    return {"intent": "GENERAL_CHAT", "mood": "neutral", "emoji": "😐", "data": {}, "reply": "Sorry, I hit a snag!"}
+    clean_msg = classify_error(last_error)
+    print(f"All models failed. Clean message: {clean_msg}")
+    return {"intent": "GENERAL_CHAT", "mood": "neutral", "emoji": "⚠️", "data": {}, "reply": clean_msg}
 
 
 def get_access_token(email, password):
@@ -743,12 +773,7 @@ def fetch_from_backend(intent, data, token):
         return {"error": f"Could not fetch data: {e}"}
 
 
-# ============================================================
-# MULTI-ACTION SUPPORT (ALL actions — device + personal)
-# ============================================================
 def _split_multi(raw_result):
-    """If LLM returned MULTI_ACTION, split into a list of single-intent dicts.
-    Otherwise return [single_action]."""
     if not isinstance(raw_result, dict):
         return [raw_result]
     if raw_result.get("intent") != "MULTI_ACTION":
@@ -770,10 +795,8 @@ def _split_multi(raw_result):
 
 
 def _run_single_action(normalized, user_text, token, user_id, device_id, is_confirmation=False):
-    """Run ONE already-normalized action through the backend."""
     result = normalized
 
-    # SPEAK_LAST
     if result["intent"] == "SPEAK_LAST":
         history = conversation_history.get(user_id, [])
         last_reply = None
@@ -789,7 +812,6 @@ def _run_single_action(normalized, user_text, token, user_id, device_id, is_conf
         result["reply"] = last_reply if last_reply else "I don't have anything to repeat yet."
         return result
 
-    # CREATE / UPDATE
     if result["intent"] in [
         "CREATE_NOTE", "CREATE_REMINDER", "ADD_EXPENSE", "ADD_SHOPPING_ITEM",
         "STUDY_PLAN", "CREATE_GOAL", "LOG_MOOD", "CREATE_MEMORY", "SAVE_CONTEXT",
@@ -800,9 +822,8 @@ def _run_single_action(normalized, user_text, token, user_id, device_id, is_conf
         backend_response = send_to_backend(result["intent"], result["data"], token)
         print("Backend says:", backend_response)
         if isinstance(backend_response, dict) and not backend_response.get("success"):
-            result["reply"] = f"Sorry, I couldn't save that: {backend_response.get('message', 'unknown error')}"
+            result["reply"] = f"⚠️ Could not save: {backend_response.get('message', 'unknown error')}"
 
-    # DELETE
     elif result["intent"] in [
         "DELETE_NOTE", "DELETE_REMINDER", "DELETE_EXPENSE",
         "DELETE_SHOPPING_ITEM", "DELETE_GOAL", "DELETE_STUDY_PLAN"
@@ -813,9 +834,8 @@ def _run_single_action(normalized, user_text, token, user_id, device_id, is_conf
             if backend_response.get("success"):
                 result["reply"] = backend_response.get("message", "Deleted successfully.")
             else:
-                result["reply"] = f"Sorry, I couldn't delete that: {backend_response.get('message', 'not found')}"
+                result["reply"] = f"⚠️ Could not delete: {backend_response.get('message', 'not found')}"
 
-    # EMAIL
     elif result["intent"] == "DRAFT_EMAIL":
         result["data"]["user_id"] = user_id
         if not result["data"].get("subject"):
@@ -824,7 +844,6 @@ def _run_single_action(normalized, user_text, token, user_id, device_id, is_conf
         if isinstance(backend_response, dict) and backend_response.get("success"):
             result["reply"] = f"Email sent to {result['data'].get('recipient', 'the recipient')}."
 
-    # FIND FILE
     elif result["intent"] == "FIND_FILE":
         result["data"]["user_id"] = user_id
         result["data"]["device_id"] = device_id
@@ -839,27 +858,23 @@ def _run_single_action(normalized, user_text, token, user_id, device_id, is_conf
                 names = [f.split("\\")[-1] for f in files[:5]]
                 result["reply"] = f"Found {files_found} items:\n" + "\n".join(names)
 
-    # CLOSE APP (only runs if already confirmed by caller)
     elif result["intent"] == "CLOSE_APP":
         result["data"]["user_id"] = user_id
         result["data"]["device_id"] = device_id
         result["data"]["requires_confirmation"] = False
         send_to_backend(result["intent"], result["data"], token)
 
-    # OPEN FOLDER
     elif result["intent"] == "OPEN_FOLDER":
         result["data"]["user_id"] = user_id
         result["data"]["device_id"] = device_id
         send_to_backend("OPEN_FOLDER", result["data"], token)
         result["reply"] = f"Opening {result['data'].get('folder', 'downloads')} folder!"
 
-    # OPEN APP / URL / CREATE FOLDER
     elif result["intent"] in ["OPEN_APP", "OPEN_URL", "CREATE_FOLDER"]:
         result["data"]["user_id"] = user_id
         result["data"]["device_id"] = device_id
         send_to_backend(result["intent"], result["data"], token)
 
-    # DEVICE CONTROL
     elif result["intent"] in [
         "MUTE", "UNMUTE", "VOLUME_UP", "VOLUME_DOWN", "SET_VOLUME",
         "BRIGHTNESS_UP", "BRIGHTNESS_DOWN", "SET_BRIGHTNESS", "TAKE_SCREENSHOT"
@@ -868,7 +883,6 @@ def _run_single_action(normalized, user_text, token, user_id, device_id, is_conf
         result["data"]["device_id"] = device_id
         send_to_backend(result["intent"], result["data"], token)
 
-    # SEARCH NOTES
     elif result["intent"] == "SEARCH_NOTES":
         query = result["data"].get("query", user_text)
         try:
@@ -891,7 +905,6 @@ def _run_single_action(normalized, user_text, token, user_id, device_id, is_conf
         except Exception as e:
             result["reply"] = f"Could not search: {e}"
 
-    # GET*
     elif result["intent"] in [
         "GET_NOTES", "GET_REMINDERS", "GET_EXPENSES",
         "GET_SHOPPING_LIST", "GET_STUDY_PLANS", "GET_GOALS",
@@ -916,10 +929,8 @@ def _run_single_action(normalized, user_text, token, user_id, device_id, is_conf
 
 
 def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
-    """Handles single AND multi-action user requests (all action types)."""
     save_chat_message(user_id, "user", user_text, token)
 
-    # Handle pending CLOSE_APP confirmation
     pending = pending_confirmations.get(user_id)
     is_confirmation = False
 
@@ -944,10 +955,8 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
     else:
         raw = process_user_input(user_text, user_id, token)
 
-    # ---- MULTI-ACTION split ----
     raw_actions = _split_multi(raw)
 
-    # If single CLOSE_APP and not confirmed → ask confirmation
     if len(raw_actions) == 1 and raw_actions[0].get("intent") == "CLOSE_APP" and not is_confirmation:
         normalized = normalize_result(raw_actions[0], user_text)
         pending_confirmations[user_id] = {
@@ -957,12 +966,8 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         app_name = normalized["data"].get("app", "this app")
         reply = f"Are you sure you want to close {app_name}? Say yes to confirm."
         save_chat_message(user_id, "assistant", reply, token)
-        return {
-            "intent": "CLOSE_APP", "mood": "neutral", "emoji": "😐",
-            "data": normalized["data"], "reply": reply
-        }
+        return {"intent": "CLOSE_APP", "mood": "neutral", "emoji": "😐", "data": normalized["data"], "reply": reply}
 
-    # Normalize + run each action
     executed = []
     replies = []
     for act in raw_actions:
@@ -972,7 +977,6 @@ def get_ai_response(user_text, token, user_id, device_id=DEFAULT_DEVICE_ID):
         if result.get("reply"):
             replies.append(result["reply"])
 
-    # For multi-action, use the LLM's top-level reply ONCE (avoid duplicates)
     if len(raw_actions) > 1 and isinstance(raw, dict) and raw.get("reply"):
         final_reply = raw["reply"]
     else:

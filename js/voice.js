@@ -1,10 +1,11 @@
 /* ============================================
-   NOVA - Voice Module (Person 4) — Final
+   NOVA - Voice Module (Final)
    Mic button: 1st click stops Nova, 2nd click starts listening
-   Bug 5 fix: reliable TTS stop (pause + cancel + ttsId guard)
-   Multi-user: sends user_id + access_token to bridge.py
-   Deployed: AI_URL + SUMMARIZE_URL → Render bridge
-   + Dedupe duplicate reply lines (fixes "shown twice" bug)
+   TTS stop with pause + cancel + ttsId guard
+   Multi-user: sends user_id + access_token to bridge
+   + Dedupe duplicate reply lines
+   + Flashcard display
+   + CLEAN error messages (no "snag")
    ============================================ */
 
 const CONFIG = {
@@ -27,10 +28,17 @@ let lastStopTime = 0;
 let recognition = null;
 let currentUtterance = null;
 
-// TTS guards
 let ttsId = 0;
 let isSpeaking = false;
 let isPaused = false;
+
+// ============================================================
+// CLEAN ERROR MESSAGES
+// ============================================================
+const ERR_NETWORK = "⚠️ Connection issue. Please check your internet and try again.";
+const ERR_LIMIT = "⚠️ Daily AI limit reached. Please try again in a few hours.";
+const ERR_STARTING = "⏳ Service is warming up. Please try again in 10 seconds.";
+const ERR_AI = "⚠️ AI service unavailable right now. Please try again shortly.";
 
 // ============================================================
 // AUTO-DETECT DEVICE ID
@@ -259,14 +267,13 @@ function resumeSpeaking() {
 }
 
 // ============================================================
-// SMART MIC HANDLER
+// MIC HANDLER
 // ============================================================
 function handleMicClick() {
   const speaking = window.speechSynthesis &&
                    (window.speechSynthesis.speaking || window.speechSynthesis.pending);
 
   if (speaking || isSpeaking || currentVoiceState === VOICE_STATES.SPEAKING) {
-    console.log('[NOVA] 🎤 Mic pressed while speaking → stop only');
     stopSpeaking();
     return;
   }
@@ -280,26 +287,18 @@ function handleMicClick() {
 }
 
 // ============================================================
-// DEDUPE HELPERS
+// DEDUPE
 // ============================================================
-/**
- * Collapse repeated lines in a reply string.
- * Example: "A\nA" → "A"
- *          "A\nB\nA\nB" → "A\nB"
- *          "A" → "A"
- */
 function dedupeReply(text) {
   if (typeof text !== 'string' || !text) return text;
 
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
   if (lines.length <= 1) return text;
 
-  // Case 1: All lines are identical
   if (lines.every(l => l === lines[0])) {
     return lines[0];
   }
 
-  // Case 2: Two consecutive duplicates (most common LLM output)
   const out = [];
   for (let i = 0; i < lines.length; i++) {
     if (i === 0 || lines[i] !== lines[i - 1]) {
@@ -307,6 +306,29 @@ function dedupeReply(text) {
     }
   }
   return out.join('\n');
+}
+
+// ============================================================
+// FLASHCARD FORMATTER
+// ============================================================
+function formatFlashcards(dataObj) {
+  if (!dataObj || typeof dataObj !== 'object') return null;
+
+  const cards = dataObj.cards;
+  if (!Array.isArray(cards) || cards.length === 0) return null;
+
+  const topic = dataObj.topic || 'Flashcards';
+  const lines = ['📚 ' + topic, ''];
+
+  cards.forEach(function (c, i) {
+    const q = (c && c.question) ? c.question : '(no question)';
+    const a = (c && c.answer) ? c.answer : '(no answer)';
+    lines.push('Q' + (i + 1) + ': ' + q);
+    lines.push('A' + (i + 1) + ': ' + a);
+    lines.push('');
+  });
+
+  return lines.join('\n').trim();
 }
 
 // ============================================================
@@ -354,26 +376,37 @@ async function handleVoiceInput(transcript) {
       body: JSON.stringify(payload)
     });
 
-    if (!response.ok) throw new Error('HTTP ' + response.status);
+    if (!response.ok) {
+      throw new Error('HTTP_' + response.status);
+    }
 
     const data = await response.json();
     console.log('[NOVA] AI Response:', data);
 
     let reply = data.response || data.reply || 'No response';
 
-    if (Array.isArray(data.actions) && data.actions.length > 1) {
-      console.log('[NOVA] Multi-action executed:', data.actions.length, 'actions');
-    }
+    // Check if it's a known clean error from the backend
+    const isKnownError = typeof reply === 'string' && (
+      reply.startsWith('⚠️') ||
+      reply.startsWith('⏳') ||
+      reply.startsWith('📡')
+    );
 
-    // ---- Dedupe: collapse duplicate consecutive lines ----
-    reply = dedupeReply(reply);
+    if (!isKnownError) {
+      const flashcardText = formatFlashcards(data.data);
+      if (flashcardText) {
+        reply = flashcardText;
+      } else {
+        reply = dedupeReply(reply);
 
-    if (data.data && typeof data.data === 'object') {
-      const extras = [];
-      if (data.data.body) extras.push(data.data.body);
-      if (data.data.task) extras.push('📌 Task: ' + data.data.task);
-      if (data.data.time) extras.push('🕐 Time: ' + data.data.time);
-      if (extras.length > 0) reply = reply + '\n\n' + extras.join('\n');
+        if (data.data && typeof data.data === 'object') {
+          const extras = [];
+          if (data.data.body) extras.push(data.data.body);
+          if (data.data.task) extras.push('📌 Task: ' + data.data.task);
+          if (data.data.time) extras.push('🕐 Time: ' + data.data.time);
+          if (extras.length > 0) reply = reply + '\n\n' + extras.join('\n');
+        }
+      }
     }
 
     removeTypingIndicator();
@@ -388,9 +421,20 @@ async function handleVoiceInput(transcript) {
 
   } catch (err) {
     console.error('[NOVA] AI error:', err);
+
+    let errMsg = ERR_AI;
+    const s = String(err.message || err);
+
+    if (s.includes('429')) {
+      errMsg = ERR_LIMIT;
+    } else if (s.includes('Failed to fetch') || s.includes('NetworkError')) {
+      errMsg = ERR_NETWORK;
+    } else if (s.includes('timed out') || s.includes('timeout') || s.includes('HTTP_5')) {
+      errMsg = ERR_STARTING;
+    }
+
     removeTypingIndicator();
 
-    const errMsg = '❌ Could not reach the AI. Please try again.';
     if (container) {
       const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       container.appendChild(createChatMessage('nova', errMsg, now));

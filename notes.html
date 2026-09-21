@@ -6,6 +6,8 @@
 <title>Notes — NOVA</title>
 <link rel="icon" type="image/svg+xml" href="assets/images/nova-logo.svg">
 <script src="https://unpkg.com/lucide@latest"></script>
+<link rel="stylesheet" href="css/theme.css">
+<script src="js/theme.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #05060f; color: #f1f5f9; min-height: 100vh; }
@@ -119,6 +121,199 @@
     .notes-grid { grid-template-columns: 1fr; }
     .edit-btn, .delete-btn { opacity: 1; }
   }
+    /* ============================================================
+     LIGHT THEME UNIVERSAL OVERRIDES
+     ============================================================ */
+  html[data-theme="light"] body {
+    background: #f7f8fc !important;
+    color: #0f172a !important;
+  }
+  html[data-theme="light"] .sidebar {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+  }
+  html[data-theme="light"] .sidebar-header,
+  html[data-theme="light"] .nav-divider { border-color: #e2e8f0 !important; }
+  html[data-theme="light"] .nav-section-label { color: #94a3b8 !important; }
+  html[data-theme="light"] .nav-item { color: #64748b !important; }
+  html[data-theme="light"] .nav-item:hover {
+    background: rgba(0,0,0,0.04) !important;
+    color: #0f172a !important;
+  }
+  html[data-theme="light"] .nav-item.active {
+    background: rgba(8,145,178,0.1) !important;
+    color: #0891b2 !important;
+  }
+  html[data-theme="light"] .topbar {
+    background: rgba(255,255,255,0.9) !important;
+    border-bottom-color: #e2e8f0 !important;
+  }
+  html[data-theme="light"] .greeting-title { color: #0f172a !important; }
+  html[data-theme="light"] .greeting-subtitle { color: #64748b !important; }
+  html[data-theme="light"] .topbar-icon-btn { color: #64748b !important; }
+  html[data-theme="light"] .topbar-icon-btn:hover {
+    background: rgba(0,0,0,0.05) !important;
+    color: #0f172a !important;
+  }
+
+  /* Cards / panels / boxes — universal selectors */
+  html[data-theme="light"] .stat-card,
+  html[data-theme="light"] .summary-card,
+  html[data-theme="light"] .category-card,
+  html[data-theme="light"] .expense-item,
+  html[data-theme="light"] .shopping-item,
+  html[data-theme="light"] .note-item,
+  html[data-theme="light"] .reminder-item,
+  html[data-theme="light"] .goal-item,
+  html[data-theme="light"] .plan-item,
+  html[data-theme="light"] .study-plan-item,
+  html[data-theme="light"] .info-box,
+  html[data-theme="light"] .faq-item,
+  html[data-theme="light"] .step-card,
+  html[data-theme="light"] .assistant-area,
+  html[data-theme="light"] .welcome-banner,
+  html[data-theme="light"] .profile-card,
+  html[data-theme="light"] .setting-card {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+  }
+  html[data-theme="light"] .stat-card:hover,
+  html[data-theme="light"] .summary-card:hover,
+  html[data-theme="light"] .expense-item:hover,
+  html[data-theme="light"] .shopping-item:hover,
+  html[data-theme="light"] .note-item:hover {
+    border-color: #cbd5e1 !important;
+    box-shadow: 0 10px 30px rgba(15,23,42,0.08) !important;
+  }
+
+  /* Headings inside cards */
+  html[data-theme="light"] .stat-value,
+  html[data-theme="light"] .summary-value,
+  html[data-theme="light"] .category-amount,
+  html[data-theme="light"] .expense-amount,
+  html[data-theme="light"] .shopping-name,
+  html[data-theme="light"] .note-title,
+  html[data-theme="light"] .reminder-title,
+  html[data-theme="light"] .goal-title,
+  html[data-theme="light"] .list-section-title,
+  html[data-theme="light"] .category-title,
+  html[data-theme="light"] .overview-title,
+  html[data-theme="light"] .chat-section-title {
+    color: #0f172a !important;
+  }
+  html[data-theme="light"] .stat-label,
+  html[data-theme="light"] .summary-label,
+  html[data-theme="light"] .summary-sub,
+  html[data-theme="light"] .expense-date,
+  html[data-theme="light"] .shopping-meta,
+  html[data-theme="light"] .category-name,
+  html[data-theme="light"] .welcome-text p,
+  html[data-theme="light"] .chat-section-count {
+    color: #64748b !important;
+  }
+
+  /* Forms */
+  html[data-theme="light"] .form-input,
+  html[data-theme="light"] .form-select,
+  html[data-theme="light"] .assistant-input,
+  html[data-theme="light"] .assistant-input-group {
+    background: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+  }
+  html[data-theme="light"] .form-input::placeholder,
+  html[data-theme="light"] .assistant-input::placeholder {
+    color: #94a3b8 !important;
+  }
+  html[data-theme="light"] .form-label { color: #334155 !important; }
+
+  /* Modals */
+  html[data-theme="light"] .modal {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+  }
+  html[data-theme="light"] .modal-title { color: #0f172a !important; }
+  html[data-theme="light"] .modal-header,
+  html[data-theme="light"] .modal-footer { border-color: #e2e8f0 !important; }
+
+  /* Buttons */
+  html[data-theme="light"] .btn-ghost {
+    background: rgba(0,0,0,0.03) !important;
+    color: #64748b !important;
+    border-color: #cbd5e1 !important;
+  }
+  html[data-theme="light"] .btn-ghost:hover {
+    background: rgba(0,0,0,0.06) !important;
+    color: #0f172a !important;
+  }
+  html[data-theme="light"] .quick-action {
+    background: rgba(0,0,0,0.03) !important;
+    border-color: #e2e8f0 !important;
+    color: #64748b !important;
+  }
+  html[data-theme="light"] .quick-action:hover {
+    background: rgba(0,0,0,0.06) !important;
+    color: #0f172a !important;
+  }
+
+  /* Profile menu */
+  html[data-theme="light"] .profile-menu {
+    background: rgba(255,255,255,0.98) !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 10px 40px rgba(15,23,42,0.15) !important;
+  }
+  html[data-theme="light"] .profile-menu-item { color: #334155 !important; }
+  html[data-theme="light"] .profile-menu-item:hover {
+    background: rgba(0,0,0,0.04) !important;
+    color: #0f172a !important;
+  }
+
+  /* Toast */
+  html[data-theme="light"] .toast {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+  }
+  html[data-theme="light"] .toast-title { color: #0f172a !important; }
+  html[data-theme="light"] .toast-message { color: #64748b !important; }
+
+  /* Assistant orb/chat */
+  html[data-theme="light"] .orb-status-text { color: #64748b !important; }
+  html[data-theme="light"] .mic-label { color: #64748b !important; }
+  html[data-theme="light"] .chat-message.nova .chat-bubble {
+    background: #f1f5f9 !important;
+    border-color: #e2e8f0 !important;
+    color: #334155 !important;
+  }
+  html[data-theme="light"] .chat-message.user .chat-bubble {
+    background: rgba(59,130,246,0.12) !important;
+    color: #0f172a !important;
+  }
+  html[data-theme="light"] .chat-sender,
+  html[data-theme="light"] .chat-time,
+  html[data-theme="light"] .chat-divider { color: #94a3b8 !important; }
+  html[data-theme="light"] .chat-divider::before,
+  html[data-theme="light"] .chat-divider::after { background: #e2e8f0 !important; }
+  html[data-theme="light"] .chat-empty { color: #94a3b8 !important; }
+  html[data-theme="light"] .chat-empty svg { color: #cbd5e1 !important; }
+
+  /* Badges & pills */
+  html[data-theme="light"] .count-badge {
+    background: rgba(8,145,178,0.1) !important;
+    border-color: rgba(8,145,178,0.25) !important;
+    color: #0891b2 !important;
+  }
+  html[data-theme="light"] .shopping-meta .badge {
+    background: rgba(124,58,237,0.1) !important;
+    color: #7c3aed !important;
+    border-color: rgba(124,58,237,0.2) !important;
+  }
+  html[data-theme="light"] .stat-icon,
+  html[data-theme="light"] .category-icon,
+  html[data-theme="light"] .expense-icon,
+  html[data-theme="light"] .shopping-icon {
+    background: rgba(8,145,178,0.08) !important;
+    border-color: rgba(8,145,178,0.15) !important;
+  }
 </style>
 </head>
 <body>
@@ -157,6 +352,7 @@
         <div class="greeting-subtitle">Captured ideas, organized.</div>
       </div>
       <div class="topbar-right">
+        <button class="theme-toggle-btn" id="themeToggle" title="Switch theme"></button>
         <a href="dashboard.html" class="topbar-icon-btn" title="View notifications">
   <i data-lucide="bell"></i>
   <span class="notification-dot"></span>

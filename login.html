@@ -5,12 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Login — NOVA</title>
 <link rel="icon" type="image/svg+xml" href="assets/images/nova-logo.svg">
+<link rel="stylesheet" href="css/theme.css">
+<script src="js/theme.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: #05060f;
-    color: #f1f5f9;
+    background: var(--bg-primary);
+    color: var(--text-primary);
     min-height: 100vh;
   }
   .auth-page {
@@ -84,12 +86,12 @@
   }
   .auth-card {
     width: 100%; max-width: 440px;
-    background: rgba(18,21,45,0.65);
-    border: 1px solid rgba(255,255,255,0.1);
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
     border-radius: 24px;
     padding: 2.5rem;
     backdrop-filter: blur(30px);
-    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    box-shadow: var(--shadow-card);
     position: relative;
   }
   .auth-card::before {
@@ -98,8 +100,8 @@
     background: linear-gradient(90deg, transparent, rgba(34,211,238,0.4), transparent);
   }
   .auth-card-header { text-align: center; margin-bottom: 2rem; }
-  .auth-card-title { font-size: 1.8rem; font-weight: 700; color: #f1f5f9; margin-bottom: 0.5rem; }
-  .auth-card-subtitle { font-size: 0.9rem; color: #64748b; }
+  .auth-card-title { font-size: 1.8rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem; }
+  .auth-card-subtitle { font-size: 0.9rem; color: var(--text-subtle); }
 
   .auth-error {
     display: none;
@@ -117,37 +119,37 @@
   .form-group { position: relative; }
   .form-label {
     display: block; font-size: 0.85rem; font-weight: 600;
-    color: #94a3b8; margin-bottom: 0.5rem;
+    color: var(--text-muted); margin-bottom: 0.5rem;
   }
   .input-group { position: relative; display: flex; align-items: center; }
   .input-icon {
     position: absolute; left: 1rem; font-size: 1rem;
-    color: #64748b; pointer-events: none; z-index: 2;
+    color: var(--text-subtle); pointer-events: none; z-index: 2;
   }
   .form-input {
     width: 100%;
     padding: 0.85rem 1rem 0.85rem 2.75rem;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.1);
+    background: var(--bg-input);
+    border: 1px solid var(--border-secondary);
     border-radius: 12px;
-    color: #f1f5f9; font-size: 0.95rem;
+    color: var(--text-primary); font-size: 0.95rem;
     font-family: inherit; outline: none;
     transition: all 0.2s ease;
   }
-  .form-input::placeholder { color: #475569; }
+  .form-input::placeholder { color: var(--text-faint); }
   .form-input:focus {
-    border-color: #22d3ee;
-    background: rgba(34,211,238,0.05);
+    border-color: var(--accent-cyan);
+    background: var(--bg-input-focus);
     box-shadow: 0 0 0 3px rgba(34,211,238,0.1);
   }
   .form-input.error { border-color: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,0.1); }
   .input-toggle {
     position: absolute; right: 0.75rem;
-    background: none; border: none; color: #64748b;
+    background: none; border: none; color: var(--text-subtle);
     cursor: pointer; padding: 0.25rem;
     font-size: 1.1rem; z-index: 2;
   }
-  .input-toggle:hover { color: #22d3ee; }
+  .input-toggle:hover { color: var(--accent-cyan); }
   .form-error {
     display: none; font-size: 0.8rem;
     color: #ef4444; margin-top: 0.35rem;
@@ -188,7 +190,7 @@
 
   .auth-options {
     display: flex; align-items: center; justify-content: space-between;
-    font-size: 0.85rem; color: #94a3b8;
+    font-size: 0.85rem; color: var(--text-muted);
   }
   .form-check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
   .form-check input { accent-color: #22d3ee; }
@@ -196,11 +198,11 @@
   .auth-footer {
     text-align: center; margin-top: 1.5rem;
     padding-top: 1.5rem;
-    border-top: 1px solid rgba(255,255,255,0.06);
-    font-size: 0.9rem; color: #64748b;
+    border-top: 1px solid var(--border-primary);
+    font-size: 0.9rem; color: var(--text-subtle);
   }
   .auth-link {
-    color: #22d3ee; text-decoration: none;
+    color: var(--accent-cyan); text-decoration: none;
     font-weight: 600; margin-left: 4px;
   }
   .auth-link:hover { text-decoration: underline; }
@@ -293,9 +295,6 @@
 </div>
 
 <script>
-/* =========================================================
-   NOVA — Login (flat JSON backend)
-   ========================================================= */
 var API_BASE = "https://nova-voice-assistant-6vve.onrender.com";
 
 document.getElementById("login-form").addEventListener("submit", async function (e) {
@@ -353,8 +352,6 @@ document.getElementById("login-form").addEventListener("submit", async function 
       localStorage.setItem("access_token", token);
       localStorage.setItem("nova-access-token", token);
       localStorage.setItem("nova-auth-token", token);
-
-      console.log("[NOVA Login] Saved session →", { name: name, userId: userId, hasToken: !!token });
 
       window.location.href = "dashboard.html";
     } else {
